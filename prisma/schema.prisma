@@ -1,0 +1,126 @@
+generator client {
+  provider        = "prisma-client-js"
+  output          = "../node_modules/.prisma/client"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["main"]
+}
+
+model account {
+  id                    String    @id
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  accessTokenExpiresAt  DateTime? @db.Timestamp(6)
+  refreshTokenExpiresAt DateTime? @db.Timestamp(6)
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @db.Timestamp(6)
+  updatedAt             DateTime  @db.Timestamp(6)
+  user                  user      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("main")
+}
+
+model invitation {
+  id             String       @id
+  organizationId String
+  email          String
+  role           String?
+  status         String
+  expiresAt      DateTime     @db.Timestamp(6)
+  inviterId      String
+  createdAt      DateTime     @db.Timestamp(6)
+  updatedAt      DateTime?    @db.Timestamp(6)
+  user           user         @relation(fields: [inviterId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organization   organization @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("main")
+}
+
+model member {
+  id             String       @id
+  organizationId String
+  userId         String
+  role           String
+  createdAt      DateTime     @db.Timestamp(6)
+  updatedAt      DateTime?    @db.Timestamp(6)
+  organization   organization @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user           user         @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("main")
+}
+
+model organization {
+  id         String       @id
+  name       String
+  slug       String?      @unique
+  logo       String?
+  metadata   String?
+  createdAt  DateTime     @db.Timestamp(6)
+  updatedAt  DateTime?    @db.Timestamp(6)
+  invitation invitation[]
+  member     member[]
+
+  @@schema("main")
+}
+
+model session {
+  id                   String   @id
+  userId               String
+  token                String
+  expiresAt            DateTime @db.Timestamp(6)
+  ipAddress            String?
+  userAgent            String?
+  createdAt            DateTime @db.Timestamp(6)
+  updatedAt            DateTime @db.Timestamp(6)
+  activeOrganizationId String?
+  user                 user     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("main")
+}
+
+model user {
+  id            String       @id
+  name          String
+  email         String       @unique
+  emailVerified Boolean
+  image         String?
+  createdAt     DateTime     @db.Timestamp(6)
+  updatedAt     DateTime     @db.Timestamp(6)
+  account       account[]
+  invitation    invitation[]
+  member        member[]
+  session       session[]
+  jerkstore_insult jerkstore_insult[]
+
+  @@schema("main")
+}
+
+model verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime  @db.Timestamp(6)
+  createdAt  DateTime? @db.Timestamp(6)
+  updatedAt  DateTime? @db.Timestamp(6)
+
+  @@schema("main")
+}
+
+model jerkstore_insult {
+  id        String   @id @default(uuid())
+  content   String
+  topic     String?
+  language  String?
+  userId    String
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  @@schema("main")
+}

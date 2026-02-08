@@ -20,11 +20,16 @@ export const auth = betterAuth({
     },
   },
   advanced: {
-    useSecureCookies: false, // For local dev
+    useSecureCookies: process.env.NODE_ENV === "production",
+    crossSubdomainCookies: {
+      enabled: true,
+      domain: process.env.ROOT_DOMAIN?.split(":")[0],
+    },
   },
   trustedOrigins: [
     "http://localhost:3000",
-    "http://jerkstore.localhost:3000",
+    "http://lvh.me:3000",
+    "http://jerkstore.lvh.me:3000",
     `https://${process.env.ROOT_DOMAIN}`,
     `https://jerkstore.${process.env.ROOT_DOMAIN}`,
     // Add other origins as needed

@@ -16,6 +16,7 @@ model account {
   providerId            String
   accessToken           String?
   refreshToken          String?
+  idToken               String?
   accessTokenExpiresAt  DateTime? @db.Timestamp(6)
   refreshTokenExpiresAt DateTime? @db.Timestamp(6)
   scope                 String?

@@ -6,6 +6,7 @@ import { LoginButton } from "@/components/login-button";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { RandomBurn } from "@/components/random-burn";
 
 export const metadata: Metadata = {
   title: "Jerkstore - The World's Most Aggressive Insult Generator",
@@ -116,6 +117,8 @@ export default async function MarketingPage() {
           </div>
         </section>
 
+
+        <RandomBurn />
 
         {/* Viral Feed */}
         <section className="border-y-8 border-black bg-white p-12 overflow-hidden">

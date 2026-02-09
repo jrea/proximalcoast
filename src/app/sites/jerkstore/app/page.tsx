@@ -34,9 +34,9 @@ export default async function JerkstorePage({
     },
   });
 
-  const isActive = subscription &&
+  const isActive = !!(subscription &&
     subscription.status === "active" &&
-    new Date(subscription.expiresAt) > new Date();
+    new Date(subscription.expiresAt) > new Date());
 
   return (
     <div className="min-h-screen bg-neutral-100 p-4 relative">

@@ -9,7 +9,7 @@ import {
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-export function JerkstoreCheckoutForm() {
+export function JerkstoreCheckoutForm({ priceId }: { priceId: string }) {
   const fetchClientSecret = useCallback(() => {
     // Create a Checkout Session
     return fetch("/api/checkout", {
@@ -18,7 +18,7 @@ export function JerkstoreCheckoutForm() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID,
+        priceId: priceId || process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_ELITE,
         siteSlug: "jerkstore",
       }),
     })

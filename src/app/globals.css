@@ -121,7 +121,34 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  @keyframes shine {
+    0% {
+      transform: translateX(calc(-200%)) skewX(-12deg);
+    }
+
+    100% {
+      transform: translateX(calc(200%)) skewX(-12deg);
+    }
+  }
+
+  @keyframes gradient {
+    0% {
+      background-position: 0% 50%;
+    }
+
+    50% {
+      background-position: 100% 50%;
+    }
+
+    100% {
+      background-position: 0% 50%;
+    }
   }
 }

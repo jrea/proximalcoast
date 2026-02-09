@@ -1,6 +1,6 @@
 
 import { streamText } from 'ai';
-import { insultModel } from '@/lib/ai';
+import { insultModel } from '../../_lib/ai';
 
 import { IDENTITY } from "../../prompts/identity";
 import { STYLE } from "../../prompts/style";
@@ -12,7 +12,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
 import { prisma } from "@/lib/db";
-import { moderateText } from "@/lib/openai";
+import { moderateText } from "../../_lib/openai";
 
 export async function POST(req: Request) {
   const session = await auth.api.getSession({

@@ -1,4 +1,4 @@
-import { AccessModal } from "@/components/access-modal";
+import { AccessModal } from "../_components/access-modal";
 
 export default function AccessPage() {
   return (

@@ -8,7 +8,7 @@
     - **Components**: Shared UI components are in `src/components`.
     - **Database**: A single Prisma schema is used across all sites.
     - **Auth**: `better-auth` is used for unified authentication across subdomains using cross-subdomain cookies.
-- **Independence**: Each site in `src/app/sites/` is treated as an independent application logic-wise, though they share the underlying infrastructure.
+- **Independence**: Each site in `src/app/sites/` is treated as an independent application logic-wise, though they share the underlying infrastructure. All code should be co-located in th the `src/app/sites/[site-name]` directory
 
 ## Key Sites
 - **Jerkstore**: An unhinged AI insult generator.

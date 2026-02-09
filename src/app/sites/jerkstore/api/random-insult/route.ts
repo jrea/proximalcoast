@@ -3,19 +3,19 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    // Count all insults to pick a random one
-    const count = await prisma.jerkstore_insult.count();
+    // Count all safe insults to pick a random one
+    const count = await prisma.jerkstore_insult_safe.count();
 
     if (count === 0) {
       return NextResponse.json({
         topic: "Nothingness",
-        content: "The database is as empty as your personality. Add some data, you absolute void."
+        content: "The safe database is empty. Our G-rated rage is currently offline."
       });
     }
 
     const randomIndex = Math.floor(Math.random() * count);
 
-    const randomInsult = await prisma.jerkstore_insult.findFirst({
+    const randomInsult = await prisma.jerkstore_insult_safe.findFirst({
       skip: randomIndex,
     });
 

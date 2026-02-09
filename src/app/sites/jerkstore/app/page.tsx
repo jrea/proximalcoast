@@ -1,4 +1,4 @@
-import { InsultGenerator } from "@/components/insult-generator";
+import { InsultGenerator } from "../_components/insult-generator";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -6,7 +6,10 @@ import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { CreditCard, LogOut, Settings } from "lucide-react";
 
-import { AccessModal } from "@/components/access-modal";
+import { AccessModal } from "../_components/access-modal";
+import { LogoutButton } from "../_components/logout-button";
+
+import { BUTTON_LABELS, TOPIC_LABELS } from "../constants";
 
 export default async function JerkstorePage({
   searchParams,
@@ -38,6 +41,9 @@ export default async function JerkstorePage({
     subscription.status === "active" &&
     new Date(subscription.expiresAt) > new Date());
 
+  const randomButtonLabel = BUTTON_LABELS[Math.floor(Math.random() * BUTTON_LABELS.length)];
+  const randomTopicLabel = TOPIC_LABELS[Math.floor(Math.random() * TOPIC_LABELS.length)];
+
   return (
     <div className="min-h-screen bg-neutral-100 p-4 relative">
 
@@ -52,18 +58,17 @@ export default async function JerkstorePage({
           >
             <CreditCard className="w-6 h-6" />
           </Link>
-          <Link
-            href="/sites/jerkstore"
-            className="p-2 hover:bg-neutral-200 border-2 border-transparent hover:border-black transition-all"
-            title="Marketing Page"
-          >
-            <Settings className="w-6 h-6" />
-          </Link>
+          <LogoutButton />
         </div>
       </header>
 
       <main className="flex items-center justify-center">
-        <InsultGenerator isPaidBypass={isPaidBypass} isActive={isActive} />
+        <InsultGenerator
+          isPaidBypass={isPaidBypass}
+          isActive={isActive}
+          initialButtonLabel={randomButtonLabel}
+          initialTopicLabel={randomTopicLabel}
+        />
       </main>
 
       <footer className="max-w-xl mx-auto mt-8 text-center font-mono text-[10px] text-neutral-400 uppercase tracking-widest">

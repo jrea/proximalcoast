@@ -2,11 +2,11 @@
 import Link from "next/link";
 import { Metadata } from "next";
 import { Flame, Star, Zap, Skull, Share2, MessageCircle, Heart } from "lucide-react";
-import { LoginButton } from "@/components/login-button";
+import { LoginButton } from "./_components/login-button";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { RandomBurn } from "@/components/random-burn";
+import { RandomBurn } from "./_components/random-burn";
 
 export const metadata: Metadata = {
   title: "Jerkstore - The World's Most Aggressive Insult Generator",
@@ -17,6 +17,30 @@ export const metadata: Metadata = {
     type: "website",
   },
 };
+
+const BAD_WORDS = ["goddamn", "fucked", "syphilis-ridden", "syphilitic", "lobotomized"];
+
+function BlurredRoast({ text }: { text: string }) {
+  const words = text.split(/(\s+)/);
+  return (
+    <>
+      {words.map((word, i) => {
+        const cleanWord = word.toLowerCase().replace(/[.,!?;:]/g, "");
+        if (BAD_WORDS.includes(cleanWord) && word.length > 0) {
+          return (
+            <Link key={i} href="/billing" className="inline-block cursor-pointer select-none bg-neutral-200 px-1 rounded mx-0.5 hover:bg-red-100 border-b-2 border-transparent hover:border-red-600 transition-all group/word" title="Click to unlock with Pro">
+              <span>{word[0]}</span>
+              <span className="blur-[4px] transition-all">
+                {word.substring(1)}
+              </span>
+            </Link>
+          );
+        }
+        return <span key={i}>{word}</span>;
+      })}
+    </>
+  );
+}
 
 const FAKE_REVIEWS = [
   {
@@ -140,7 +164,7 @@ export default async function MarketingPage() {
 
                   <div className="mb-4">
                     <span className="text-xs font-bold bg-neutral-200 px-2 py-1 rounded uppercase tracking-wide text-neutral-600 mb-2 inline-block">Topic: {review.topic}</span>
-                    <p className="font-serif text-xl font-bold leading-tight">"{review.roast}"</p>
+                    <p className="font-serif text-xl font-bold leading-tight">"<BlurredRoast text={review.roast} />"</p>
                   </div>
 
                   <div className="flex items-center justify-between text-neutral-400 font-mono text-xs pt-4 border-t-2 border-neutral-100 group-hover:text-black transition-colors">
@@ -181,17 +205,11 @@ export default async function MarketingPage() {
       <footer className="bg-white text-black p-12 text-center border-t-8 border-black">
         <div className="font-black text-3xl uppercase italic mb-4">Jerkstore</div>
         <div className="max-w-4xl mx-auto font-mono uppercase font-bold text-neutral-400 text-[10px] leading-tight text-center sm:text-justify">
-          <p className="mb-4">© 2026 Proximal Coast LLC. All rights reserved by the machine gods. Do not sue us. We have no money. We spent it all on high-quality insults and premium snacks. If you use this at work you will lose your job. It probably isn't a good job anyway. Maybe quit?</p>
+          <p className="mb-4"><BlurredRoast text="© 2026 Proximal Coast LLC. All rights reserved by the machine gods. Do not sue us. We have no money. We spent it all on high-quality insults and premium snacks. If you use this at work you will lose your job. It probably isn't a good job anyway. Maybe quit?" /></p>
           <p className="mb-2 text-neutral-600">⚠️ IMPORTANT SAFETY INFORMATION & SIDE EFFECTS ⚠️</p>
-          <p>
-            Jerkstore is not for everyone. Side effects may include: rapid loss of friends, spontaneous isolation, total alienation of humanity, extreme paranoia, and an irresistible urge to roast your barista. Users have reported: upsetting their grandma, losing their inheritance, being disowned by their cat, and a significant increase in awkward silences at Thanksgiving. In rare cases, use of Jerkstore may lead to: being banned from all public libraries, a sudden inability to make eye contact, and being forced to live in the woods alone in a lean-to made of old pizza boxes while whispering sick burns to a family of squirrels.
-          </p>
-          <p className="mt-2 text-neutral-500">
-            Do not use Jerkstore if you are pregnant, nursing, or have a shred of human decency remaining. If your insults last for more than four hours, please consult a therapist or a witness protection program. Jerkstore is not responsible for: job loss, divorce, public shaming, or the inevitable heat death of your social life. By using this app, you confirm you understand humor in all its forms, including gallows humor, and acknowledge that this site is a total, absolute, stupid joke. Literally. A stupid joke. Use it accordingly. Note: Most people will not find you funny. In fact, they will likely find you insufferable. By using this app, you concede that you are a sprawling, syphilitic monument to intellectual bankruptcy, an evolutionary afterthought, and that your face looks like it was sculpted by a blind toddler using damp ham. Proximal Coast LLC assumes no liability for the realization that your soul is as shallow as a car park puddle during a drought.
-          </p>
-          <p className="mt-2 text-neutral-500 italic">
-            Stop using Jerkstore if you begin to see life in 8-bit text or if your internal monologue starts sounding like an Oxford professor having a stroke. Proceed with caution. Or don't. We aren't your parents.
-          </p>
+          <p><BlurredRoast text="Jerkstore is not for everyone. Side effects may include: rapid loss of friends, spontaneous isolation, total alienation of humanity, extreme paranoia, and an irresistible urge to roast your barista. Users have reported: upsetting their grandma, losing their inheritance, being disowned by their cat, and a significant increase in awkward silences at Thanksgiving. In rare cases, use of Jerkstore may lead to: being banned from all public libraries, a sudden inability to make eye contact, and being forced to live in the woods alone in a lean-to made of old pizza boxes while whispering sick burns to a family of squirrels." /></p>
+          <p className="mt-2 text-neutral-500"><BlurredRoast text="Do not use Jerkstore if you are pregnant, nursing, or have a shred of human decency remaining. If your insults last for more than four hours, please consult a therapist or a witness protection program. Jerkstore is not responsible for: job loss, divorce, public shaming, or the inevitable heat death of your social life. By using this app, you confirm you understand humor in all its forms, including gallows humor, and acknowledge that this site is a total, absolute, stupid joke. Literally. A stupid joke. Use it accordingly. Note: Most people will not find you funny. In fact, they will likely find you insufferable. By using this app, you concede that you are a sprawling, syphilitic monument to intellectual bankruptcy, an evolutionary afterthought, and that your face looks like it was sculpted by a blind toddler using damp ham. Proximal Coast LLC assumes no liability for the realization that your soul is as shallow as a car park puddle during a drought." /></p>
+          <p className="mt-2 text-neutral-500 italic"><BlurredRoast text="Stop using Jerkstore if you begin to see life in 8-bit text or if your internal monologue starts sounding like an Oxford professor having a stroke. Proceed with caution. Or don't. We aren't your parents." /></p>
         </div>
       </footer>
     </div>

@@ -3,6 +3,9 @@ import Link from "next/link";
 import { Metadata } from "next";
 import { Flame, Star, Zap, Skull, Share2, MessageCircle, Heart } from "lucide-react";
 import { LoginButton } from "@/components/login-button";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Jerkstore - The World's Most Aggressive Insult Generator",
@@ -38,7 +41,11 @@ const FAKE_REVIEWS = [
   },
 ];
 
-export default function MarketingPage() {
+export default async function MarketingPage() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
   return (
     <div className="min-h-screen bg-neutral-100 font-sans text-black selection:bg-red-600 selection:text-white">
       {/* Hero Section */}
@@ -151,7 +158,7 @@ export default function MarketingPage() {
         {/* Pricing / CTA */}
         <section className="grid grid-cols-1 md:grid-cols-2 min-h-[500px]">
           <div className="bg-black text-white p-12 md:p-24 flex flex-col justify-center border-b-8 md:border-b-0 md:border-r-8 border-white box-border">
-            <h3 className="text-7xl font-black uppercase mb-6 leading-none tracking-tighter text-yellow-300">Unlimited<br />Hate.</h3>
+            <h3 className="text-7xl font-black uppercase mb-6 leading-none tracking-tighter text-yellow-300">Unlimited<br />Rage.</h3>
             <p className="text-2xl font-bold font-mono text-neutral-400 mb-8 max-w-md">Unlock the full power of our language model. Roast in 50+ languages. No limits.</p>
             <Link href="/billing" className="self-start text-3xl font-black uppercase bg-white text-black px-8 py-4 hover:bg-red-600 hover:text-white transition-colors">
               Get Pro Access &rarr;
@@ -160,7 +167,7 @@ export default function MarketingPage() {
           <div className="bg-red-600 p-12 md:p-24 flex flex-col justify-center items-center text-center">
             <h3 className="text-white text-4xl font-black uppercase mb-8">Ready to ruin a friendship?</h3>
             <LoginButton
-              text="Launch Generator"
+              text="Destroy my life"
               className="bg-white text-black text-2xl font-black uppercase px-12 py-6 border-8 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[16px] active:translate-y-[16px] transition-all"
             />
             <p className="mt-6 text-white font-mono font-bold text-sm opacity-75 uppercase">Warning: Emotional damage likely.</p>
@@ -170,7 +177,19 @@ export default function MarketingPage() {
 
       <footer className="bg-white text-black p-12 text-center border-t-8 border-black">
         <div className="font-black text-3xl uppercase italic mb-4">Jerkstore</div>
-        <p className="font-mono uppercase font-bold text-neutral-500 text-sm">© 2026 Proximal Coast LLC. Do not sue us. If you use this at work you will lose your job. It probably isn't a good job anyway. Maybe quit?</p>
+        <div className="max-w-4xl mx-auto font-mono uppercase font-bold text-neutral-400 text-[10px] leading-tight text-center sm:text-justify">
+          <p className="mb-4">© 2026 Proximal Coast LLC. All rights reserved by the machine gods. Do not sue us. We have no money. We spent it all on high-quality insults and premium snacks. If you use this at work you will lose your job. It probably isn't a good job anyway. Maybe quit?</p>
+          <p className="mb-2 text-neutral-600">⚠️ IMPORTANT SAFETY INFORMATION & SIDE EFFECTS ⚠️</p>
+          <p>
+            Jerkstore is not for everyone. Side effects may include: rapid loss of friends, spontaneous isolation, total alienation of humanity, extreme paranoia, and an irresistible urge to roast your barista. Users have reported: upsetting their grandma, losing their inheritance, being disowned by their cat, and a significant increase in awkward silences at Thanksgiving. In rare cases, use of Jerkstore may lead to: being banned from all public libraries, a sudden inability to make eye contact, and being forced to live in the woods alone in a lean-to made of old pizza boxes while whispering sick burns to a family of squirrels.
+          </p>
+          <p className="mt-2 text-neutral-500">
+            Do not use Jerkstore if you are pregnant, nursing, or have a shred of human decency remaining. If your insults last for more than four hours, please consult a therapist or a witness protection program. Jerkstore is not responsible for: job loss, divorce, public shaming, or the inevitable heat death of your social life. By using this app, you confirm you understand humor in all its forms, including gallows humor, and acknowledge that this site is a total, absolute, stupid joke. Literally. A stupid joke. Use it accordingly. Note: Most people will not find you funny. In fact, they will likely find you insufferable. By using this app, you concede that you are a sprawling, syphilitic monument to intellectual bankruptcy, an evolutionary afterthought, and that your face looks like it was sculpted by a blind toddler using damp ham. Proximal Coast LLC assumes no liability for the realization that your soul is as shallow as a car park puddle during a drought.
+          </p>
+          <p className="mt-2 text-neutral-500 italic">
+            Stop using Jerkstore if you begin to see life in 8-bit text or if your internal monologue starts sounding like an Oxford professor having a stroke. Proceed with caution. Or don't. We aren't your parents.
+          </p>
+        </div>
       </footer>
     </div>
   );

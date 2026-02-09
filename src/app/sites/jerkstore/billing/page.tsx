@@ -1,34 +1,39 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Check } from "lucide-react";
-import { useState } from "react";
+import { LogOut, CreditCard, ChevronLeft, Loader2 } from "lucide-react";
+import { authClient } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
 
-export default function BillingPage() {
-  const [termsAccepted, setTermsAccepted] = useState(false);
+export default function BillingManagementPage() {
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  const handleUpgrade = async () => {
+  const handleLogout = async () => {
+    await authClient.signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          router.push("/");
+        },
+      },
+    });
+  };
+
+  const handleManage = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/checkout", {
+      const response = await fetch("/api/portal", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ siteSlug: "jerkstore" }),
       });
-
       const { url } = await response.json();
       if (url) {
         window.location.href = url;
-      } else {
-        console.error("No checkout URL received");
       }
     } catch (error) {
-      console.error("Checkout Error:", error);
+      console.error("Portal Error:", error);
     } finally {
       setLoading(false);
     }
@@ -36,99 +41,56 @@ export default function BillingPage() {
 
   return (
     <div className="min-h-screen bg-neutral-100 p-8 font-sans selection:bg-red-600 selection:text-white">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-2xl mx-auto">
         <header className="mb-12 flex justify-between items-center">
           <Link
-            href="/sites/jerkstore"
-            className="text-2xl font-black uppercase underline decoration-4 underline-offset-4 hover:text-red-600"
+            href="/app"
+            className="flex items-center gap-2 text-lg font-black uppercase hover:text-red-600 transition-colors"
           >
-            &larr; Back to App
+            <ChevronLeft className="w-5 h-5" /> Back to App
           </Link>
-          <h1 className="text-4xl font-black uppercase italic">Billing</h1>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-lg font-black uppercase underline decoration-2 underline-offset-4 hover:text-red-600"
+          >
+            <LogOut className="w-5 h-5" /> Logout
+          </button>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Free Plan */}
-          <div className="bg-white border-4 border-black p-8 opacity-50 grayscale">
-            <h2 className="text-4xl font-black uppercase mb-4">Paper Hands</h2>
-            <div className="text-5xl font-mono font-bold mb-8">
-              $0<span className="text-xl text-neutral-500">/mo</span>
+        <main className="bg-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="bg-yellow-300 p-3 border-2 border-black">
+              <CreditCard className="w-8 h-8 text-black" />
             </div>
-            <ul className="space-y-4 mb-8 font-bold font-mono">
-              <li className="flex items-center gap-2">
-                <Check /> 3 Insults / Day
-              </li>
-              <li className="flex items-center gap-2">
-                <Check /> English Only
-              </li>
-              <li className="flex items-center gap-2 line-through decoration-4">
-                Streaming API
-              </li>
-            </ul>
-            <button
-              disabled
-              className="w-full bg-neutral-300 text-neutral-500 font-black text-xl py-4 border-4 border-neutral-400 cursor-not-allowed uppercase"
-            >
-              Current Plan
-            </button>
+            <h1 className="text-4xl font-black uppercase italic">Subscription Management</h1>
           </div>
 
-          {/* Pro Plan */}
-          <div className="bg-yellow-300 border-4 border-black p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden">
-            <div className="absolute top-6 right-[-40px] bg-red-600 text-white font-black uppercase text-sm px-12 py-1 rotate-45 border-y-4 border-black">
-              Best Value
+          <div className="space-y-6">
+            <div className="p-6 bg-neutral-50 border-2 border-black/10 rounded-lg">
+              <h2 className="text-xl font-bold uppercase mb-2">Jerkstore Pro Status</h2>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                <span className="font-mono font-bold text-lg">ACTIVE & UNHINGED</span>
+              </div>
+              <p className="mt-4 text-neutral-600 font-mono text-sm uppercase">You have full access to our soul-crushing AI models.</p>
             </div>
-            <h2 className="text-4xl font-black uppercase mb-4">
-              Diamond Hands
-            </h2>
-            <div className="text-5xl font-mono font-bold mb-8">
-              $5<span className="text-xl text-neutral-800">/mo</span>
-            </div>
-            <ul className="space-y-4 mb-8 font-bold font-mono">
-              <li className="flex items-center gap-2">
-                <Check className="stroke-[3px]" /> Unlimited Insults
-              </li>
-              <li className="flex items-center gap-2">
-                <Check className="stroke-[3px]" /> Multi-Language Support
-              </li>
-              <li className="flex items-center gap-2">
-                <Check className="stroke-[3px]" /> Priority Queuing
-              </li>
-            </ul>
 
-            <div className="mb-6 flex items-start gap-3 p-4 bg-white/50 border-2 border-black/10">
-              <input
-                type="checkbox"
-                id="terms"
-                checked={termsAccepted}
-                onChange={(e) => setTermsAccepted(e.target.checked)}
-                className="w-6 h-6 border-4 border-black text-black focus:ring-0 cursor-pointer mt-1"
-              />
-              <label
-                htmlFor="terms"
-                className="font-bold font-mono text-sm cursor-pointer leading-tight"
+            <div className="flex flex-col gap-4">
+              <button
+                onClick={handleManage}
+                disabled={loading}
+                className="w-full bg-black text-white font-black text-2xl py-6 border-4 border-black hover:bg-neutral-800 transition-all flex items-center justify-center gap-3 active:translate-x-1 active:translate-y-1"
               >
-                I agree to the{" "}
-                <Link
-                  href="/sites/jerkstore/terms"
-                  target="_blank"
-                  className="underline decoration-2"
-                >
-                  Terms of Emotional Damage
-                </Link>
-                . I confirm I am 18+ and understand this content is satire.
-              </label>
+                {loading ? <Loader2 className="animate-spin" /> : "Manage Billing via Stripe"}
+              </button>
+              <p className="text-center font-mono text-xs text-neutral-400 uppercase">Updates to your subscription take effect immediately.</p>
             </div>
-
-            <button
-              onClick={handleUpgrade}
-              disabled={!termsAccepted || loading}
-              className="w-full bg-black text-white font-black text-xl py-4 border-4 border-white active:shadow-none active:translate-x-[4px] active:translate-y-[4px] transition-all hover:bg-neutral-800 uppercase shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none"
-            >
-              {loading ? "Loading..." : "Upgrade Now"}
-            </button>
           </div>
-        </div>
+        </main>
+
+        <footer className="mt-12 text-center">
+          <p className="font-mono font-bold text-neutral-500 uppercase text-sm">Need help? Don't ask us. We're busy making people sad.</p>
+        </footer>
       </div>
     </div>
   );

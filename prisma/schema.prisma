@@ -94,12 +94,29 @@ model user {
   image         String?
   createdAt     DateTime     @db.Timestamp(6)
   updatedAt     DateTime     @db.Timestamp(6)
+  stripeCustomerId   String? @unique
   account       account[]
   invitation    invitation[]
   member        member[]
   session       session[]
   jerkstore_insult jerkstore_insult[]
+  subscriptions    user_subscription[]
 
+  @@schema("main")
+}
+
+model user_subscription {
+  id                   String   @id @default(uuid())
+  userId               String
+  siteSlug             String   // e.g., "jerkstore"
+  stripeSubscriptionId String   @unique
+  status               String   // active, trialing, canceled, etc.
+  expiresAt            DateTime @db.Timestamp(6)
+  createdAt            DateTime @default(now()) @db.Timestamp(6)
+  updatedAt            DateTime @updatedAt @db.Timestamp(6)
+  user                 user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, siteSlug])
   @@schema("main")
 }
 
@@ -115,13 +132,15 @@ model verification {
 }
 
 model jerkstore_insult {
-  id        String   @id @default(uuid())
-  content   String
-  topic     String?
-  language  String?
-  userId    String
-  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
+  id               String   @id @default(uuid())
+  content          String
+  topic            String?
+  language         String?
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  userId           String
+  user             user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt        DateTime @default(now()) @db.Timestamp(6)
 
   @@schema("main")
 }

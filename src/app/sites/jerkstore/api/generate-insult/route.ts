@@ -23,11 +23,46 @@ export async function POST(req: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const { topic, language } = await req.json();
+  // Check for subscription
+  const subscription = await prisma.user_subscription.findUnique({
+    where: {
+      userId_siteSlug: {
+        userId: session.user.id,
+        siteSlug: "jerkstore",
+      },
+    },
+  });
+
+  const body = await req.json();
+  const { topic, language, paid } = body;
+
+  const isActive = (subscription &&
+    subscription.status === "active" &&
+    new Date(subscription.expiresAt) > new Date()) || paid === true;
+
+  if (!isActive) {
+    return new Response("Subscription required", { status: 403 });
+  }
 
   const isFlagged = await moderateText(topic);
   if (isFlagged) {
     return new Response("Topic violates content policy", { status: 400 });
+  }
+
+  // Rate Limiting: Check usage in last 24 hours
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const todaysUsage = await prisma.jerkstore_insult.count({
+    where: {
+      userId: session.user.id,
+      createdAt: {
+        gte: twentyFourHoursAgo
+      }
+    }
+  });
+
+  const LIMIT = 200; // Hard limit per user per day
+  if (todaysUsage >= LIMIT) {
+    return new Response("Daily roast limit reached. Go touch some grass.", { status: 429 });
   }
 
   const systemPrompt = `
@@ -44,13 +79,15 @@ Language: ${language || 'English'}.
     model: insultModel,
     system: systemPrompt,
     prompt: `Roast this topic: ${topic}`,
-    onFinish: async ({ text }) => {
+    onFinish: async ({ text, usage }) => {
       if (text) {
         await prisma.jerkstore_insult.create({
           data: {
             content: text,
             topic: topic,
             language: language || 'English',
+            promptTokens: usage.inputTokens ?? 0,
+            completionTokens: usage.outputTokens ?? 0,
             userId: session.user.id,
           },
         });

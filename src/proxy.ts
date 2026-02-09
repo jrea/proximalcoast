@@ -34,7 +34,8 @@ export default async function proxy(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams.toString();
   const path = `${url.pathname}${searchParams.length > 0 ? `?${searchParams}` : ""
     }`;
-  if (path.startsWith("/api/auth")) {
+  const GLOBAL_API_ROUTES = ["/api/auth", "/api/checkout", "/api/portal", "/api/webhooks"];
+  if (GLOBAL_API_ROUTES.some(route => path.startsWith(route))) {
     return NextResponse.rewrite(new URL(path, req.url));
   }
 

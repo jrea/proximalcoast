@@ -3,6 +3,7 @@ import { stripe } from "@/lib/stripe";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
+import Stripe from "stripe";
 
 export async function POST(req: Request) {
   const sessionUser = await auth.api.getSession({
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
       select: { stripeCustomerId: true, name: true, email: true }
     });
 
-    const checkoutOptions: any = {
+    const checkoutOptions: Stripe.Checkout.SessionCreateParams = {
       mode: "subscription",
       ui_mode: "embedded",
       metadata: {
@@ -54,7 +55,31 @@ export async function POST(req: Request) {
       // Actually, customer_email + completion usually handles it.
     }
 
-    const session = await stripe.checkout.sessions.create(checkoutOptions);
+    let session;
+    try {
+      session = await stripe.checkout.sessions.create(checkoutOptions);
+    } catch (error) {
+      const stripeError = error as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+      // Handle "No such customer" error by clearing the invalid ID and retrying
+      if (stripeError.code === 'resource_missing' && stripeError.param === 'customer') {
+        console.warn(`Stripe customer ${user?.stripeCustomerId} missing for user ${sessionUser.user.id}. Clearing and retrying...`);
+
+        // Clear invalid ID from DB
+        await prisma.user.update({
+          where: { id: sessionUser.user.id },
+          data: { stripeCustomerId: null }
+        });
+
+        // Update options to create new customer instead
+        delete checkoutOptions.customer;
+        checkoutOptions.customer_email = sessionUser.user.email;
+
+        // Retry creation
+        session = await stripe.checkout.sessions.create(checkoutOptions);
+      } else {
+        throw error; // Re-throw other errors
+      }
+    }
 
     return NextResponse.json({ clientSecret: session.client_secret });
   } catch (error) {

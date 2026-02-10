@@ -2,11 +2,63 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, ShieldAlert, X, ChevronLeft } from "lucide-react";
+import { Check, ShieldAlert, X, ChevronLeft, Loader2, Zap } from "lucide-react";
 import { JerkstoreCheckoutForm } from "./checkout-form";
+import { useRouter } from "next/navigation";
 
-export function AccessModal({ onClose }: { onClose?: () => void }) {
+export function AccessModal({
+  onClose,
+  tier = 'trial',
+  isActive = false,
+  onSuccess
+}: {
+  onClose?: () => void,
+  tier?: 'trial' | 'elite' | 'savage',
+  isActive?: boolean,
+  onSuccess?: () => void
+}) {
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+
+  const isSavage = tier === 'savage';
+  const isTrial = tier === 'trial';
+  const priceId = isSavage ? process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_SAVAGE : isTrial ? process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_FREE : process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_ELITE;
+  const price = isSavage ? "99" : isTrial ? "0" : "5";
+  const planName = isSavage ? "Savage God Mode" : isTrial ? "Poopy Trial (Card Required) 💩" : "Diamond Hands Pro";
+
+  const handleInstantUpgrade = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/update-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          priceId,
+          newPlanName: tier,
+          siteSlug: "jerkstore"
+        }),
+      });
+
+      if (response.ok) {
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          router.refresh();
+          onClose?.();
+        }
+      } else {
+        const data = await response.json();
+        setError(data.error || "Failed to upgrade. Maybe your credit is as bad as your roasts?");
+      }
+    } catch (err) {
+      setError("Something went wrong. The internet is failing you.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center p-4 sm:p-6 italic overflow-y-auto pt-12 md:pt-24 min-h-screen">
@@ -17,7 +69,7 @@ export function AccessModal({ onClose }: { onClose?: () => void }) {
       />
 
       {/* Modal Content */}
-      <div className="relative w-full max-w-xl bg-neutral-100 border-8 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] animate-in zoom-in-95 duration-300 mb-24">
+      <div className={`relative w-full max-w-xl border-8 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] animate-in zoom-in-95 duration-300 mb-24 ${isSavage ? 'bg-neutral-900 text-white' : 'bg-neutral-100'}`}>
         {/* Header Strip */}
         <div className="bg-black text-white p-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -32,7 +84,7 @@ export function AccessModal({ onClose }: { onClose?: () => void }) {
             )}
             <ShieldAlert className="w-6 h-6 text-yellow-400" />
             <span className="font-black uppercase tracking-tighter text-xl">
-              Access Required
+              Verification Required
             </span>
           </div>
           <button
@@ -47,34 +99,44 @@ export function AccessModal({ onClose }: { onClose?: () => void }) {
           {!termsAccepted ? (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="mb-8">
-                <h2 className="text-5xl font-black uppercase mb-2 tracking-tighter leading-none">Wait a minute.</h2>
-                <p className="text-lg font-bold font-mono text-neutral-600">You're trying to generate high-quality psychological damage on a free loader's budget?</p>
+                <h2 className="text-5xl font-black uppercase mb-2 tracking-tighter leading-none">
+                  {isSavage ? "ASCEND TO DIVINITY." : "Wait a minute."}
+                </h2>
+                <p className={`text-lg font-bold font-mono ${isSavage ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                  {isSavage
+                    ? "Scaling to godhood requires a sacrifice. And a valid billing address."
+                    : isTrial
+                      ? "Age verification required. We need to make sure you're not a middle schooler with a grudge and too much free time."
+                      : "You're trying to generate high-quality psychological damage on a free loader's budget?"}
+                </p>
               </div>
 
               <div className="space-y-6">
-                <div className="bg-yellow-300 border-4 border-black p-6 relative overflow-hidden">
+                <div className={`border-4 border-black p-6 relative overflow-hidden ${isSavage ? 'bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600' : 'bg-yellow-300 text-black'}`}>
                   <div className="absolute top-4 right-[-35px] bg-red-600 text-white font-black uppercase text-[10px] px-10 py-1 rotate-45 border-y-2 border-black">
-                    Required
+                    {isSavage ? "GOD LIKE" : "Required"}
                   </div>
 
-                  <h3 className="text-3xl font-black uppercase mb-4 tracking-tighter">Diamond Hands Pro</h3>
-                  <div className="text-4xl font-mono font-bold mb-6">
-                    $5<span className="text-base text-neutral-800">/mo</span>
+                  <h3 className={`text-3xl font-black uppercase mb-4 tracking-tighter ${isSavage ? 'text-white' : ''}`}>
+                    {planName}
+                  </h3>
+                  <div className={`text-4xl font-mono font-bold mb-6 ${isSavage ? 'text-white' : ''}`}>
+                    ${price}<span className={`text-base ${isSavage ? 'text-white/70' : 'text-neutral-800'}`}>/mo</span>
                   </div>
 
-                  <ul className="space-y-2 mb-6 font-bold font-mono text-sm leading-tight">
+                  <ul className={`space-y-2 mb-6 font-bold font-mono text-sm leading-tight ${isSavage ? 'text-white' : ''}`}>
                     <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 stroke-[4px]" /> UNLIMITED RAGE
+                      <Check className="w-4 h-4 stroke-[4px]" /> {isSavage ? "1000 ROASTS / DAY" : isTrial ? "3 TOTAL BURNS (EVER)" : "200 ROASTS / DAY"}
                     </li>
                     <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 stroke-[4px]" /> MULTI-LANGUAGE SNARK
+                      <Check className="w-4 h-4 stroke-[4px]" /> {isSavage ? "SOUL-CRUSHING EMAILS (300+ WORDS)" : isTrial ? "BASIC VERBAL ASSAULT" : "MULTI-LANGUAGE SNARK"}
                     </li>
                     <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 stroke-[4px]" /> PRIORITY QUEUING
+                      <Check className="w-4 h-4 stroke-[4px]" /> {isSavage ? "GOD-TIER VERDICT" : "ADULT VERIFICATION"}
                     </li>
                   </ul>
 
-                  <div className="flex items-start gap-3 p-3 bg-white/50 border-2 border-black/10">
+                  <div className={`flex items-start gap-3 p-3 border-2 border-black/10 ${isSavage ? 'bg-black/30' : 'bg-white/50'}`}>
                     <input
                       type="checkbox"
                       id="modal-terms"
@@ -84,7 +146,7 @@ export function AccessModal({ onClose }: { onClose?: () => void }) {
                     />
                     <label
                       htmlFor="modal-terms"
-                      className="font-bold font-mono text-[11px] cursor-pointer leading-tight uppercase"
+                      className={`font-bold font-mono text-[11px] cursor-pointer leading-tight uppercase ${isSavage ? 'text-white' : ''}`}
                     >
                       I AGREE TO THE{" "}
                       <Link href="/terms" target="_blank" className="underline decoration-2">TERMS OF EMOTIONAL DAMAGE</Link>
@@ -93,29 +155,69 @@ export function AccessModal({ onClose }: { onClose?: () => void }) {
                   </div>
                 </div>
 
-                <div className="p-4 border-4 border-dashed border-black/20 text-center">
-                  <p className="font-black text-neutral-400 uppercase italic">Accept terms to proceed with financial ruin</p>
+                <div className={`p-4 border-4 border-dashed text-center ${isSavage ? 'border-purple-500/50' : 'border-black/20'}`}>
+                  <p className="font-black uppercase italic text-neutral-500">
+                    {isSavage ? "Shed your mortal skin to proceed" : "Accept terms to prove you're an adult with a credit card"}
+                  </p>
                 </div>
               </div>
             </div>
           ) : (
             <div className="animate-in fade-in slide-in-from-top-4 duration-500">
               <div className="mb-6">
-                <h3 className="text-2xl font-black uppercase italic mb-2 tracking-tight">Final Step: Pay Up</h3>
-                <p className="font-mono text-sm font-bold text-neutral-500">Enter your card details below to finalize your transition into a professional jerk.</p>
+                <h3 className="text-2xl font-black uppercase italic mb-2 tracking-tight">
+                  {isActive ? "One Click Ascension" : "Final Step: Pay Up"}
+                </h3>
+                <p className={`font-mono text-sm font-bold ${isSavage ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                  {isActive
+                    ? `You're already an Elite member. We'll just charge the difference to your card on file and unlock the vitriol immediately.`
+                    : `Enter your card details below to finalize your transition into ${isSavage ? "a deity of disdain" : "a professional jerk"}.`}
+                </p>
               </div>
-              <div className="border-4 border-black">
-                <JerkstoreCheckoutForm priceId={process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_ELITE!} />
-              </div>
+
+              {isActive ? (
+                <div className="space-y-4">
+                  <button
+                    onClick={handleInstantUpgrade}
+                    disabled={loading}
+                    className={`w-full relative group/btn overflow-hidden bg-black text-white font-black py-6 text-2xl border-4 border-white transition-all hover:-translate-y-1 hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,0.2)] shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] uppercase tracking-widest active:translate-y-0 active:shadow-none disabled:opacity-50`}
+                  >
+                    <span className="relative z-10 flex items-center justify-center gap-3">
+                      {loading ? (
+                        <>
+                          <Loader2 className="animate-spin" /> PROCESSSING...
+                        </>
+                      ) : (
+                        <>
+                          ASCEND IMMEDIATELY <Zap className="w-6 h-6 fill-white" />
+                        </>
+                      )}
+                    </span>
+                  </button>
+                  {error && (
+                    <p className="text-red-600 font-black uppercase text-xs text-center animate-shake">
+                      {error}
+                    </p>
+                  )}
+                  <p className="text-[10px] text-neutral-500 font-mono text-center uppercase">
+                    Your card on file will be charged ${price}/mo (prorated for this month).
+                  </p>
+                </div>
+              ) : (
+                <div className="border-4 border-black">
+                  <JerkstoreCheckoutForm priceId={priceId || ""} />
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Footer info */}
-        <div className="bg-white border-t-4 border-black p-3 text-center">
-          <p className="font-mono text-[9px] font-bold text-neutral-400 uppercase">© 2026 PROXIMAL COAST LLC • NO REFUNDS FOR DAMAGED EGOS</p>
+        <div className={`border-t-4 border-black p-3 text-center ${isSavage ? 'bg-black' : 'bg-white'}`}>
+          <p className="font-mono text-[9px] font-bold text-neutral-500 uppercase">© 2026 PROXIMAL COAST LLC • NO REFUNDS FOR DAMAGED EGOS</p>
         </div>
       </div>
     </div>
   );
 }
+

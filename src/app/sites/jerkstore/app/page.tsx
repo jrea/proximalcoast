@@ -18,7 +18,6 @@ export default async function JerkstorePage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const params = await searchParams;
-  const isPaidBypass = params.paid === "true";
 
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -28,7 +27,6 @@ export default async function JerkstorePage({
     redirect("/");
   }
 
-  // Check for subscription
   const subscription = await prisma.user_subscription.findUnique({
     where: {
       userId_siteSlug: {
@@ -38,9 +36,16 @@ export default async function JerkstorePage({
     },
   });
 
+  const totalUsage = await prisma.jerkstore_insult.count({
+    where: { userId: session.user.id }
+  });
+
   const isActive = !!(subscription &&
-    subscription.status === "active" &&
+    (subscription.status === "active" || subscription.status === "trialing") &&
     new Date(subscription.expiresAt) > new Date());
+
+  const canRoast = isActive; // Must have a card/sub to even try
+  const plan = isActive ? (subscription?.plan || "standard") : "trial";
 
   const randomButtonLabel = BUTTON_LABELS[Math.floor(Math.random() * BUTTON_LABELS.length)];
   const randomTopicLabel = TOPIC_LABELS[Math.floor(Math.random() * TOPIC_LABELS.length)];
@@ -65,15 +70,23 @@ export default async function JerkstorePage({
 
       <main className="flex items-center justify-center">
         <InsultGenerator
-          isPaidBypass={isPaidBypass}
-          isActive={isActive}
+          isActive={canRoast}
+          plan={plan}
           initialButtonLabel={randomButtonLabel}
           initialTopicLabel={randomTopicLabel}
         />
       </main>
 
-      <footer className="max-w-xl mx-auto mt-8 text-center font-mono text-[10px] text-neutral-400 uppercase tracking-widest">
-        Logged in as {session.user.email}
+      <footer className="max-w-xl mx-auto mt-8 text-center font-mono text-[10px] text-neutral-400 uppercase tracking-widest flex flex-col gap-2">
+        <div>Logged in as {session.user.email}</div>
+        <a
+          href="https://x.com/jerkstore_app"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-black transition-colors underline decoration-dotted underline-offset-4"
+        >
+          Contact: @jerkstore_app
+        </a>
       </footer>
     </div>
   );

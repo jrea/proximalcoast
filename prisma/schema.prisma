@@ -24,8 +24,10 @@ model account {
   updatedAt             DateTime  @db.Timestamp(6)
   user                  user      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
+  @@unique([providerId, accountId])
   @@schema("main")
 }
+
 
 model invitation {
   id             String       @id
@@ -73,7 +75,7 @@ model organization {
 model session {
   id                   String   @id
   userId               String
-  token                String
+  token                String   @unique
   expiresAt            DateTime @db.Timestamp(6)
   ipAddress            String?
   userAgent            String?
@@ -130,8 +132,10 @@ model verification {
   createdAt  DateTime? @db.Timestamp(6)
   updatedAt  DateTime? @db.Timestamp(6)
 
+  @@unique([identifier, value])
   @@schema("main")
 }
+
 
 model jerkstore_insult {
   id               String   @id @default(uuid())

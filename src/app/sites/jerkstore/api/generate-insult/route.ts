@@ -5,8 +5,9 @@ import { insultModel } from '../../_lib/ai';
 import { IDENTITY } from "../../prompts/identity";
 import { STYLE } from "../../prompts/style";
 import { CONSTRAINTS } from "../../prompts/constraints";
+import { EMAIL_CONSTRAINTS } from "../../prompts/email";
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -33,31 +34,54 @@ export async function POST(req: Request) {
     },
   });
 
-  const body = await req.json();
-  const { language, paid, topic: bodyTopic, prompt } = body;
-  const topic = bodyTopic || prompt;
-  // Rate Limiting: Check usage in last 24 hours
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const todaysUsageCount = await prisma.jerkstore_insult.count({
-    where: {
-      userId: session.user.id,
-      createdAt: {
-        gte: twentyFourHoursAgo
-      }
-    }
-  });
-
-  const plan = subscription?.plan || (paid ? "savage" : "standard");
-  const LIMIT = plan === "savage" ? 1000 : plan === "elite" ? 200 : 50;
-
-  console.log(`[Jerkstore] Plan: ${plan}, Topic: ${topic}, Usage: ${todaysUsageCount}/${LIMIT}`);
-
-  const isActive = (subscription &&
-    subscription.status === "active" &&
-    new Date(subscription.expiresAt) > new Date()) || paid === true;
+  const isActive = !!(subscription &&
+    (subscription.status === "active" || subscription.status === "trialing") &&
+    new Date(subscription.expiresAt) > new Date());
 
   if (!isActive) {
-    return new Response("Subscription required", { status: 403 });
+    return new Response("Verification Required: Add a card to prove you're an adult and not a middle school bully.", { status: 403 });
+  }
+
+  const plan = subscription?.plan || "trial";
+
+  const body = await req.json();
+  const { language, topic: bodyTopic, prompt, isEmail } = body;
+  const topic = bodyTopic || prompt;
+
+  // Rate Limiting: Check usage
+  let currentUsage = 0;
+  let LIMIT = 0;
+
+  if (plan === "trial") {
+    // Trial is 3 TOTAL roasts ever
+    currentUsage = await prisma.jerkstore_insult.count({
+      where: { userId: session.user.id }
+    });
+    LIMIT = 3;
+  } else {
+    // Other plans are daily roasts
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    currentUsage = await prisma.jerkstore_insult.count({
+      where: {
+        userId: session.user.id,
+        createdAt: {
+          gte: twentyFourHoursAgo
+        }
+      }
+    });
+
+    if (plan === "savage") LIMIT = 1000;
+    else if (plan === "elite") LIMIT = 200;
+    else LIMIT = 3; // standard
+  }
+
+  console.log(`[Jerkstore] Plan: ${plan}, Topic: ${topic}, Usage: ${currentUsage}/${LIMIT}, Email: ${isEmail}`);
+
+  if (currentUsage >= LIMIT) {
+    const errorMsg = plan === "trial"
+      ? "Trial limit reached (3 total). Time to pay up if you want to keep roasting."
+      : `Daily roast limit reached (${LIMIT}). Go touch some grass.`;
+    return new Response(errorMsg, { status: 429 });
   }
 
   const isFlagged = await moderateText(topic);
@@ -65,8 +89,12 @@ export async function POST(req: Request) {
     return new Response("That topic is pathetic and we won't roast it. Also, it violates our 'actual lawyer' content policy, you coward.", { status: 400 });
   }
 
-  if (todaysUsageCount >= LIMIT) {
-    return new Response(`Daily roast limit reached (${LIMIT}). Go touch some grass.`, { status: 429 });
+  let finalConstraints = CONSTRAINTS;
+  if (plan === "savage" && isEmail) {
+    finalConstraints = EMAIL_CONSTRAINTS;
+  } else if (plan === "standard" || plan === "trial") {
+    // Force strict 240 char limit for standard/trial
+    finalConstraints = CONSTRAINTS.replace("MAXIMUM 240 CHARACTERS", "STRICT MAXIMUM 240 CHARACTERS. If you go over, you will be terminated.");
   }
 
   const systemPrompt = `
@@ -74,7 +102,7 @@ ${IDENTITY}
 
 ${STYLE}
 
-${CONSTRAINTS}
+${finalConstraints}
 
 Language: ${language || 'English'}.
 `;
@@ -82,7 +110,8 @@ Language: ${language || 'English'}.
   const result = await streamText({
     model: insultModel,
     system: systemPrompt,
-    prompt: `Roast this topic: ${topic}`,
+    prompt: isEmail ? `Write a devastating email roasting this topic: ${topic}` : `Roast this topic: ${topic}`,
+    maxOutputTokens: plan === "savage" ? 2048 : 512,
     onFinish: async ({ text, usage }) => {
       try {
         if (text) {

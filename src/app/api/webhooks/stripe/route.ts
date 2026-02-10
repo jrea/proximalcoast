@@ -7,6 +7,7 @@ import Stripe from "stripe";
 const getPlanFromPriceId = (priceId: string) => {
   if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_SAVAGE) return "savage";
   if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_ELITE) return "elite";
+  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_FREE) return "trial";
   return "standard";
 };
 
@@ -250,9 +251,10 @@ export async function POST(req: Request) {
     case "subscription_schedule.updated":
     case "subscription_schedule.created":
     case "subscription_schedule.released":
-      // These are expected when we use schedules for downgrades.
-      // We rely on 'customer.subscription.updated' to sync the actual plan changes.
-      console.log(`ℹ️ Schedule event ${event.type} received`);
+    case "invoiceitem.created":
+      // These are expected during normal Stripe operations.
+      // We rely on 'customer.subscription.updated' or 'invoice.payment_succeeded' to sync state.
+      console.log(`ℹ️ Expected event ${event.type} received`);
       break;
 
     default:

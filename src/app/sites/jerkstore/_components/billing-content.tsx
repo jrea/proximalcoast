@@ -193,6 +193,35 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
 
   return (
     <div className="min-h-screen bg-neutral-100 p-4 sm:p-8 font-sans selection:bg-red-600 selection:text-white relative overflow-x-hidden">
+      <style>{`
+        @keyframes stink-drift {
+          0% { transform: translateY(0) translateX(0); opacity: 0; }
+          20% { opacity: 0.4; }
+          50% { transform: translateY(-40px) translateX(10px); }
+          80% { opacity: 0.1; }
+          100% { transform: translateY(-80px) translateX(-5px); opacity: 0; }
+        }
+        .stink-line {
+          position: absolute;
+          width: 2px;
+          height: 20px;
+          background: #8b4513;
+          border-radius: 50%;
+          filter: blur(2px);
+          animation: stink-drift 3s infinite linear;
+        }
+        .nasty-gradient {
+          background: linear-gradient(135deg, #3d2b1f 0%, #5c4033 50%, #2a1d15 100%);
+          background-size: 200% 200%;
+          animation: fluid-shift 12s ease infinite;
+          border-color: #2a1d15 !important;
+        }
+        @keyframes fluid-shift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+      `}</style>
       <div className="max-w-2xl mx-auto">
         <header className="mb-12 flex justify-between items-center">
           <Link
@@ -237,7 +266,22 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
               </div>
             )}
 
-            <div className={`relative p-6 sm:p-8 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden group ${isActive ? (subscription?.plan === 'savage' ? 'bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 text-white' : 'bg-gradient-to-br from-yellow-300 via-yellow-200 to-yellow-400') : 'bg-neutral-100'}`}>
+            <div className={`relative p-6 sm:p-8 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden group ${isActive ? (subscription?.plan === 'savage' ? 'bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 text-white' : subscription?.plan === 'trial' ? 'nasty-gradient text-yellow-200' : 'bg-gradient-to-br from-yellow-300 via-yellow-200 to-yellow-400') : 'bg-neutral-100'}`}>
+              {isActive && subscription?.plan === 'trial' && (
+                <div className="absolute inset-x-0 bottom-0 h-0 pointer-events-none">
+                  {[...Array(10)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="stink-line"
+                      style={{
+                        left: `${(i * 15) % 100}%`,
+                        animationDelay: `${i * 0.4}s`,
+                        opacity: 0.3
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
               {/* Background Pattern for Active */}
               {isActive && (
                 <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, #000 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
@@ -249,26 +293,28 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
 
               <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl sm:text-3xl font-black uppercase italic tracking-tighter mb-1 flex items-center gap-2">
+                  <h2 className="text-2xl sm:text-3xl font-black uppercase italic tracking-tighter mb-1 flex items-center gap-4">
                     <Logo iconClassName="w-6 h-6 sm:w-8 h-8" textClassName="" />
                     {subscription?.plan === 'savage' ? (
                       <span className="bg-white text-purple-600 px-2 py-0.5 text-lg skew-x-[-10deg] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">SAVAGE</span>
-                    ) : subscription?.plan === 'elete' ? (
+                    ) : subscription?.plan === 'elite' ? (
                       <span className="bg-black text-white px-2 py-0.5 text-lg skew-x-[-10deg]">ELITE</span>
-                    ) : (
-                      <span className="bg-neutral-600 text-white px-2 py-0.5 text-lg skew-x-[-10deg]">STANDARD</span>
-                    )}
+                    ) : subscription?.plan === 'trial' ? null
+                      : (
+                        <span className="bg-neutral-600 text-white px-2 py-0.5 text-lg skew-x-[-10deg]">STANDARD</span>
+                      )}
                   </h2>
                   <p className={`font-mono text-xs sm:text-sm font-bold uppercase tracking-widest ${subscription?.plan === 'savage' ? 'text-white/80' : 'opacity-60'}`}>Status Verification</p>
                 </div>
 
                 {isActive ? (
-                  <div className={`flex items-center gap-3 px-4 py-2 border-2 border-black rotate-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${subscription?.plan === 'savage' ? 'bg-black/40 backdrop-blur-md text-white border-white/50' : 'bg-white/50 backdrop-blur-sm'}`}>
+                  <div className={`flex items-center gap-3 px-4 py-2 border-2 border-black rotate-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${subscription?.plan === 'savage' ? 'bg-black/40 backdrop-blur-md text-white border-white/50' : subscription?.plan === 'trial' ? 'bg-[#51361a]/40 text-[#8b4513] border-[#51361a]' : 'bg-white/50 backdrop-blur-sm'}`}>
                     <span className={`w-4 h-4 ${isExpiring ? 'bg-orange-500' : 'bg-green-500'} rounded-full animate-pulse border-2 border-black`}></span>
-                    <span className="font-black text-lg uppercase italic tracking-tight">
+                    <span className="font-black text-lg uppercase italic tracking-tight whitespace-nowrap">
                       {isExpiring ? 'Expiring Soon' : (
                         subscription?.plan === 'savage' ? 'Legendary Status' :
-                          subscription?.plan === 'standard' ? 'Standard Status' : 'Elite Member'
+                          subscription?.plan === 'standard' ? 'Standard Status' :
+                            subscription?.plan === 'trial' ? 'Poopy Trial' : 'Elite Member'
                       )}
                     </span>
                   </div>
@@ -286,11 +332,13 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                 <div className="font-bold text-lg sm:text-xl uppercase leading-tight max-w-lg">
                   {isReallyActive && !subscription?.upcomingPlan && (
                     <span>
-                      <span className={`px-1 ${subscription?.plan === 'savage' ? 'bg-white text-purple-600' : 'bg-black text-white'}`}>UNLOCKED:</span>
+                      <span className={`px-1 ${subscription?.plan === 'savage' ? 'bg-white text-purple-600' : subscription?.plan === 'trial' ? 'bg-[#51361a] text-[#8b4513]' : 'bg-black text-white'}`}>UNLOCKED:</span>
                       <span className="ml-2 italic">
                         {subscription?.plan === 'savage'
                           ? "God-tier access. Peasants will bow to your will."
-                          : "Unlimited psychological warfare. You are a weapon."}
+                          : subscription?.plan === 'trial'
+                            ? "Bare minimum access. We're embarrassed for you."
+                            : "Unlimited psychological warfare. You are a weapon."}
                       </span>
                     </span>
                   )}
@@ -395,9 +443,15 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                 ) : (
                   <></> // Placeholder for when inactive specific content was here
                 )}
+                <p className="text-center font-mono text-[10px] text-neutral-400 uppercase font-black italic">
+                  {subscription.plan === 'elite' || subscription.plan === 'savage'
+                    ? "Go forth and destroy egos. You earned it."
+                    : ""}
+                </p>
 
                 {/* PLAN SWITCHER - VISIBLE ALWAYS (But different actions) */}
                 <div className="grid grid-cols-1 gap-6 pt-8 border-t-4 border-black/10">
+
                   <h3 className="text-xl font-black uppercase italic text-center text-neutral-400 mb-2">Available Plans</h3>
                   <p className="text-center font-mono text-xs text-neutral-500 mb-6 max-w-sm mx-auto">
                     Upgrades are charged immediately (prorated difference). Full price kicks in on your next bill. No refunds for cowardice.
@@ -457,9 +511,9 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                         <div className="space-y-4 mb-10 flex-grow">
                           {[
                             { text: "1000 Roasts / Day", sub: "Phenomenal Cosmic Power" },
-                            { text: "Verified 'Savage' Badge", sub: "Status Symbol" },
+                            { text: "Status Symbol", sub: "It's Purplink" },
                             { text: "Priority Queue", sub: "This does nothing", fake: true },
-                            { text: "Concierge Support", sub: "We Pretend To Care", fake: true },
+                            { text: "Mad Respect", sub: "We Pretend To Care", fake: true },
                             { text: "Secret Features", sub: "Coming Soon™", fake: true }
                           ].map((feature, i) => (
                             <div key={i} className="group/item flex items-center gap-4 p-3 bg-black/20 border border-white/20 hover:bg-black/40 hover:border-white transition-all duration-300 hover:translate-x-1 backdrop-blur-sm">
@@ -556,13 +610,48 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                     </div>
                   )}
 
+                  {/* TRIAL TIER - THE POOPY ONE */}
+                  {(!isActive || subscription?.plan !== 'trial') && (
+                    <div className="border-4 border-black p-6 nasty-gradient text-[#8b7d13] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:rotate-1 transition-all cursor-pointer relative overflow-hidden border-dotted">
+                      <div className="absolute inset-x-0 bottom-0 h-0 pointer-events-none">
+                        {[...Array(6)].map((_, i) => (
+                          <div
+                            key={i}
+                            className="stink-line"
+                            style={{
+                              left: `${(i * 20) % 100}%`,
+                              animationDelay: `${i * 0.7}s`,
+                              opacity: 0.2
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <div className="absolute top-2 right-1 rotate-12 bg-yellow-900 text-yellow-100 px-2 text-[8px] font-mono uppercase">Lame</div>
+                      <h3 className="text-xl font-bold uppercase font-mono italic flex items-center gap-2">
+                        Trial (Failure) 💩
+                      </h3>
+                      <div className="text-3xl font-black mt-2">$0<span className="text-sm font-normal opacity-50">/evr</span></div>
+                      <ul className="mt-4 space-y-1 font-mono text-[10px] uppercase font-bold text-[#8b7d13] opacity-80">
+                        <li>• Only 3 Burns. Ever.</li>
+                        <li>• Basic Verification Only</li>
+                        <li>• No Pride remaining</li>
+                      </ul>
+                      <button
+                        disabled={loading}
+                        onClick={() => {
+                          setSelectedPlan(process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_FREE!);
+                          setShowCheckout(true);
+                        }}
+                        className="mt-6 w-full bg-[#1a120d] text-[#8b7d13] font-bold py-2 border-2 border-[#8b4513] hover:bg-[#322319] transition-colors uppercase text-xs"
+                      >
+                        {loading ? <Loader2 className="animate-spin w-4 h-4 mx-auto" /> : "Accept Failure"}
+                      </button>
+                    </div>
+                  )}
+
                 </div>
 
-                <p className="text-center font-mono text-[10px] text-neutral-400 uppercase font-black italic">
-                  {isActive
-                    ? "Go forth and destroy egos. You earned it."
-                    : "Don't be a coward. Get Pro."}
-                </p>
+
               </div>
             )}
           </div>
@@ -699,6 +788,16 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
           )}
         </div>
       )}
+      <footer className="mt-12 text-center font-mono text-[10px] text-neutral-400 uppercase tracking-widest flex flex-col gap-2 relative z-10">
+        <a
+          href="https://x.com/jerkstore_app"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-black transition-colors underline decoration-dotted underline-offset-4"
+        >
+          Contact: @jerkstore_app
+        </a>
+      </footer>
     </div>
   );
 }

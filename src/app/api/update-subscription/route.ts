@@ -13,10 +13,10 @@ export async function POST(req: Request) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const { priceId, newPlanName, siteSlug } = await req.json();
+  const { priceId, newPlanName, siteSlug = "jerkstore" } = await req.json().catch(() => ({}));
 
   if (!priceId || !newPlanName) {
-    return new NextResponse("Missing required fields", { status: 400 });
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
   try {
@@ -24,13 +24,13 @@ export async function POST(req: Request) {
       where: {
         userId_siteSlug: {
           userId: session.user.id,
-          siteSlug: siteSlug || "jerkstore",
+          siteSlug,
         },
       },
     });
 
     if (!subscription || !subscription.stripeSubscriptionId) {
-      return new NextResponse("No active subscription found", { status: 404 });
+      return NextResponse.json({ error: "No active subscription found" }, { status: 404 });
     }
 
     // Get the subscription from Stripe to find the subscription item ID
@@ -131,8 +131,34 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to update subscription:", error);
-    return new NextResponse("Internal Error", { status: 500 });
+
+    // If Stripe says the subscription doesn't exist, we should sync our DB
+    if (error.code === 'resource_missing' || (error.raw && error.raw.code === 'resource_missing')) {
+      try {
+        await prisma.user_subscription.update({
+          where: {
+            userId_siteSlug: {
+              userId: session.user.id,
+              siteSlug,
+            }
+          },
+          data: { status: 'canceled', cancelAtPeriodEnd: true }
+        });
+      } catch (dbErr) {
+        console.error("Failed to sync DB after missing Stripe subscription (update):", dbErr);
+      }
+
+      return NextResponse.json(
+        { error: "This subscription no longer exists in Stripe. We've updated your status." },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Internal Error" },
+      { status: error.statusCode || 500 }
+    );
   }
 }

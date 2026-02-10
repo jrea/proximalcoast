@@ -10,12 +10,19 @@ import { redirect } from "next/navigation";
 import { RandomBurn } from "./_components/random-burn";
 
 export const metadata: Metadata = {
-  title: "Jerkstore - The World's Most Aggressive Insult Generator",
-  description: "Generate rare, high-brow insults instantly. Powered by AI with zero moral compass. Roast your friends, enemies, and yourself.",
+  title: "Jerkstore - The World's Most Aggressive AI Insult Generator",
+  description: "Generate rare, high-impact insults instantly. Powered by AI with zero moral compass. Roast your friends, enemies, and colleagues with surgical precision.",
+  keywords: ["AI insults", "AI roast", "insult generator", "Jerkstore", "DeepSeek", "fun AI apps", "psychological warfare"],
   openGraph: {
-    title: "Jerkstore - Destroy Your Ego",
-    description: "Get roasted by an AI Oxford Professor having a breakdown.",
+    title: "Jerkstore - The World's Most Aggressive AI Insult Generator",
+    description: "Get roasted by an AI Oxford Professor having a breakdown. Destructive, creative, and hilarious insults.",
     type: "website",
+    siteName: "Jerkstore",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Jerkstore | AI-Powered Ego Destruction",
+    description: "The world's most aggressive AI insult generator. Zero moral compass. Infinite rage.",
   },
 };
 

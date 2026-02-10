@@ -29,7 +29,7 @@ export function JerkstoreCheckoutForm({ priceId }: { priceId: string }) {
   const options = { fetchClientSecret };
 
   return (
-    <div id="checkout" className="border-4 border-black p-4 bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+    <div id="checkout" className="border-0 sm:border-4 border-black p-2 sm:p-4 bg-white shadow-none sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
       <EmbeddedCheckoutProvider
         stripe={stripePromise}
         options={options}

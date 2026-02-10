@@ -30,6 +30,7 @@ export async function GET() {
         data: {
           topic: burn.topic,
           content: burn.content,
+          language: "English",
         }
       });
     }

@@ -89,6 +89,10 @@ export async function POST(req: Request) {
     return new Response("That topic is pathetic and we won't roast it. Also, it violates our 'actual lawyer' content policy, you coward.", { status: 400 });
   }
 
+  if (isEmail && plan !== "savage") {
+    return new Response("Maximum effort (Email Mode) requires Savage status. Upgrade to unlock deific-level vitriol.", { status: 403 });
+  }
+
   let finalConstraints = CONSTRAINTS;
   if (plan === "savage" && isEmail) {
     finalConstraints = EMAIL_CONSTRAINTS;
@@ -103,6 +107,9 @@ ${IDENTITY}
 ${STYLE}
 
 ${finalConstraints}
+
+IMPORTANT: YOU MUST OUTPUT THE ROAST ONLY IN THE REQUESTED LANGUAGE OR FORMAT. 
+IF THE LANGUAGE IS A TECHNICAL FORMAT (LIKE BINARY, MORSE CODE, BASE64), ENCODE THE ROAST CONTENT FULLY INTO THAT FORMAT.
 
 Language: ${language || 'English'}.
 `;

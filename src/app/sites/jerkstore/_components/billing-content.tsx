@@ -86,20 +86,27 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
 
   const handleCancel = async () => {
     setCancelling(true);
+    setUpdateError(null);
     try {
       const response = await fetch("/api/cancel-subscription", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ siteSlug: "jerkstore" }),
       });
+
+      const data = await response.json();
+
       if (response.ok) {
         setShowConfirm(false);
         // Optimistic update
         setSubscription((prev: any) => prev ? { ...prev, cancelAtPeriodEnd: true } : null);
         fetchSubscription(); // Still fetch for final source of truth
+      } else {
+        setUpdateError(data.error || "Failed to cancel subscription.");
       }
     } catch (error) {
       console.error("Cancel Error:", error);
+      setUpdateError("Something went wrong while cancelling.");
     } finally {
       setCancelling(false);
     }
@@ -107,12 +114,16 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
 
   const handleReactivate = async () => {
     setReactivating(true);
+    setUpdateError(null);
     try {
       const response = await fetch("/api/reactivate-subscription", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ siteSlug: "jerkstore" }),
       });
+
+      const data = await response.json();
+
       if (response.ok) {
         // Optimistic update
         setSubscription((prev: any) => prev ? { ...prev, cancelAtPeriodEnd: false } : null);
@@ -121,9 +132,12 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
         setShowFanfare(true);
         setTimeout(() => setShowFanfare(false), 5000);
         fetchSubscription(); // Still fetch for final source of truth
+      } else {
+        setUpdateError(data.error || "Failed to reactivate subscription.");
       }
     } catch (error) {
       console.error("Reactivation Error:", error);
+      setUpdateError("Something went wrong while reactivating.");
     } finally {
       setReactivating(false);
     }
@@ -143,6 +157,8 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
         }),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
         // Optimistic update
         setSubscription((prev: any) => ({ ...prev, plan: planName, cancelAtPeriodEnd: false }));
@@ -154,7 +170,7 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
         setShowFanfare(true);
         setTimeout(() => setShowFanfare(false), 5000);
       } else {
-        setUpdateError("Failed to update plan. Maybe you're too broke?");
+        setUpdateError(data.error || "Failed to update plan. Maybe you're too broke?");
       }
     } catch (error) {
       console.error("Update Plan Error:", error);
@@ -166,6 +182,7 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
 
   const handleCancelDowngrade = async () => {
     setLoading(true);
+    setUpdateError(null);
     try {
       const response = await fetch("/api/cancel-downgrade", {
         method: "POST",
@@ -173,11 +190,13 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
         body: JSON.stringify({ siteSlug: "jerkstore" }),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
         setSubscription((prev: any) => ({ ...prev, upcomingPlan: null }));
         fetchSubscription();
       } else {
-        setUpdateError("Failed to cancel downgrade. You're stuck with it.");
+        setUpdateError(data.error || "Failed to cancel downgrade. You're stuck with it.");
       }
     } catch (error) {
       console.error("Cancel Downgrade Error:", error);

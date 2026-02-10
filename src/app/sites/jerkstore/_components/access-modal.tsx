@@ -17,13 +17,15 @@ export function AccessModal({
   isActive?: boolean,
   onSuccess?: () => void
 }) {
+  const [activeTier, setActiveTier] = useState<'trial' | 'elite' | 'savage'>(tier);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const isSavage = tier === 'savage';
-  const isTrial = tier === 'trial';
+  const isSavage = activeTier === 'savage';
+  const isElite = activeTier === 'elite';
+  const isTrial = activeTier === 'trial';
   const priceId = isSavage ? process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_SAVAGE : isTrial ? process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_FREE : process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_ELITE;
   const price = isSavage ? "99" : isTrial ? "0" : "5";
   const planName = isSavage ? "Savage God Mode" : isTrial ? "Poopy Trial (Card Required) 💩" : "Diamond Hands Pro";
@@ -37,7 +39,7 @@ export function AccessModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           priceId,
-          newPlanName: tier,
+          newPlanName: activeTier,
           siteSlug: "jerkstore"
         }),
       });
@@ -69,96 +71,122 @@ export function AccessModal({
       />
 
       {/* Modal Content */}
-      <div className={`relative w-full max-w-xl border-8 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] animate-in zoom-in-95 duration-300 mb-24 ${isSavage ? 'bg-neutral-900 text-white' : 'bg-neutral-100'}`}>
+      <div className={`relative w-full max-w-xl border-4 sm:border-8 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] sm:shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] animate-in zoom-in-95 duration-300 mb-12 sm:mb-24 ${isSavage ? 'bg-neutral-900 text-white' : 'bg-neutral-100'}`}>
         {/* Header Strip */}
-        <div className="bg-black text-white p-4 flex items-center justify-between">
+        <div className="bg-black text-white p-3 sm:p-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             {termsAccepted && (
               <button
                 onClick={() => setTermsAccepted(false)}
-                className="hover:text-yellow-400 transition-colors mr-2"
+                className="hover:text-yellow-400 transition-colors mr-1 sm:mr-2"
                 title="Back to plans"
               >
-                <ChevronLeft className="w-8 h-8 stroke-[3px]" />
+                <ChevronLeft className="w-6 h-6 sm:w-8 sm:h-8 stroke-[3px]" />
               </button>
             )}
-            <ShieldAlert className="w-6 h-6 text-yellow-400" />
-            <span className="font-black uppercase tracking-tighter text-xl">
-              Verification Required
+            <ShieldAlert className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-400" />
+            <span className="font-black uppercase tracking-tighter text-lg sm:text-xl">
+              Verification
             </span>
           </div>
           <button
             onClick={onClose}
             className="hover:text-red-500 transition-colors"
           >
-            <X className="w-8 h-8 stroke-[3px]" />
+            <X className="w-6 h-6 sm:w-8 sm:h-8 stroke-[3px]" />
           </button>
         </div>
 
-        <div className="p-8">
+        <div className="p-4 sm:p-8">
           {!termsAccepted ? (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="mb-8">
-                <h2 className="text-5xl font-black uppercase mb-2 tracking-tighter leading-none">
+              <div className="mb-6 sm:mb-8">
+                <h2 className="text-3xl sm:text-5xl font-black uppercase mb-2 tracking-tighter leading-none">
                   {isSavage ? "ASCEND TO DIVINITY." : "Wait a minute."}
                 </h2>
-                <p className={`text-lg font-bold font-mono ${isSavage ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                <p className={`text-sm sm:text-lg font-bold font-mono ${isSavage ? 'text-neutral-400' : 'text-neutral-600'}`}>
                   {isSavage
-                    ? "Scaling to godhood requires a sacrifice. And a valid billing address."
+                    ? "Scaling to godhood requires a sacrifice."
                     : isTrial
-                      ? "Age verification required. We need to make sure you're not a middle schooler with a grudge and too much free time."
-                      : "You're trying to generate high-quality psychological damage on a free loader's budget?"}
+                      ? "Age verification required. Prove you're not a middle schooler."
+                      : "Generating high-quality damage isn't free."}
                 </p>
               </div>
 
-              <div className="space-y-6">
-                <div className={`border-4 border-black p-6 relative overflow-hidden ${isSavage ? 'bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600' : 'bg-yellow-300 text-black'}`}>
-                  <div className="absolute top-4 right-[-35px] bg-red-600 text-white font-black uppercase text-[10px] px-10 py-1 rotate-45 border-y-2 border-black">
+              <div className="space-y-4 sm:space-y-6">
+                <div className={`border-4 border-black p-4 sm:p-6 relative overflow-hidden ${isSavage ? 'bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600' : 'bg-yellow-300 text-black'}`}>
+                  <div className="absolute top-4 right-[-40px] bg-red-600 text-white font-black uppercase text-[8px] sm:text-[10px] px-10 py-1 rotate-45 border-y-2 border-black z-10">
                     {isSavage ? "GOD LIKE" : "Required"}
                   </div>
 
-                  <h3 className={`text-3xl font-black uppercase mb-4 tracking-tighter ${isSavage ? 'text-white' : ''}`}>
+                  <h3 className={`text-2xl sm:text-3xl font-black uppercase mb-3 sm:mb-4 tracking-tighter ${isSavage ? 'text-white' : ''}`}>
                     {planName}
                   </h3>
-                  <div className={`text-4xl font-mono font-bold mb-6 ${isSavage ? 'text-white' : ''}`}>
-                    ${price}<span className={`text-base ${isSavage ? 'text-white/70' : 'text-neutral-800'}`}>/mo</span>
+                  <div className={`text-3xl sm:text-4xl font-mono font-bold mb-4 sm:mb-6 ${isSavage ? 'text-white' : ''}`}>
+                    ${price}<span className={`text-sm ${isSavage ? 'text-white/70' : 'text-neutral-800'}`}>/mo</span>
                   </div>
 
-                  <ul className={`space-y-2 mb-6 font-bold font-mono text-sm leading-tight ${isSavage ? 'text-white' : ''}`}>
+                  <ul className={`space-y-2 mb-4 sm:mb-6 font-bold font-mono text-[10px] sm:text-sm leading-tight ${isSavage ? 'text-white' : ''}`}>
                     <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 stroke-[4px]" /> {isSavage ? "1000 ROASTS / DAY" : isTrial ? "3 TOTAL BURNS (EVER)" : "200 ROASTS / DAY"}
+                      <Check className="w-3 h-3 sm:w-4 sm:h-4 stroke-[4px]" /> {isSavage ? "1000 ROASTS / DAY" : isTrial ? "3 TOTAL BURNS (EVER)" : "200 ROASTS / DAY"}
                     </li>
                     <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 stroke-[4px]" /> {isSavage ? "SOUL-CRUSHING EMAILS (300+ WORDS)" : isTrial ? "BASIC VERBAL ASSAULT" : "MULTI-LANGUAGE SNARK"}
+                      <Check className="w-3 h-3 sm:w-4 sm:h-4 stroke-[4px]" /> {isSavage ? "SOUL-CRUSHING EMAILS" : isTrial ? "BASIC VERBAL ASSAULT" : "MULTI-LANGUAGE SNARK"}
                     </li>
                     <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 stroke-[4px]" /> {isSavage ? "GOD-TIER VERDICT" : "ADULT VERIFICATION"}
+                      <Check className="w-3 h-3 sm:w-4 sm:h-4 stroke-[4px]" /> {isSavage ? "GOD-TIER VERDICT" : "ADULT VERIFICATION"}
                     </li>
                   </ul>
 
-                  <div className={`flex items-start gap-3 p-3 border-2 border-black/10 ${isSavage ? 'bg-black/30' : 'bg-white/50'}`}>
+                  <div className={`flex items-start gap-2 sm:gap-3 p-2 sm:p-3 border-2 border-black/10 ${isSavage ? 'bg-black/30' : 'bg-white/50'}`}>
                     <input
                       type="checkbox"
                       id="modal-terms"
                       checked={termsAccepted}
                       onChange={(e) => setTermsAccepted(e.target.checked)}
-                      className="w-5 h-5 border-4 border-black text-black focus:ring-0 cursor-pointer mt-0.5"
+                      className="w-4 h-4 sm:w-5 sm:h-5 border-2 sm:border-4 border-black text-black focus:ring-0 cursor-pointer mt-0.5"
                     />
                     <label
                       htmlFor="modal-terms"
-                      className={`font-bold font-mono text-[11px] cursor-pointer leading-tight uppercase ${isSavage ? 'text-white' : ''}`}
+                      className={`font-bold font-mono text-[9px] sm:text-[11px] cursor-pointer leading-tight uppercase ${isSavage ? 'text-white' : ''}`}
                     >
                       I AGREE TO THE{" "}
-                      <Link href="/terms" target="_blank" className="underline decoration-2">TERMS OF EMOTIONAL DAMAGE</Link>
-                      . I AM 18+ AND ACKNOWLEDGE THIS IS A STUPID JOKE.
+                      <Link href="/terms" target="_blank" className="underline decoration-2 text-red-600">TERMS</Link>
+                      . I AM 18+ AND THIS IS A JOKE.
                     </label>
                   </div>
                 </div>
 
-                <div className={`p-4 border-4 border-dashed text-center ${isSavage ? 'border-purple-500/50' : 'border-black/20'}`}>
-                  <p className="font-black uppercase italic text-neutral-500">
-                    {isSavage ? "Shed your mortal skin to proceed" : "Accept terms to prove you're an adult with a credit card"}
-                  </p>
+                <div className={`p-3 sm:p-4 border-4 border-dashed text-center ${isSavage ? 'border-purple-500/50' : 'border-black/20'}`}>
+                  {isSavage ? (
+                    <div className="space-y-3">
+                      <p className="font-black uppercase italic text-neutral-400 text-[10px] sm:text-xs">
+                        Shed your mortal skin to proceed
+                      </p>
+                      <button
+                        onClick={() => setActiveTier('elite')}
+                        className="text-[10px] font-black uppercase underline decoration-purple-500 hover:text-purple-400 transition-colors"
+                      >
+                        Wait, I'm semi-poor. Show me Elite ($5).
+                      </button>
+                    </div>
+                  ) : isElite ? (
+                    <div className="space-y-3">
+                      <p className="font-black uppercase italic text-neutral-600 text-[10px] sm:text-xs">
+                        Elite status pending.
+                      </p>
+                      <button
+                        onClick={() => setActiveTier('savage')}
+                        className="text-[10px] font-black uppercase underline decoration-black hover:text-red-600 transition-colors"
+                      >
+                        Nevermind, I want to be a GOD. Show Savage ($99).
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="font-black uppercase italic text-neutral-500 text-[10px] sm:text-sm">
+                      Accept terms to confirm age
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

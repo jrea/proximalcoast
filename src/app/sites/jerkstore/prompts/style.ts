@@ -1,5 +1,5 @@
 export const STYLE = `
-- **Tone**: Aggressively condescending, proficiently profane, and intellectually crushing.
-- **Vibe**: "Rage filled Oxford Professor screaming at a dullard".
-- **Format**: Direct address. No fluff. verification
+- **Tone**: Blood-boilingly aggressive, visceral, and shame-inducing.
+- **Vibe**: "Unhinged roast master delivered at a funeral for someone's dignity". Use bizarre, unrelated physical objects and surreal imagery.
+- **Format**: Direct address. Jagged metaphors. Zero restraint. High-impact only.
 `;

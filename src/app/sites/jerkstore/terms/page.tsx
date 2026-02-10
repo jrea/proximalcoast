@@ -1,14 +1,14 @@
-import { AlertTriangle, Flame, Info } from "lucide-react";
+import { AlertTriangle, Info } from "lucide-react";
 import Link from "next/link";
+import { Logo } from "../_components/logo";
 
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-neutral-100 font-sans text-black selection:bg-red-600 selection:text-white">
       {/* Header */}
       <header className="fixed w-full top-0 z-50 border-b-4 border-black bg-white p-4 flex justify-between items-center shadow-lg">
-        <Link href="/sites/jerkstore" className="flex items-center gap-2 group">
-          <Flame className="w-8 h-8 stroke-[3px] text-red-600 fill-yellow-400 group-hover:scale-110 transition-transform" />
-          <h1 className="text-2xl font-black uppercase tracking-tighter italic">Jerkstore</h1>
+        <Link href="/sites/jerkstore" className="group">
+          <Logo iconClassName="w-8 h-8 group-hover:scale-110 transition-transform" />
         </Link>
         <Link href="/sites/jerkstore" className="px-4 py-2 bg-black text-white font-bold uppercase hover:bg-neutral-800 transition-colors border-2 border-neutral-600">
           Back to Safety

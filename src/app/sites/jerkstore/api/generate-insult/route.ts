@@ -34,7 +34,23 @@ export async function POST(req: Request) {
   });
 
   const body = await req.json();
-  const { topic, language, paid } = body;
+  const { language, paid, topic: bodyTopic, prompt } = body;
+  const topic = bodyTopic || prompt;
+  // Rate Limiting: Check usage in last 24 hours
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const todaysUsageCount = await prisma.jerkstore_insult.count({
+    where: {
+      userId: session.user.id,
+      createdAt: {
+        gte: twentyFourHoursAgo
+      }
+    }
+  });
+
+  const plan = subscription?.plan || (paid ? "savage" : "standard");
+  const LIMIT = plan === "savage" ? 1000 : plan === "elite" ? 200 : 50;
+
+  console.log(`[Jerkstore] Plan: ${plan}, Topic: ${topic}, Usage: ${todaysUsageCount}/${LIMIT}`);
 
   const isActive = (subscription &&
     subscription.status === "active" &&
@@ -46,23 +62,11 @@ export async function POST(req: Request) {
 
   const isFlagged = await moderateText(topic);
   if (isFlagged) {
-    return new Response("Topic violates content policy", { status: 400 });
+    return new Response("That topic is pathetic and we won't roast it. Also, it violates our 'actual lawyer' content policy, you coward.", { status: 400 });
   }
 
-  // Rate Limiting: Check usage in last 24 hours
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const todaysUsage = await prisma.jerkstore_insult.count({
-    where: {
-      userId: session.user.id,
-      createdAt: {
-        gte: twentyFourHoursAgo
-      }
-    }
-  });
-
-  const LIMIT = 200; // Hard limit per user per day
-  if (todaysUsage >= LIMIT) {
-    return new Response("Daily roast limit reached. Go touch some grass.", { status: 429 });
+  if (todaysUsageCount >= LIMIT) {
+    return new Response(`Daily roast limit reached (${LIMIT}). Go touch some grass.`, { status: 429 });
   }
 
   const systemPrompt = `
@@ -80,17 +84,21 @@ Language: ${language || 'English'}.
     system: systemPrompt,
     prompt: `Roast this topic: ${topic}`,
     onFinish: async ({ text, usage }) => {
-      if (text) {
-        await prisma.jerkstore_insult.create({
-          data: {
-            content: text,
-            topic: topic,
-            language: language || 'English',
-            promptTokens: usage.inputTokens ?? 0,
-            completionTokens: usage.outputTokens ?? 0,
-            userId: session.user.id,
-          },
-        });
+      try {
+        if (text) {
+          await prisma.jerkstore_insult.create({
+            data: {
+              content: text,
+              topic: topic,
+              language: language || 'English',
+              promptTokens: usage.inputTokens ?? 0,
+              completionTokens: usage.outputTokens ?? 0,
+              userId: session.user.id,
+            },
+          });
+        }
+      } catch (dbError) {
+        console.error("[Jerkstore DB Error]", dbError);
       }
     },
   });

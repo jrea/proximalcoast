@@ -105,7 +105,7 @@ export function AccessModal({ onClose }: { onClose?: () => void }) {
                 <p className="font-mono text-sm font-bold text-neutral-500">Enter your card details below to finalize your transition into a professional jerk.</p>
               </div>
               <div className="border-4 border-black">
-                <JerkstoreCheckoutForm />
+                <JerkstoreCheckoutForm priceId={process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_ELITE!} />
               </div>
             </div>
           )}

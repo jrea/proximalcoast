@@ -1,7 +1,8 @@
 
 import Link from "next/link";
 import { Metadata } from "next";
-import { Flame, Star, Zap, Skull, Share2, MessageCircle, Heart } from "lucide-react";
+import { Star, Zap, Skull, Share2, MessageCircle, Heart } from "lucide-react";
+import { Logo } from "./_components/logo";
 import { LoginButton } from "./_components/login-button";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -75,10 +76,7 @@ export default async function MarketingPage() {
     <div className="min-h-screen bg-neutral-100 font-sans text-black selection:bg-red-600 selection:text-white">
       {/* Hero Section */}
       <header className="fixed w-full top-0 z-50 border-b-4 border-black bg-white p-4 flex justify-between items-center shadow-lg">
-        <div className="flex items-center gap-2">
-          <Flame className="w-8 h-8 stroke-[3px] text-red-600 fill-yellow-400" />
-          <h1 className="text-2xl font-black uppercase tracking-tighter italic">Jerkstore</h1>
-        </div>
+        <Logo />
         <LoginButton
           text="Login"
           className="px-6 py-2 bg-black text-white font-bold text-lg uppercase hover:bg-neutral-800 transition-transform active:scale-95 border-b-4 border-r-4 border-neutral-600 active:border-0 active:translate-y-1 active:translate-x-1"
@@ -203,7 +201,7 @@ export default async function MarketingPage() {
       </main>
 
       <footer className="bg-white text-black p-12 text-center border-t-8 border-black">
-        <div className="font-black text-3xl uppercase italic mb-4">Jerkstore</div>
+        <Logo className="justify-center mb-4" textClassName="text-3xl font-black uppercase italic" />
         <div className="max-w-4xl mx-auto font-mono uppercase font-bold text-neutral-400 text-[10px] leading-tight text-center sm:text-justify">
           <p className="mb-4"><BlurredRoast text="© 2026 Proximal Coast LLC. All rights reserved by the machine gods. Do not sue us. We have no money. We spent it all on high-quality insults and premium snacks. If you use this at work you will lose your job. It probably isn't a good job anyway. Maybe quit?" /></p>
           <p className="mb-2 text-neutral-600">⚠️ IMPORTANT SAFETY INFORMATION & SIDE EFFECTS ⚠️</p>

@@ -33,6 +33,15 @@ export async function POST(req: Request) {
       );
     }
 
+    // Retrieve the subscription from Stripe to check for schedules
+    const stripeSubObj = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
+
+    // If there is a schedule (e.g. pending downgrade), release it first so we can cancel normally
+    if (stripeSubObj.schedule) {
+      console.log("Releasing subscription schedule before cancellation:", stripeSubObj.schedule);
+      await stripe.subscriptionSchedules.release(stripeSubObj.schedule as string);
+    }
+
     // Request cancellation at end of period
     const stripeSub = await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
       cancel_at_period_end: true,
@@ -40,6 +49,22 @@ export async function POST(req: Request) {
 
     if (!stripeSub.cancel_at_period_end) {
       throw new Error("Stripe failed to set cancel_at_period_end");
+    }
+
+    // Attempt to void any open invoice that might be lingering (e.g. from a failed payment or draft)
+    try {
+      const invoices = await stripe.invoices.list({
+        subscription: subscription.stripeSubscriptionId,
+        status: 'open',
+      });
+
+      for (const invoice of invoices.data) {
+        if (invoice.id) {
+          await stripe.invoices.voidInvoice(invoice.id);
+        }
+      }
+    } catch (err) {
+      console.log("No invoice to void or error voiding:", err);
     }
 
     // Update our DB immediately so the next fetch shows the new state

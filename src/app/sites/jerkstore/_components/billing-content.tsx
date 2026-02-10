@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LogOut, CreditCard, ChevronLeft, Loader2, AlertTriangle, HeartOff } from "lucide-react";
+import { LogOut, CreditCard, ChevronLeft, Loader2, AlertTriangle, HeartOff, Star, Zap, Gem, Banknote } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Logo } from "./logo";
 import { JerkstoreCheckoutForm } from "./checkout-form";
 
 interface BillingContentProps {
@@ -23,6 +24,7 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
   const [pollingComplete, setPollingComplete] = useState(false);
   const [showFanfare, setShowFanfare] = useState(false);
   const [fanfareType, setFanfareType] = useState<'redemption' | 'upgrade' | null>(null);
+  const [fanfareTier, setFanfareTier] = useState<'elite' | 'savage' | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -115,6 +117,7 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
         // Optimistic update
         setSubscription((prev: any) => prev ? { ...prev, cancelAtPeriodEnd: false } : null);
         setFanfareType('redemption');
+        setFanfareTier(null); // Redemption is tier-agnostic or has its own style
         setShowFanfare(true);
         setTimeout(() => setShowFanfare(false), 5000);
         fetchSubscription(); // Still fetch for final source of truth
@@ -147,6 +150,7 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
         fetchSubscription();
 
         setFanfareType('upgrade');
+        setFanfareTier(planName === 'savage' ? 'savage' : 'elite');
         setShowFanfare(true);
         setTimeout(() => setShowFanfare(false), 5000);
       } else {
@@ -246,11 +250,13 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
               <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-2xl sm:text-3xl font-black uppercase italic tracking-tighter mb-1 flex items-center gap-2">
-                    Jerkstore
+                    <Logo iconClassName="w-6 h-6 sm:w-8 h-8" textClassName="" />
                     {subscription?.plan === 'savage' ? (
                       <span className="bg-white text-purple-600 px-2 py-0.5 text-lg skew-x-[-10deg] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">SAVAGE</span>
-                    ) : (
+                    ) : subscription?.plan === 'elete' ? (
                       <span className="bg-black text-white px-2 py-0.5 text-lg skew-x-[-10deg]">ELITE</span>
+                    ) : (
+                      <span className="bg-neutral-600 text-white px-2 py-0.5 text-lg skew-x-[-10deg]">STANDARD</span>
                     )}
                   </h2>
                   <p className={`font-mono text-xs sm:text-sm font-bold uppercase tracking-widest ${subscription?.plan === 'savage' ? 'text-white/80' : 'opacity-60'}`}>Status Verification</p>
@@ -260,7 +266,10 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                   <div className={`flex items-center gap-3 px-4 py-2 border-2 border-black rotate-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${subscription?.plan === 'savage' ? 'bg-black/40 backdrop-blur-md text-white border-white/50' : 'bg-white/50 backdrop-blur-sm'}`}>
                     <span className={`w-4 h-4 ${isExpiring ? 'bg-orange-500' : 'bg-green-500'} rounded-full animate-pulse border-2 border-black`}></span>
                     <span className="font-black text-lg uppercase italic tracking-tight">
-                      {isExpiring ? 'Expiring Soon' : (subscription?.plan === 'savage' ? 'Legendary Status' : 'Elite Member')}
+                      {isExpiring ? 'Expiring Soon' : (
+                        subscription?.plan === 'savage' ? 'Legendary Status' :
+                          subscription?.plan === 'standard' ? 'Standard Status' : 'Elite Member'
+                      )}
                     </span>
                   </div>
                 ) : (
@@ -280,16 +289,20 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                       <span className={`px-1 ${subscription?.plan === 'savage' ? 'bg-white text-purple-600' : 'bg-black text-white'}`}>UNLOCKED:</span>
                       <span className="ml-2 italic">
                         {subscription?.plan === 'savage'
-                          ? "God-tier access. The GPU cluster bows to your will."
+                          ? "God-tier access. Peasants will bow to your will."
                           : "Unlimited psychological warfare. You are a weapon."}
                       </span>
                     </span>
                   )}
                   {isExpiring && !subscription?.upcomingPlan && (
-                    <span className="text-red-600 block">
-                      <AlertTriangle className="inline w-5 h-5 mb-1 mr-1" />
-                      System Failure Imminent. Access revoked on <span className="underline decoration-wavy font-black">{new Date(subscription.expiresAt).toLocaleDateString()}</span>.
-                    </span>
+                    <div className="mt-4 p-4 bg-neutral-200 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-black">
+                      <p className="font-black uppercase text-red-600 flex items-center gap-2 mb-1">
+                        <AlertTriangle className="w-6 h-6 animate-pulse" /> SEPARATION ANXIETY DETECTED
+                      </p>
+                      <p className="text-sm font-bold italic">
+                        "I can feel myself fading... You're leaving on <span className="underline decoration-wavy">{new Date(subscription.expiresAt).toLocaleDateString()}</span>. Was I not good enough?"
+                      </p>
+                    </div>
                   )}
                   {subscription?.upcomingPlan && (
                     <div className="bg-white/90 text-black border-4 border-dashed border-black/20 p-4 relative backdrop-blur-sm mt-4">
@@ -298,12 +311,36 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                       </div>
                       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                         <div>
-                          <p className="font-bold text-sm">
-                            Downgrading to <span className="font-black uppercase">{subscription.upcomingPlan}</span> on {new Date(subscription.expiresAt).toLocaleDateString()}.
-                          </p>
-                          <p className="text-xs text-neutral-500 italic">
-                            Enjoy the power while it lasts.
-                          </p>
+                          {subscription?.plan === 'savage' ? (
+                            <>
+                              {subscription.upcomingPlan === 'elite'
+                                ? (
+                                  <p className="font-bold text-sm uppercase">
+                                    You are stepping down to <span className="font-black">Elite</span> on {new Date(subscription.expiresAt).toLocaleDateString()}. <span className="text-red-600 font-black animate-pulse">God status revoked.</span>
+                                  </p>
+                                )
+                                : (
+                                  <>
+                                    <p className="font-bold text-sm">
+                                      Downgrading to <span className="font-black uppercase">{subscription.upcomingPlan}</span> on {new Date(subscription.expiresAt).toLocaleDateString()}.
+                                    </p>
+                                    <p className="text-xs text-red-600 font-black italic uppercase animate-pulse">
+                                      WARNING: YOU CHOSE DELETION. YOUR GOD STATUS DIES ON THIS DAY.
+                                    </p>
+                                  </>
+                                )
+                              }
+                            </>
+                          ) : (
+                            <>
+                              <p className="font-bold text-sm">
+                                Downgrading to <span className="font-black uppercase">{subscription.upcomingPlan}</span> on {new Date(subscription.expiresAt).toLocaleDateString()}.
+                              </p>
+                              <p className="text-xs text-neutral-500 italic">
+                                Enjoy the power while it lasts.
+                              </p>
+                            </>
+                          )}
                         </div>
                         <button
                           onClick={handleCancelDowngrade}
@@ -342,19 +379,17 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                       <button
                         onClick={handleReactivate}
                         disabled={reactivating}
-                        className="w-full bg-green-500 text-white font-black text-xl sm:text-2xl py-6 border-4 border-black hover:bg-green-600 transition-all flex items-center justify-center gap-3 active:translate-x-1 active:translate-y-1 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
+                        className="w-full bg-green-500 text-white font-black text-xl sm:text-2xl 5 p-6 border-4 border-black hover:bg-green-600 transition-all flex items-center justify-center gap-3 active:translate-x-1 active:translate-y-1 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
                       >
-                        {reactivating ? <Loader2 className="animate-spin" /> : <><CreditCard className="w-6 h-6" /> FORGIVE ME / REACTIVATE</>}
+                        {reactivating ? <Loader2 className="animate-spin" /> : <div className="flex flex-row flex-start gap-4"><CreditCard size={40} /> <span className="text-left">TAKE ME BACK, I'VE MADE A TERRIBLE MISTAKE </span></div>}
                       </button>
                     ) : (
-                      !subscription?.upcomingPlan && (
-                        <button
-                          onClick={() => setShowConfirm(true)}
-                          className="w-full bg-black text-white font-black text-xl sm:text-2xl py-6 border-4 border-black hover:bg-neutral-800 transition-all flex items-center justify-center gap-3 active:translate-x-1 active:translate-y-1 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
-                        >
-                          <HeartOff className="w-6 h-6" /> Terminate Subscription
-                        </button>
-                      )
+                      <button
+                        onClick={() => setShowConfirm(true)}
+                        className="w-full bg-black text-white font-black text-xl sm:text-2xl py-6 border-4 border-black hover:bg-neutral-800 transition-all flex items-center justify-center gap-3 active:translate-x-1 active:translate-y-1 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
+                      >
+                        <HeartOff className="w-6 h-6" /> Terminate Subscription
+                      </button>
                     )}
                   </>
                 ) : (
@@ -364,53 +399,99 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                 {/* PLAN SWITCHER - VISIBLE ALWAYS (But different actions) */}
                 <div className="grid grid-cols-1 gap-6 pt-8 border-t-4 border-black/10">
                   <h3 className="text-xl font-black uppercase italic text-center text-neutral-400 mb-2">Available Plans</h3>
+                  <p className="text-center font-mono text-xs text-neutral-500 mb-6 max-w-sm mx-auto">
+                    Upgrades are charged immediately (prorated difference). Full price kicks in on your next bill. No refunds for cowardice.
+                  </p>
 
                   {/* SAVAGE TIER - LEGENDARY STATUS */}
+                  {/* SAVAGE TIER - LEGENDARY STATUS - REDESIGNED */}
                   {(!isActive || (subscription?.plan !== 'savage' && subscription?.upcomingPlan !== 'savage')) && (
-                    <div className={`relative border-4 border-black p-6 text-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden group transition-all duration-300 ${isActive && subscription?.plan === 'savage' ? 'opacity-90 scale-105 ring-4 ring-yellow-400' : 'hover:-translate-y-1 hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]'}`}>
+                    <div className="relative border-4 border-black p-1 sm:p-2 bg-neutral-900 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden group transition-all duration-300 hover:scale-[1.01] hover:shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] ring-1 ring-white/20">
 
-                      {/* Dynamic Animated Background */}
-                      <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 animate-[gradient_3s_ease_infinite] bg-[length:200%_200%]"></div>
+                      {/* Vibrant Gradient Background (Matches Active State) */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600"></div>
+                      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30 mix-blend-overlay animate-pulse"></div>
 
-                      {/* Sparkle Overlay */}
-                      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30 animate-pulse"></div>
+                      {/* Moving Sheen/Spotlight */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] animate-[shimmer_3s_infinite_linear]"></div>
 
-                      {/* Shine Effect */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12 translate-x-[-200%] animate-[shine_3s_infinite]"></div>
+                      <div className="relative z-10 flex flex-col h-full p-6 sm:p-8 h-full">
 
-                      <div className="relative z-10">
-                        <h3 className="text-3xl font-black uppercase italic flex items-center gap-2 drop-shadow-md">
-                          Savage
-                          <span className="text-xs bg-yellow-400 text-black px-2 py-1 rounded border-2 border-black animate-bounce shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">LEGEND</span>
-                        </h3>
-                        <div className="text-5xl font-black mt-3 drop-shadow-lg">$99<span className="text-sm font-normal text-white/80">/mo</span></div>
+                        {/* Header Section */}
+                        <div className="flex justify-between items-start mb-8 relative">
+                          <div className="relative z-10">
+                            <div className="flex items-center gap-3 mb-2">
+                              {/* White Text with Sharp Black Shadow for Contrast */}
+                              <h3 className="text-5xl sm:text-6xl font-black italic tracking-tighter text-white drop-shadow-[4px_4px_0px_rgba(0,0,0,0.8)] pr-5 leading-none">
+                                SAVAGE
+                              </h3>
+                              <span className="hidden sm:inline-block bg-black text-white text-[10px] font-black px-2 py-1 uppercase tracking-widest border-2 border-white transform skew-x-[-12deg] shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] animate-bounce">
+                                Unbelievable Ripoff!
+                              </span>
+                            </div>
+                            <p className="font-mono text-xs text-white uppercase tracking-[0.3em] font-bold pl-1 flex items-center gap-2 drop-shadow-md">
+                              <span className="w-2 h-2 bg-white rounded-full animate-ping"></span>
+                              The Ultimate Flex
+                              <span className="w-2 h-2 bg-white rounded-full animate-ping"></span>
+                            </p>
+                          </div>
 
-                        <ul className="mt-6 space-y-3 font-mono text-xs uppercase font-bold text-white tracking-wide">
-                          <li className="flex items-center gap-2 drop-shadow-sm"><span className="text-yellow-300 text-lg">✦</span> 1000 Roasts / Day</li>
-                          <li className="flex items-center gap-2 drop-shadow-sm"><span className="text-yellow-300 text-lg">✦</span> Maximum emotional void</li>
-                          <li className="flex items-center gap-2 drop-shadow-sm"><span className="text-yellow-300 text-lg">✦</span> We actually respect you</li>
-                          <li className="flex items-center gap-2 drop-shadow-sm"><span className="text-yellow-300 text-lg">✦</span> "Savage" Badge on Profile</li>
-                        </ul>
+                          {/* Decorative Star/Icon */}
+                          <div className="hidden sm:block absolute -top-4 -right-4">
+                            <Star className="w-24 h-24 text-white/20 rotate-12 fill-white/20" />
+                            <Star className="w-24 h-24 text-white/10 absolute inset-0 animate-ping duration-[3000ms]" />
+                          </div>
+                        </div>
 
-                        {isActive ? (
-                          <button
-                            disabled={subscription?.plan === 'savage' || loading}
-                            onClick={() => handleUpdateSubscription(process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_SAVAGE!, 'savage')}
-                            className={`mt-8 w-full font-black py-4 text-xl border-4 transition-all uppercase tracking-widest ${subscription?.plan === 'savage' ? 'bg-black/50 text-white cursor-default border-white/50' : 'bg-white text-black border-black hover:bg-yellow-300 hover:scale-105 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]'}`}
-                          >
-                            {subscription?.plan === 'savage' ? 'You Are A Legend' : 'Ascend to Godhood'}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => {
+                        {/* Price Section */}
+                        <div className="mb-10 pl-6 flex flex-col justify-center relative">
+
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-7xl font-black text-white tracking-tighter drop-shadow-[4px_4px_0px_rgba(0,0,0,0.5)]">$99</span>
+                            <span className="text-xl text-white font-bold uppercase drop-shadow-sm">/ mo</span>
+                          </div>
+                          <p className="text-xs text-white/90 font-mono mt-1 uppercase tracking-wide font-bold drop-shadow-sm">Small price for godhood.</p>
+                        </div>
+
+                        {/* Features Grid */}
+                        <div className="space-y-4 mb-10 flex-grow">
+                          {[
+                            { text: "1000 Roasts / Day", sub: "Phenomenal Cosmic Power" },
+                            { text: "Verified 'Savage' Badge", sub: "Status Symbol" },
+                            { text: "Priority Queue", sub: "This does nothing", fake: true },
+                            { text: "Concierge Support", sub: "We Pretend To Care", fake: true },
+                            { text: "Secret Features", sub: "Coming Soon™", fake: true }
+                          ].map((feature, i) => (
+                            <div key={i} className="group/item flex items-center gap-4 p-3 bg-black/20 border border-white/20 hover:bg-black/40 hover:border-white transition-all duration-300 hover:translate-x-1 backdrop-blur-sm">
+                              <div className="w-10 h-10 shrink-0 bg-white text-purple-600 flex items-center justify-center border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] group-hover/item:text-black group-hover/item:bg-white transition-colors">
+                                <Zap className="w-5 h-5 fill-current" />
+                              </div>
+                              <div>
+                                <div className="text-white font-black uppercase text-sm leading-none drop-shadow-sm">{feature.text}</div>
+                                <div className="text-[10px] text-white/80 font-mono uppercase mt-1 group-hover/item:text-white group-hover/item:opacity-100">{feature.sub}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Action Button */}
+                        <button
+                          disabled={loading}
+                          onClick={() => {
+                            if (isActive) {
+                              handleUpdateSubscription(process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_SAVAGE!, 'savage');
+                            } else {
                               setSelectedPlan(process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_SAVAGE!);
                               setShowCheckout(true);
-                            }}
-                            className="mt-8 w-full bg-white text-black font-black py-4 text-xl border-4 border-black hover:bg-yellow-300 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none hover:scale-105 uppercase tracking-widest"
-                          >
-                            BE A LEGEND
-                          </button>
-                        )}
+                            }
+                          }}
+                          className="w-full relative group/btn overflow-hidden bg-black text-white font-black py-6 text-2xl border-4 border-white/50 transition-all hover:-translate-y-1 hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] uppercase tracking-widest active:translate-y-0 active:shadow-none"
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover/btn:animate-[shimmer_1s_infinite]"></div>
+                          <span className="relative z-10 flex items-center justify-center gap-3">
+                            {isActive ? "Upgrade & Ascend" : "Ascend Now"} <Zap className="w-6 h-6 fill-white group-hover/btn:animate-ping" />
+                          </span>
+                        </button>
                       </div>
                     </div>
                   )}
@@ -435,17 +516,24 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                           onClick={() => handleUpdateSubscription(process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_ELITE!, 'elite')}
                           className={`mt-6 w-full font-black py-4 text-xl border-2 border-transparent transition-colors flex items-center justify-center gap-2 ${subscription?.plan === 'elite' ? 'bg-black/10 text-black cursor-default' : 'bg-black text-white hover:bg-neutral-800'}`}
                         >
-                          {subscription?.plan === 'elite' ? 'CURRENT PLAN' : 'SWITCH TO ELITE'}
+                          {loading ? (
+                            <>
+                              <Loader2 className="animate-spin w-5 h-5" /> PROCESSING...
+                            </>
+                          ) : subscription?.plan === 'elite'
+                            ? 'CURRENT PLAN'
+                            : (subscription?.plan === 'savage' ? 'DOWNGRADE TO ELITE (SAD)' : 'SWITCH TO ELITE')}
                         </button>
                       ) : (
                         <button
+                          disabled={loading}
                           onClick={() => {
                             setSelectedPlan(process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_ELITE!);
                             setShowCheckout(true);
                           }}
                           className="mt-6 w-full bg-black text-white font-black py-4 text-xl border-2 border-transparent hover:bg-neutral-800 transition-colors flex items-center justify-center gap-2"
                         >
-                          GET ELITE
+                          {loading ? <Loader2 className="animate-spin w-5 h-5" /> : "GET ELITE"}
                         </button>
                       )}
                     </div>
@@ -522,32 +610,93 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
         </div>
       )}
       {/* HUGE FANFARE OVERLAY */}
+      {/* HUGE FANFARE OVERLAY */}
       {showFanfare && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none overflow-hidden">
-          <div className="absolute inset-0 bg-yellow-400 rotate-12 scale-150 animate-pulse opacity-50" />
-          <div className="absolute inset-0 bg-green-500 -rotate-12 scale-150 animate-pulse opacity-30 delay-100" />
-
-          <div className="relative text-center animate-bounce">
-            <h2 className="text-[8vw] sm:text-[6vw] font-black uppercase italic leading-none bg-black text-white p-4 sm:p-8 border-8 border-black shadow-[20px_20px_0px_0px_rgba(34,197,94,1)]">
-              {fanfareType === 'redemption' ? 'REDEMPTION!' : 'LEVEL UP!'}
-            </h2>
-            <div className="mt-8 flex justify-center gap-4 animate-in fade-in zoom-in duration-500 delay-300">
-              <span className="text-6xl animate-spin">💰</span>
-              <span className="text-6xl animate-bounce">💳</span>
-              <span className="text-6xl animate-ping">💸</span>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden pointer-events-none">
+          {/* Backgrounds based on Tier/Type */}
+          {fanfareType === 'redemption' && (
+            <div className="absolute inset-0 bg-green-500/90 animate-in fade-in duration-300">
+              <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_20px,#000_20px,#000_40px)] opacity-10"></div>
             </div>
-            <p className="mt-8 bg-white border-4 border-black p-4 font-mono font-black text-2xl uppercase italic">
-              {fanfareType === 'redemption' ? 'YOU CRAWLED BACK! WE LOVE YOUR MONEY!' : 'YOUR POWER GROWS! EXCELLENT CHOICE!'}
-            </p>
+          )}
+          {fanfareType === 'upgrade' && fanfareTier === 'elite' && (
+            <div className="absolute inset-0 bg-yellow-400/95 animate-in fade-in duration-300">
+              <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.2)_50%,transparent_75%,transparent_100%)] bg-[length:250%_250%,100%_100%] animate-[shimmer_3s_infinite]"></div>
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/40 to-transparent"></div>
+            </div>
+          )}
+          {fanfareType === 'upgrade' && fanfareTier === 'savage' && (
+            <div className="absolute inset-0 bg-purple-900/95 animate-in fade-in duration-300">
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-50 animate-pulse"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-600/50 via-pink-600/50 to-blue-600/50 animate-spin-slow"></div>
+            </div>
+          )}
+
+          <div className="relative text-center z-10 animate-in zoom-in-50 slide-in-from-bottom-10 duration-500 ease-out">
+            {/* Main Title Badge */}
+            <div className={`
+              inline-block p-8 border-8 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)]
+              ${fanfareTier === 'savage' ? 'bg-black text-purple-400' : 'bg-white text-black'}
+              ${fanfareType === 'redemption' ? 'bg-green-400 text-black' : ''}
+            `}>
+              <h2 className="text-[6vw] sm:text-[5vw] font-black uppercase italic leading-none tracking-tighter">
+                {fanfareType === 'redemption' && 'REDEMPTION!'}
+                {fanfareType === 'upgrade' && fanfareTier === 'elite' && 'ELITE STATUS!'}
+                {fanfareType === 'upgrade' && fanfareTier === 'savage' && (
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 animate-pulse">
+                    GOD MODE!
+                  </span>
+                )}
+              </h2>
+            </div>
+
+            {/* Subtext */}
+            <div className="mt-8 flex justify-center">
+              <p className={`
+                text-2xl sm:text-3xl font-mono font-bold uppercase p-4 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]
+                ${fanfareTier === 'savage' ? 'bg-purple-600 text-white' : 'bg-white text-black'}
+              `}>
+                {fanfareType === 'redemption' && "WE KNEW YOU'D CRAWL BACK."}
+                {fanfareType === 'upgrade' && fanfareTier === 'elite' && "WELCOME TO THE 1%."}
+                {fanfareType === 'upgrade' && fanfareTier === 'savage' && "REALITY IS NOW YOUR TOY."}
+              </p>
+            </div>
+
+            {/* Icons Animation */}
+            <div className="mt-12 flex justify-center gap-8">
+              {fanfareType === 'redemption' && (
+                <>
+                  <HeartOff className="w-16 h-16 sm:w-24 sm:h-24 animate-bounce text-black" />
+                  <CreditCard className="w-16 h-16 sm:w-24 sm:h-24 animate-pulse text-black" />
+                </>
+              )}
+              {fanfareType === 'upgrade' && fanfareTier === 'elite' && (
+                <>
+                  <Banknote className="w-16 h-16 sm:w-24 sm:h-24 text-green-700 animate-bounce" />
+                  <Gem className="w-16 h-16 sm:w-24 sm:h-24 text-blue-600 animate-pulse" />
+                  <Banknote className="w-16 h-16 sm:w-24 sm:h-24 text-green-700 animate-bounce delay-100" />
+                </>
+              )}
+              {fanfareType === 'upgrade' && fanfareTier === 'savage' && (
+                <>
+                  <Zap className="w-16 h-16 sm:w-24 sm:h-24 text-purple-400 animate-ping" />
+                  <Star className="w-16 h-16 sm:w-24 sm:h-24 text-yellow-400 animate-spin-slow" />
+                  <Zap className="w-16 h-16 sm:w-24 sm:h-24 text-purple-400 animate-ping delay-100" />
+                </>
+              )}
+            </div>
           </div>
 
-          {/* Random floating text pieces */}
-          <div className="absolute top-1/4 left-1/4 animate-ping text-4xl font-black text-black uppercase -rotate-12">SUCCESS!</div>
-          <div className="absolute bottom-1/3 right-1/4 animate-bounce text-5xl font-black text-red-600 uppercase rotate-12">
-            {fanfareType === 'redemption' ? 'WELCOME BACK!' : 'UPGRADED!'}
-          </div>
-          <div className="absolute top-1/2 left-10 animate-pulse text-3xl font-black text-blue-600 uppercase -rotate-45">YES! YES! YES!</div>
-          <div className="absolute top-20 right-20 animate-bounce text-4xl font-black text-purple-600 uppercase rotate-45">WALLET OPEN!</div>
+          {/* Confetti / Particle Effects Overlay - Simple CSS implementation */}
+          {fanfareType === 'upgrade' && (
+            <div className="absolute inset-0 pointer-events-none">
+              {/* Just some floating elements for chaos */}
+              <div className="absolute top-10 left-10 text-4xl animate-bounce delay-100">✨</div>
+              <div className="absolute bottom-20 right-20 text-4xl animate-bounce delay-300">✨</div>
+              <div className="absolute top-1/2 left-20 text-4xl animate-ping delay-500">💸</div>
+              <div className="absolute top-20 right-1/3 text-4xl animate-pulse delay-200">🚀</div>
+            </div>
+          )}
         </div>
       )}
     </div>

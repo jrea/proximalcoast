@@ -8,6 +8,7 @@ import { CreditCard, LogOut, Settings } from "lucide-react";
 
 import { AccessModal } from "../_components/access-modal";
 import { LogoutButton } from "../_components/logout-button";
+import { Logo } from "../_components/logo";
 
 import { BUTTON_LABELS, TOPIC_LABELS } from "../constants";
 
@@ -49,7 +50,7 @@ export default async function JerkstorePage({
 
       {/* App Header */}
       <header className="max-w-2xl mx-auto mb-8 flex justify-between items-center bg-white border-4 border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-        <div className="font-black uppercase italic text-xl tracking-tighter">Jerkstore App</div>
+        <Logo textClassName="text-xl font-black uppercase italic tracking-tighter" />
         <div className="flex gap-4">
           <Link
             href="/billing"

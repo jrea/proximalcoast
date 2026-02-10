@@ -47,24 +47,52 @@ export async function POST(req: Request) {
             ? new Date((subscription as any).current_period_end * 1000)
             : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days default
 
-          await prisma.user_subscription.upsert({
-            where: { stripeSubscriptionId: subscriptionId },
-            update: {
-              status: subscription.status,
-              plan: plan,
-              cancelAtPeriodEnd: subscription.cancel_at_period_end,
-              expiresAt,
-            },
-            create: {
-              userId: userId,
-              siteSlug: siteSlug,
-              stripeSubscriptionId: subscriptionId,
-              status: subscription.status,
-              plan: plan,
-              cancelAtPeriodEnd: subscription.cancel_at_period_end,
-              expiresAt,
+          const existingByComposite = await prisma.user_subscription.findUnique({
+            where: {
+              userId_siteSlug: {
+                userId,
+                siteSlug,
+              },
             },
           });
+
+          if (existingByComposite) {
+            // Update the existing record for this user/site with the NEW subscription ID
+            await prisma.user_subscription.update({
+              where: {
+                userId_siteSlug: {
+                  userId,
+                  siteSlug,
+                },
+              },
+              data: {
+                stripeSubscriptionId: subscriptionId, // IMPORTANT: Update to the new ID
+                status: subscription.status,
+                plan: plan,
+                cancelAtPeriodEnd: subscription.cancel_at_period_end,
+                expiresAt,
+              },
+            });
+          } else {
+            await prisma.user_subscription.upsert({
+              where: { stripeSubscriptionId: subscriptionId },
+              update: {
+                status: subscription.status,
+                plan: plan,
+                cancelAtPeriodEnd: subscription.cancel_at_period_end,
+                expiresAt,
+              },
+              create: {
+                userId: userId,
+                siteSlug: siteSlug,
+                stripeSubscriptionId: subscriptionId,
+                status: subscription.status,
+                plan: plan,
+                cancelAtPeriodEnd: subscription.cancel_at_period_end,
+                expiresAt,
+              },
+            });
+          }
 
           await prisma.user.update({
             where: { id: userId },
@@ -180,11 +208,35 @@ export async function POST(req: Request) {
       };
 
       if (userId) {
-        await prisma.user_subscription.upsert({
-          where: { stripeSubscriptionId: updatedId },
-          update: updateData,
-          create: createData,
+        // First try to find by composite key to avoid unique constraint violations
+        const existingByComposite = await prisma.user_subscription.findUnique({
+          where: {
+            userId_siteSlug: {
+              userId,
+              siteSlug,
+            },
+          },
         });
+
+        if (existingByComposite) {
+          // If found by user+slug, update it specifically
+          await prisma.user_subscription.update({
+            where: {
+              userId_siteSlug: {
+                userId,
+                siteSlug,
+              },
+            },
+            data: updateData,
+          });
+        } else {
+          // Otherwise, traditional upsert by stripe ID
+          await prisma.user_subscription.upsert({
+            where: { stripeSubscriptionId: updatedId },
+            update: updateData,
+            create: createData,
+          });
+        }
       } else {
         // Fallback if userId is missing from metadata (rare, but possible)
         // We only update if we can find it by ID

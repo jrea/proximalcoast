@@ -340,7 +340,7 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                 ) : (
                   <div className="flex items-center gap-3 bg-neutral-200 px-4 py-2 border-2 border-neutral-400 -rotate-2 opacity-70">
                     <span className="w-4 h-4 bg-red-500 rounded-full border-2 border-black/20"></span>
-                    <span className="font-bold text-lg uppercase italic tracking-tight text-neutral-500 decoration-line-through">
+                    <span className="font-bold text-lg uppercase italic tracking-tight text-neutral-500 decoration-line-through whitespace-nowrap">
                       Not worthy
                     </span>
                   </div>
@@ -420,7 +420,7 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                     </div>
                   )}
                   {!isActive && (
-                    <span className="text-neutral-500 italic">
+                    <span className="text-neutral-500 italic pt-4">
                       Restricted Mode. Only basic, pathetic insults available.
                     </span>
                   )}
@@ -573,7 +573,7 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                   {(!isActive || (subscription?.plan !== 'elite' && subscription?.upcomingPlan !== 'elite')) && (
                     <div className={`border-4 border-black p-6 bg-yellow-300 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative transform transition-transform group ${isActive && subscription?.plan === 'elite' ? 'opacity-80' : 'hover:-translate-y-1'}`}>
                       {(!isActive || subscription?.plan !== 'elite') && (
-                        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-black text-white px-3 py-1 font-black uppercase text-sm rotate-[-2deg]">Most Popular</div>
+                        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-black text-white px-3 py-1 font-black uppercase text-sm rotate-[-2deg] whitespace-nowrap">Most Popular</div>
                       )}
                       <h3 className="text-2xl font-black uppercase italic">Elite</h3>
                       <div className="text-4xl font-black mt-2">$5<span className="text-sm font-normal text-black/60">/mo</span></div>

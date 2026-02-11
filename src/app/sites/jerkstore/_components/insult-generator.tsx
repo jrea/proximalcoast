@@ -94,8 +94,8 @@ export function InsultGenerator({
         backgroundColor: "transparent", // Allow gradients to render correctly
         cacheBust: true,
         pixelRatio: 2, // High quality, better performance/compatibility
-        width: 450,
-        height: 800,
+        width: 800,
+        height: 1000,
         style: {
           opacity: "1",
           visibility: "visible",

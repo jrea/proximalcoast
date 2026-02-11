@@ -148,16 +148,16 @@ model jerkstore_insult {
   userId           String
   user             user     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt        DateTime @default(now()) @db.Timestamp(6)
+  safe_insult      jerkstore_insult_safe[]
 
   @@schema("main")
 }
 
 model jerkstore_insult_safe {
-  id               String   @id @default(uuid())
-  content          String
-  topic            String?
-  language         String?
-  createdAt        DateTime @default(now()) @db.Timestamp(6)
+  id        String           @id @default(uuid())
+  insultId  String
+  insult    jerkstore_insult @relation(fields: [insultId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now()) @db.Timestamp(6)
 
   @@schema("main")
 }

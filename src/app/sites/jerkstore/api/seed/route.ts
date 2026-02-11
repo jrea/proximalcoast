@@ -11,34 +11,83 @@ const CURATED_SAFE_URNS = [
 ];
 
 export async function GET() {
+  const SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000000";
+
   try {
-    // 1. Migrate existing ones
+    // 0. Ensure System User exists
+    await prisma.user.upsert({
+      where: { id: SYSTEM_USER_ID },
+      update: {},
+      create: {
+        id: SYSTEM_USER_ID,
+        name: "System",
+        email: "system@jerkstore.com",
+        emailVerified: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+    });
+
+    // 1. Migrate existing ones (if any were missed or for re-seeding)
     const existing = await prisma.jerkstore_insult.findMany();
+    let migratedCount = 0;
     for (const burn of existing) {
-      await prisma.jerkstore_insult_safe.create({
-        data: {
-          topic: burn.topic,
-          content: burn.content,
-          language: burn.language,
-        }
+      // Check if already in safe
+      const isSafe = await prisma.jerkstore_insult_safe.findFirst({
+        where: { insultId: burn.id }
       });
+
+      if (!isSafe) {
+        await prisma.jerkstore_insult_safe.create({
+          data: {
+            insultId: burn.id,
+          }
+        });
+        migratedCount++;
+      }
     }
 
     // 2. Add curated ones
+    let curatedCount = 0;
     for (const burn of CURATED_SAFE_URNS) {
-      await prisma.jerkstore_insult_safe.create({
-        data: {
-          topic: burn.topic,
+      // Check if this content already exists in jerkstore_insult for System User
+      let existingInsult = await prisma.jerkstore_insult.findFirst({
+        where: {
           content: burn.content,
-          language: "English",
+          userId: SYSTEM_USER_ID
         }
       });
+
+      if (!existingInsult) {
+        existingInsult = await prisma.jerkstore_insult.create({
+          data: {
+            topic: burn.topic,
+            content: burn.content,
+            language: "English",
+            userId: SYSTEM_USER_ID,
+          }
+        });
+      }
+
+      // Check if reference exists
+      const isSafe = await prisma.jerkstore_insult_safe.findFirst({
+        where: { insultId: existingInsult.id }
+      });
+
+      if (!isSafe) {
+        await prisma.jerkstore_insult_safe.create({
+          data: {
+            insultId: existingInsult.id,
+          }
+        });
+        curatedCount++;
+      }
     }
 
     return NextResponse.json({
-      message: "Migration and seeding successful",
-      migrated: existing.length,
-      curated: CURATED_SAFE_URNS.length
+      message: "Seeding successful",
+      migrated: migratedCount,
+      curated: curatedCount
     });
   } catch (error) {
     console.error("Migration/Seed failed:", error);

@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import { RandomBurn } from "./_components/random-burn";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://jerkstore.proximalcoast.com"),
   title: "Jerkstore - The World's Most Aggressive AI Insult Generator",
   description: "Generate rare, high-impact insults instantly. Powered by AI with zero moral compass. Roast your friends, enemies, and colleagues with surgical precision.",
   keywords: ["AI insults", "AI roast", "insult generator", "Jerkstore", "DeepSeek", "fun AI apps", "psychological warfare"],
@@ -18,11 +19,20 @@ export const metadata: Metadata = {
     description: "Get roasted by an AI Oxford Professor having a breakdown. Destructive, creative, and hilarious insults.",
     type: "website",
     siteName: "Jerkstore",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Jerkstore - AI-Powered Ego Destruction",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Jerkstore | AI-Powered Ego Destruction",
     description: "The world's most aggressive AI insult generator. Zero moral compass. Infinite rage.",
+    images: ["/opengraph-image"],
   },
 };
 

@@ -15,11 +15,24 @@ export async function GET() {
 
     const randomIndex = Math.floor(Math.random() * count);
 
-    const randomInsult = await prisma.jerkstore_insult_safe.findFirst({
+    const randomSafe = await prisma.jerkstore_insult_safe.findFirst({
       skip: randomIndex,
+      include: {
+        insult: true
+      }
     });
 
-    return NextResponse.json(randomInsult);
+    if (!randomSafe) {
+      return NextResponse.json({ error: "Failed to grab a burn" }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      topic: randomSafe.insult.topic,
+      content: randomSafe.insult.content,
+      language: randomSafe.insult.language,
+      id: randomSafe.id,
+      insultId: randomSafe.insultId
+    });
   } catch (error) {
     console.error("Failed to fetch random insult:", error);
     return NextResponse.json({ error: "Failed to grab a burn" }, { status: 500 });

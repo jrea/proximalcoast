@@ -248,6 +248,18 @@ export async function POST(req: Request) {
       }
       break;
 
+    case "customer.created":
+    case "customer.updated":
+      const customer = session as any;
+      const customerUserId = customer.metadata?.userId;
+      if (customerUserId) {
+        await prisma.user.update({
+          where: { id: customerUserId },
+          data: { stripeCustomerId: customer.id },
+        });
+      }
+      break;
+
     case "subscription_schedule.updated":
     case "subscription_schedule.created":
     case "subscription_schedule.released":

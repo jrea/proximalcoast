@@ -50,9 +50,73 @@ export async function POST(req: Request) {
     if (user?.stripeCustomerId) {
       checkoutOptions.customer = user.stripeCustomerId;
     } else {
-      checkoutOptions.customer_email = sessionUser.user.email;
-      // You can't pass 'name' directly to Checkout, but you can use customer_data if needed
-      // Actually, customer_email + completion usually handles it.
+      // Check if a customer with this email already exists in Stripe
+      const email = user?.email || sessionUser.user.email;
+
+      if (email) {
+        let customerIdToUse = null;
+
+        // Search for existing customers by email
+        const existingCustomers = await stripe.customers.list({
+          email: email,
+          limit: 5, // Check a few recent ones
+        });
+
+        // 1. Prefer exact match on metadata.userId
+        // This ensures we pick the customer specifically linked to this user, if one exists.
+        const exactMatch = existingCustomers.data.find(
+          (c) => c.metadata?.userId === sessionUser.user.id
+        );
+
+        if (exactMatch) {
+          customerIdToUse = exactMatch.id;
+        } else {
+          // 2. Fallback to claiming an "orphaned" customer (no userId in metadata)
+          // This handles legacy customers created before we started adding metadata,
+          // allowing us to link them to the current user.
+          const orphan = existingCustomers.data.find(
+            (c) => !c.metadata?.userId
+          );
+          if (orphan) {
+            customerIdToUse = orphan.id;
+            // Update the orphan with our metadata so it's claimed by this user
+            await stripe.customers.update(orphan.id, {
+              metadata: {
+                userId: sessionUser.user.id,
+                siteSlug: siteSlug,
+              },
+            });
+          }
+        }
+
+        if (customerIdToUse) {
+          checkoutOptions.customer = customerIdToUse;
+
+          // Update local user record with the found/claimed Stripe Customer ID
+          await prisma.user.update({
+            where: { id: sessionUser.user.id },
+            data: { stripeCustomerId: customerIdToUse }
+          });
+        } else {
+          // 3. No suitable existing customer found, create a new one
+          const newCustomer = await stripe.customers.create({
+            email: email,
+            name: user?.name ?? undefined,
+            metadata: {
+              userId: sessionUser.user.id,
+              siteSlug: siteSlug,
+            },
+          });
+
+          checkoutOptions.customer = newCustomer.id;
+
+          // Update local user record with the newly created Stripe Customer ID
+          await prisma.user.update({
+            where: { id: sessionUser.user.id },
+            data: { stripeCustomerId: newCustomer.id }
+          });
+        }
+      }
     }
 
     let session;

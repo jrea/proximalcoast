@@ -101,12 +101,23 @@ export async function POST(req: Request) {
     finalConstraints = CONSTRAINTS.replace("MAXIMUM 240 CHARACTERS", "STRICT MAXIMUM 240 CHARACTERS. If you go over, you will be terminated.");
   }
 
+  const recentRoasts = await prisma.jerkstore_insult.findMany({
+    where: { userId: session.user.id },
+    orderBy: { createdAt: 'desc' },
+    take: 4,
+    select: { content: true }
+  });
+
+  const historyString = recentRoasts.length > 0
+    ? `\n\n**Recent History (AVOID THESE STRUCTURES AND ALL UNIQUE WORDS FROM THESE)**:\n${recentRoasts.map((r, i) => `Roast ${i + 1}: ${r.content}`).join('\n')}`
+    : '';
+
   const systemPrompt = `
 ${IDENTITY}
 
 ${STYLE}
 
-${finalConstraints}
+${finalConstraints}${historyString}
 
 IMPORTANT: YOU MUST OUTPUT THE ROAST ONLY IN THE REQUESTED LANGUAGE OR FORMAT. 
 IF THE LANGUAGE IS A TECHNICAL FORMAT (LIKE BINARY, MORSE CODE, BASE64), ENCODE THE ROAST CONTENT FULLY INTO THAT FORMAT.

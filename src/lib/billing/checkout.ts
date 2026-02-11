@@ -116,46 +116,58 @@ export async function createCheckoutSession({
 
   // 3. Check for existing active subscriptions
   if (checkoutOptions.customer) {
-    const subscriptions = await stripe.subscriptions.list({
-      customer: checkoutOptions.customer as string,
-      status: "all", // We need to see 'active' and 'trialing', potentially 'past_due'
-      limit: 5,
-    });
+    try {
+      const subscriptions = await stripe.subscriptions.list({
+        customer: checkoutOptions.customer as string,
+        status: "all", // We need to see 'active' and 'trialing', potentially 'past_due'
+        limit: 5,
+      });
 
-    const activeSub = subscriptions.data.find(
-      (sub) =>
-        (sub.status === "active" || sub.status === "trialing") &&
-        sub.metadata?.siteSlug === siteSlug // valid if we stored siteSlug, otherwise check items
-    ) || subscriptions.data.find(
-      // Fallback: check if the price matches, assuming one sub per site per user concept
-      (sub) => (sub.status === "active" || sub.status === "trialing") && sub.items.data.some(item => item.price.id === priceId)
-    );
-
-    if (activeSub) {
-      // Check if it matches the requested price
-      const hasMatchingPrice = activeSub.items.data.some(
-        (item) => item.price.id === priceId
+      const activeSub = subscriptions.data.find(
+        (sub) =>
+          (sub.status === "active" || sub.status === "trialing") &&
+          sub.metadata?.siteSlug === siteSlug // valid if we stored siteSlug, otherwise check items
+      ) || subscriptions.data.find(
+        // Fallback: check if the price matches, assuming one sub per site per user concept
+        (sub) => (sub.status === "active" || sub.status === "trialing") && sub.items.data.some(item => item.price.id === priceId)
       );
 
-      if (hasMatchingPrice) {
-        // Scenario: User cancelled but is still in active period, and wants to "re-add" (reactivate)
-        if (activeSub.cancel_at_period_end) {
-          await stripe.subscriptions.update(activeSub.id, {
-            cancel_at_period_end: false,
-          });
-          return { type: "restored", subscription: activeSub };
-        } else {
-          // Already active and running.
-          return { type: "active", subscription: activeSub };
+      if (activeSub) {
+        // Check if it matches the requested price
+        const hasMatchingPrice = activeSub.items.data.some(
+          (item) => item.price.id === priceId
+        );
+
+        if (hasMatchingPrice) {
+          // Scenario: User cancelled but is still in active period, and wants to "re-add" (reactivate)
+          if (activeSub.cancel_at_period_end) {
+            await stripe.subscriptions.update(activeSub.id, {
+              cancel_at_period_end: false,
+            });
+            return { type: "restored", subscription: activeSub };
+          } else {
+            // Already active and running.
+            return { type: "active", subscription: activeSub };
+          }
         }
       }
-      // If plan is different, we proceed to create a NEW session? 
-      // This creates the duplicate issue if not handled. 
-      // For now, let's assume "re-add" implies same plan or basic preventing of duplicates.
-      // If we want to support upgrades, we should let it pass or handle updates. 
-      // Given the specific bug report "creates 2 subscriptions", blocking or warning is safer.
-      // BUT, changing plans effectively creates 2 subs until the old one cancels.
-      // Let's stick to the specific "cancel then re-add" fix (reactivation).
+    } catch (error: any) {
+      // If the customer doesn't exist, we should clear it and proceed as a new user
+      if (error.code === 'resource_missing' && error.param === 'customer') {
+        console.warn(`[Checkout] Customer ${checkoutOptions.customer} not found in Stripe during sub check. Cleaning up.`);
+
+        await prisma.user.update({
+          where: { id: sessionUser.id },
+          data: { stripeCustomerId: null },
+        });
+
+        // Remove customer from options so we create a new one later
+        delete checkoutOptions.customer;
+        // Ensure email is set for new customer creation (though it should already be handled by create logic if customer is missing)
+        checkoutOptions.customer_email = sessionUser.email;
+      } else {
+        throw error;
+      }
     }
   }
 

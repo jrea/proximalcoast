@@ -397,7 +397,7 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
               </div>
 
               <div className={`mt-6 pt-6 border-t-4 relative ${subscription?.plan === 'savage' ? 'border-white/20' : 'border-black/10'}`}>
-                <div className="font-bold text-lg sm:text-xl uppercase leading-tight max-w-lg">
+                <div className="font-bold text-lg sm:text-xl uppercase leading-tight max-w-lg flex flex-col gap-2">
                   {isReallyActive && !subscription?.upcomingPlan && (
                     <span>
                       <span className={`px-1 ${subscription?.plan === 'savage' ? 'bg-white text-purple-600' : subscription?.plan === 'trial' ? 'bg-[#51361a] text-[#8b4513]' : 'bg-black text-white'}`}>UNLOCKED:</span>
@@ -471,7 +471,7 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                     </div>
                   )}
                   {!isActive && (
-                    <span className="text-neutral-500 italic pt-4">
+                    <span className="text-neutral-500 italic">
                       Restricted Mode. Only basic, pathetic insults available.
                     </span>
                   )}

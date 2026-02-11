@@ -7,6 +7,7 @@ import { authClient } from "@/lib/auth-client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Logo } from "./logo";
 import { JerkstoreCheckoutForm } from "./checkout-form";
+import { cn } from "@/lib/utils";
 
 interface BillingContentProps {
   initialSubscription: any;
@@ -274,7 +275,7 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
 
             {(isSuccess || pollingComplete) && isActive && (
               <div className="p-4 bg-green-500 text-white border-4 border-black font-black uppercase italic shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                PAYMENT RECEIVED. WELCOME TO THE ELITE.
+                PAYMENT RECEIVED. WELCOME TO {subscription?.plan === 'savage' ? 'GOD MODE' : subscription?.plan === 'elite' ? 'THE ELITE' : subscription?.plan === 'trial' ? 'DIAPER MODE' : 'STANDARD'}.
               </div>
             )}
 
@@ -285,7 +286,15 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
               </div>
             )}
 
-            <div className={`relative p-6 sm:p-8 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden group ${isActive ? (subscription?.plan === 'savage' ? 'bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 text-white' : subscription?.plan === 'trial' ? 'nasty-gradient text-yellow-200' : 'bg-gradient-to-br from-yellow-300 via-yellow-200 to-yellow-400') : 'bg-neutral-100'}`}>
+            <div className={cn(
+              "relative p-6 sm:p-8 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden group",
+              isActive ? (
+                subscription?.plan === 'savage' ? 'bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 text-white' :
+                  subscription?.plan === 'trial' ? 'nasty-gradient text-yellow-200' :
+                    subscription?.plan === 'elite' ? 'bg-gradient-to-br from-yellow-300 via-yellow-200 to-yellow-400' :
+                      'bg-white text-black'
+              ) : 'bg-neutral-100'
+            )}>
               {isActive && subscription?.plan === 'trial' && (
                 <div className="absolute inset-x-0 bottom-0 h-0 pointer-events-none">
                   {[...Array(10)].map((_, i) => (
@@ -357,7 +366,9 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                           ? "God-tier access. Peasants will bow to your will."
                           : subscription?.plan === 'trial'
                             ? "Bare minimum access. We're embarrassed for you."
-                            : "Unlimited psychological warfare. You are a weapon."}
+                            : subscription?.plan === 'elite'
+                              ? "Unlimited psychological warfare. You are a weapon."
+                              : "Standard access. You're doing okay, I guess."}
                       </span>
                     </span>
                   )}

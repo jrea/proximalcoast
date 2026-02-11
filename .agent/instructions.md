@@ -20,3 +20,4 @@
 - Use **Vanilla CSS** for styling.
 - Follow **Lucide React** for icons.
 - Ensure **Aesthetics** are premium and modern.
+- Use **cn()** for conditional class names (avoid ternary operators for classes).

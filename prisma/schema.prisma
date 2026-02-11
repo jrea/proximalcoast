@@ -102,6 +102,7 @@ model user {
   session       session[]
   jerkstore_insult jerkstore_insult[]
   subscriptions    user_subscription[]
+  overmake_estimate overmake_estimate[]
 
   @@schema("main")
 }
@@ -157,6 +158,19 @@ model jerkstore_insult_safe {
   topic            String?
   language         String?
   createdAt        DateTime @default(now()) @db.Timestamp(6)
+
+  @@schema("main")
+}
+
+model overmake_estimate {
+  id        String   @id @default(uuid())
+  task      String
+  level     Int
+  proposal  String
+  bom       String // Stored as JSON string
+  userId    String
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
 
   @@schema("main")
 }

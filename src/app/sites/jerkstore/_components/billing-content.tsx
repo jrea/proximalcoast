@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LogOut, CreditCard, ChevronLeft, Loader2, AlertTriangle, HeartOff, Star, Zap, Gem, Banknote } from "lucide-react";
+import { LogOut, CreditCard, ChevronLeft, Loader2, AlertTriangle, HeartOff, Star, Zap, Gem, Banknote, Skull, Crown, Siren, Ghost, Trash2, EggFriedIcon, PlaneTakeoffIcon } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Logo } from "./logo";
@@ -30,6 +30,46 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isSuccess = searchParams.get("success") === "true";
+  const [cancelLabel, setCancelLabel] = useState("Terminate Subscription");
+  const [cancelHovered, setCancelHovered] = useState(false);
+
+  const CANCEL_PHRASES = [
+    "Terminate Subscription",
+    "I'm A Quitter",
+    "Abandon Glory",
+    "Return To Mediocrity",
+    "I Hate Fun",
+    "Make Me Boring Again",
+    "Delete My Coolness",
+    "Embrace The Lame",
+    "Run Away Crying",
+    "Admit Defeat",
+    "I Prefer Being Normie",
+    "Cancel My Personality",
+    "Go Back To Mom's Basement",
+    "I Can't Handle It",
+    "Too Savage For Me",
+    "Downgrade To NPC",
+    "Revoke My Card",
+    "Banish Me",
+    "Eject Eject Eject",
+    "Self-Destruct Mode",
+    "Abort Mission",
+    "Rage Quit",
+    "Flip The Table",
+    "I'm Done With This",
+    "Take My Ball And Go Home",
+    "Unsubscribe From Greatness",
+    "Choose Violence (Cancellation)",
+    "Commit Social Suicide",
+    "Fade Into Obscurity",
+    "Become Irrelevant",
+    "End The Suffering"
+  ];
+
+  useEffect(() => {
+    setCancelLabel(CANCEL_PHRASES[Math.floor(Math.random() * CANCEL_PHRASES.length)]);
+  }, []);
 
   const fetchSubscription = async () => {
     try {
@@ -447,7 +487,7 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                 >
                   &larr; Nevermind, I'll stay poor
                 </button>
-                <JerkstoreCheckoutForm priceId={selectedPlan || ""} />
+                <JerkstoreCheckoutForm planId={selectedPlan || ""} />
               </div>
             ) : (
               <div className="flex flex-col gap-4 pt-4">
@@ -464,9 +504,11 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                     ) : (
                       <button
                         onClick={() => setShowConfirm(true)}
-                        className="w-full bg-black text-white font-black text-xl sm:text-2xl py-6 border-4 border-black hover:bg-neutral-800 transition-all flex items-center justify-center gap-3 active:translate-x-1 active:translate-y-1 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
+                        onMouseEnter={() => setCancelHovered(true)}
+                        onMouseLeave={() => setCancelHovered(false)}
+                        className="w-full bg-red-500 text-white font-black text-xl sm:text-2xl py-6 border-4 border-black hover:bg-red-600 transition-all flex items-center justify-center gap-3 active:translate-x-1 active:translate-y-1 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
                       >
-                        <HeartOff className="w-6 h-6" /> Terminate Subscription
+                        <HeartOff className="w-6 h-6" /> {cancelHovered ? "Cancel Subscription" : cancelLabel}
                       </button>
                     )}
                   </>
@@ -484,7 +526,7 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
 
                   <h3 className="text-xl font-black uppercase italic text-center text-neutral-400 mb-2">Available Plans</h3>
                   <p className="text-center font-mono text-xs text-neutral-500 mb-6 max-w-sm mx-auto">
-                    Upgrades are charged immediately (prorated difference). Full price kicks in on your next bill. No refunds for cowardice.
+                    Upgrades are charged immediately (prorated difference). Downgrades take effect next billing cycle. No refunds for cowardice.
                   </p>
 
                   {/* SAVAGE TIER - LEGENDARY STATUS */}
@@ -540,18 +582,24 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                         {/* Features Grid */}
                         <div className="space-y-4 mb-10 flex-grow">
                           {[
-                            { text: "1000 Roasts / Day", sub: "Phenomenal Cosmic Power" },
-                            { text: "Status Symbol", sub: "It's Purplink" },
-                            { text: "Priority Queue", sub: "This does nothing", fake: true },
-                            { text: "Mad Respect", sub: "We Pretend To Care", fake: true },
-                            { text: "Secret Features", sub: "Coming Soon™", fake: true }
+                            { text: "1000 Roasts / Day", sub: "Phenomenal Cosmic Power", icon: Zap },
+                            { text: "Bigger and Longer", sub: "That's what she said", icon: PlaneTakeoffIcon },
+                            { text: "Status Symbol", sub: "It's Purplink", icon: Crown },
+                            { text: "Priority Queue", sub: "This does nothing", fake: true, icon: Siren },
+                            { text: "Mad Respect", sub: "We Pretend To Care", fake: true, icon: HeartOff },
+                            { text: "Secret Features", sub: "Coming Soon™", fake: true, icon: Ghost }
                           ].map((feature, i) => (
-                            <div key={i} className="group/item flex items-center gap-4 p-3 bg-black/20 border border-white/20 hover:bg-black/40 hover:border-white transition-all duration-300 hover:translate-x-1 backdrop-blur-sm">
-                              <div className="w-10 h-10 shrink-0 bg-white text-purple-600 flex items-center justify-center border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] group-hover/item:text-black group-hover/item:bg-white transition-colors">
-                                <Zap className="w-5 h-5 fill-current" />
+                            <div key={i} className="group/item flex items-center gap-4 p-3 bg-black/20 border border-white/20 hover:bg-black/40 hover:border-white transition-all duration-300 hover:translate-x-1 backdrop-blur-sm relative overflow-hidden">
+                              <div className="w-10 h-10 shrink-0 bg-white text-purple-600 flex items-center justify-center border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] group-hover/item:text-black group-hover/item:bg-white transition-colors relative z-10">
+                                <feature.icon className="stroke-current" />
                               </div>
-                              <div>
-                                <div className="text-white font-black uppercase text-sm leading-none drop-shadow-sm">{feature.text}</div>
+                              <div className="relative z-10">
+                                <div className="flex items-center gap-2">
+                                  <div className="text-white font-black uppercase text-sm leading-none drop-shadow-sm">{feature.text}</div>
+                                  {feature.fake && (
+                                    <span className="bg-red-600 text-white text-[8px] px-1 py-0.5 font-bold uppercase rotate-6 border border-white/50 shadow-sm animate-pulse">FAKE</span>
+                                  )}
+                                </div>
                                 <div className="text-[10px] text-white/80 font-mono uppercase mt-1 group-hover/item:text-white group-hover/item:opacity-100">{feature.sub}</div>
                               </div>
                             </div>
@@ -565,7 +613,7 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                             if (isActive) {
                               handleUpdateSubscription(process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_SAVAGE!, 'savage');
                             } else {
-                              setSelectedPlan(process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_SAVAGE!);
+                              setSelectedPlan('savage');
                               setShowCheckout(true);
                             }
                           }}
@@ -612,7 +660,7 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                         <button
                           disabled={loading}
                           onClick={() => {
-                            setSelectedPlan(process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_ELITE!);
+                            setSelectedPlan('elite');
                             setShowCheckout(true);
                           }}
                           className="mt-6 w-full bg-black text-white font-black py-4 text-xl border-2 border-transparent hover:bg-neutral-800 transition-colors flex items-center justify-center gap-2"
@@ -666,16 +714,7 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                         <li>• Basic Verification Only</li>
                         <li>• No Pride remaining</li>
                       </ul>
-                      <button
-                        disabled={loading}
-                        onClick={() => {
-                          setSelectedPlan(process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_FREE!);
-                          setShowCheckout(true);
-                        }}
-                        className="mt-6 w-full bg-[#1a120d] text-[#8b7d13] font-bold py-2 border-2 border-[#8b4513] hover:bg-[#322319] transition-colors uppercase text-xs"
-                      >
-                        {loading ? <Loader2 className="animate-spin w-4 h-4 mx-auto" /> : "Accept Failure"}
-                      </button>
+                      {/* Button removed as Trial is not subscribable */}
                     </div>
                   )}
 
@@ -820,12 +859,12 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
       )}
       <footer className="mt-12 text-center font-mono text-[10px] text-neutral-400 uppercase tracking-widest flex flex-col gap-2 relative z-10">
         <a
-          href="https://x.com/jerkstore_app"
+          href="https://x.com/chieftrashofcr"
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-black transition-colors underline decoration-dotted underline-offset-4"
         >
-          Contact: @jerkstore_app
+          Contact: @chieftrashofcr
         </a>
       </footer>
     </div>

@@ -17,7 +17,6 @@ export const PLANS = {
     features: ["Access to Level 1-3", "Dumpster Logic", "No Refunds", "Smells like gasoline"],
     theme: THEMES.TRASH,
     maxLevel: 3,
-    priceIdEnvVar: "NEXT_PUBLIC_STRIPE_PRICE_ID_OVERMAKE_BUSHFIX"
   },
   DIYER: {
     id: "diyer",
@@ -27,7 +26,6 @@ export const PLANS = {
     features: ["Access to Level 1-6", "Standard Logic", "Customer Support (Email)", "Tax Deductible?"],
     theme: THEMES.STANDARD,
     maxLevel: 6,
-    priceIdEnvVar: "NEXT_PUBLIC_STRIPE_PRICE_ID_OVERMAKE_DIYER"
   },
   SUCCESSION: {
     id: "succession",
@@ -37,7 +35,6 @@ export const PLANS = {
     features: ["Access to Level 1-10", "Galactic Logic", "Concierge Abuse", "Titanium Card (Digital)"],
     theme: THEMES.LUXURY,
     maxLevel: 10,
-    priceIdEnvVar: "NEXT_PUBLIC_STRIPE_PRICE_ID_OVERMAKE_SUCCESSION"
   },
   // Free tier
   TRIAL: {

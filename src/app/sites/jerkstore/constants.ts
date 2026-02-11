@@ -121,3 +121,29 @@ export const PREMIUM_LANGUAGES = [
   { label: "Lojban", value: "Lojban" },
   { label: "Esperanto", value: "Esperanto" },
 ];
+
+export const PLANS = {
+  SAVAGE: {
+    id: "savage",
+    name: "Savage",
+  },
+  ELITE: {
+    id: "elite",
+    name: "Elite",
+  },
+  FREE: {
+    id: "free",
+    name: "Free",
+  }
+} as const;
+
+export type PlanId = keyof typeof PLANS;
+
+export const getPlanFromId = (id: string | null | undefined) => {
+  switch (id) {
+    case 'savage': return PLANS.SAVAGE;
+    case 'elite': return PLANS.ELITE;
+    case 'free': return PLANS.FREE;
+    default: return null;
+  }
+}

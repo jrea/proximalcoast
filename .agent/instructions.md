@@ -21,3 +21,4 @@
 - Follow **Lucide React** for icons.
 - Ensure **Aesthetics** are premium and modern.
 - Use **cn()** for conditional class names (avoid ternary operators for classes).
+- Use **pnpm** for building and package management.

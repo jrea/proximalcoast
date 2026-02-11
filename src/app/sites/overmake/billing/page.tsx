@@ -9,9 +9,9 @@ import { ArrowLeft } from "lucide-react";
 import { PLANS, SITE_SLUG, THEMES } from "@overmake/constants";
 
 const PLANS_LIST = [
-  { ...PLANS.BUSHFIX, priceId: process.env[PLANS.BUSHFIX.priceIdEnvVar] || "price_dummy_bushfix" },
-  { ...PLANS.DIYER, priceId: process.env[PLANS.DIYER.priceIdEnvVar] || "price_dummy_diyer" },
-  { ...PLANS.SUCCESSION, priceId: process.env[PLANS.SUCCESSION.priceIdEnvVar] || "price_dummy_succession" },
+  PLANS.BUSHFIX,
+  PLANS.DIYER,
+  PLANS.SUCCESSION,
 ];
 
 export default function BillingPage() {
@@ -44,7 +44,7 @@ export default function BillingPage() {
               Change Plan
             </button>
             <h2 className="text-2xl font-bold mb-8 text-center uppercase">Checkout: <span className="text-blue-600">{selectedPlanData?.name}</span></h2>
-            <OvermakeCheckoutForm priceId={selectedPlanData?.priceId || ""} theme={selectedPlanData?.theme} />
+            <OvermakeCheckoutForm planId={selectedPlanData?.id || ""} theme={selectedPlanData?.theme} />
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">

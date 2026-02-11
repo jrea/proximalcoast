@@ -9,7 +9,7 @@ import {
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-export function JerkstoreCheckoutForm({ priceId }: { priceId: string }) {
+export function JerkstoreCheckoutForm({ planId }: { planId: string }) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchClientSecret = useCallback(() => {
@@ -20,12 +20,16 @@ export function JerkstoreCheckoutForm({ priceId }: { priceId: string }) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        priceId: priceId || process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_ELITE,
-        siteSlug: "jerkstore",
+        planId: planId,
       }),
     })
       .then((res) => res.json())
       .then((data) => {
+        if (data.restored) {
+          // Subscription was restored (e.g. cancelled but reactivated)
+          window.location.reload();
+          return ""; // Return empty string to prevent error in EmbeddedCheckoutProvider, though reload should happen fast
+        }
         if (data.error) {
           throw new Error(data.error);
         }
@@ -36,7 +40,7 @@ export function JerkstoreCheckoutForm({ priceId }: { priceId: string }) {
         setError(err.message || "Failed to initialize checkout");
         throw err;
       });
-  }, [priceId]);
+  }, [planId]);
 
   const options = { fetchClientSecret };
 

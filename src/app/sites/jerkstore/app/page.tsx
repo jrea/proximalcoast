@@ -80,12 +80,12 @@ export default async function JerkstorePage({
       <footer className="max-w-xl mx-auto mt-12 mb-8 text-center font-mono text-[9px] sm:text-[10px] text-neutral-400 uppercase tracking-widest flex flex-col gap-2">
         <div>Logged in as {session.user.email}</div>
         <a
-          href="https://x.com/jerkstore_app"
+          href="https://x.com/chieftrashofcr"
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-black transition-colors underline decoration-dotted underline-offset-4"
         >
-          Contact: @jerkstore_app
+          Contact: @chieftrashofcr
         </a>
       </footer>
     </div>

@@ -12,12 +12,12 @@ import { THEMES } from "@overmake/constants";
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 interface CheckoutFormProps {
-  priceId: string;
+  planId: string;
   onClose?: () => void;
   theme?: string;
 }
 
-export function OvermakeCheckoutForm({ priceId, onClose, theme }: CheckoutFormProps) {
+export function OvermakeCheckoutForm({ planId, onClose, theme }: CheckoutFormProps) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchClientSecret = useCallback(() => {
@@ -27,12 +27,15 @@ export function OvermakeCheckoutForm({ priceId, onClose, theme }: CheckoutFormPr
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        priceId: priceId,
-        siteSlug: "overmake",
+        planId: planId,
       }),
     })
       .then((res) => res.json())
       .then((data) => {
+        if (data.restored) {
+          window.location.reload();
+          return "";
+        }
         if (data.error) {
           throw new Error(data.error);
         }
@@ -43,7 +46,7 @@ export function OvermakeCheckoutForm({ priceId, onClose, theme }: CheckoutFormPr
         setError(err.message || "Failed to initialize checkout");
         throw err;
       });
-  }, [priceId]);
+  }, [planId]);
 
   const options = { fetchClientSecret };
 

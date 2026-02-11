@@ -233,7 +233,7 @@ export function AccessModal({
                 </div>
               ) : (
                 <div className="border-4 border-black">
-                  <JerkstoreCheckoutForm priceId={priceId || ""} />
+                  <JerkstoreCheckoutForm planId={isSavage ? 'savage' : isTrial ? 'free' : 'elite'} />
                 </div>
               )}
             </div>

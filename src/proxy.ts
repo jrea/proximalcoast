@@ -34,7 +34,7 @@ export default async function proxy(req: NextRequest) {
   const path = `${url.pathname}${searchParams.length > 0 ? `?${searchParams}` : ""}`;
 
   // Routes that should be served from the main app even on subdomains
-  const GLOBAL_API_ROUTES = ["/api/auth", "/api/portal", "/api/webhooks", "/api/subscription", "/api/cancel-subscription", "/api/reactivate-subscription", "/api/update-subscription", "/api/cancel-downgrade"];
+  const GLOBAL_API_ROUTES = ["/api/auth", "/api/portal", "/api/webhooks", "/api/subscription", "/api/subscription-status", "/api/cancel-subscription", "/api/reactivate-subscription", "/api/update-subscription", "/api/cancel-downgrade"];
   if (GLOBAL_API_ROUTES.some(route => path.startsWith(route))) {
     return NextResponse.rewrite(new URL(path, req.url));
   }

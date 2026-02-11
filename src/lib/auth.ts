@@ -10,7 +10,7 @@ export const auth = betterAuth({
   plugins: [
     organization(),
   ],
-  email: {
+  emailAndPassword: {
     enabled: true,
   },
   socialProviders: {
@@ -30,8 +30,11 @@ export const auth = betterAuth({
     "http://localhost:3000",
     "http://lvh.me:3000",
     "http://jerkstore.lvh.me:3000",
+    "http://dnbk.lvh.me:3000",
+    "http://bkd.lvh.me:3000",
     `https://${process.env.ROOT_DOMAIN}`,
     `https://jerkstore.${process.env.ROOT_DOMAIN}`,
-    // Add other origins as needed
+    `https://dnbk.${process.env.ROOT_DOMAIN}`,
+    `https://bkd.${process.env.ROOT_DOMAIN}`,
   ],
 });

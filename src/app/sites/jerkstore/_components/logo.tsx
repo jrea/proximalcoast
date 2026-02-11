@@ -15,7 +15,7 @@ export function Logo({
 }: LogoProps) {
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <Flame className={`${iconClassName} stroke-[3px] text-red-600 fill-yellow-400`} />
+      <Flame className={iconClassName} />
       {!iconOnly && (
         <span className={textClassName}>Jerkstore</span>
       )}

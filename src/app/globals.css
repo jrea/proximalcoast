@@ -151,4 +151,9 @@
       background-position: 0% 50%;
     }
   }
+
+  @keyframes savage-shimmer {
+    0% { transform: skewX(-12deg) translateX(-100%); }
+    100% { transform: skewX(-12deg) translateX(200%); }
+  }
 }

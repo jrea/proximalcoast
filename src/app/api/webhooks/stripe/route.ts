@@ -8,6 +8,7 @@ const getPlanFromPriceId = (priceId: string) => {
   if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_SAVAGE) return "savage";
   if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_ELITE) return "elite";
   if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_FREE) return "trial";
+  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_BKD) return "standard";
   return "standard";
 };
 
@@ -57,6 +58,8 @@ export async function POST(req: Request) {
             },
           });
 
+          const price = subscription.items.data[0].price;
+
           if (existingByComposite) {
             // Update the existing record for this user/site with the NEW subscription ID
             await prisma.user_subscription.update({
@@ -72,6 +75,8 @@ export async function POST(req: Request) {
                 plan: plan,
                 cancelAtPeriodEnd: subscription.cancel_at_period_end,
                 expiresAt,
+                priceAmount: price.unit_amount,
+                priceCurrency: price.currency,
               },
             });
           } else {
@@ -82,6 +87,8 @@ export async function POST(req: Request) {
                 plan: plan,
                 cancelAtPeriodEnd: subscription.cancel_at_period_end,
                 expiresAt,
+                priceAmount: price.unit_amount,
+                priceCurrency: price.currency,
               },
               create: {
                 userId: userId,
@@ -91,6 +98,8 @@ export async function POST(req: Request) {
                 plan: plan,
                 cancelAtPeriodEnd: subscription.cancel_at_period_end,
                 expiresAt,
+                priceAmount: price.unit_amount,
+                priceCurrency: price.currency,
               },
             });
           }
@@ -131,6 +140,8 @@ export async function POST(req: Request) {
             ? new Date((subscription as any).current_period_end * 1000)
             : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
+          const price = subscription.items.data[0].price;
+
           await prisma.user_subscription.upsert({
             where: { stripeSubscriptionId: subscriptionId },
             update: {
@@ -138,6 +149,8 @@ export async function POST(req: Request) {
               plan: plan,
               cancelAtPeriodEnd: subscription.cancel_at_period_end,
               expiresAt,
+              priceAmount: price.unit_amount,
+              priceCurrency: price.currency,
             },
             create: {
               userId,
@@ -147,6 +160,8 @@ export async function POST(req: Request) {
               plan: plan,
               cancelAtPeriodEnd: subscription.cancel_at_period_end,
               expiresAt,
+              priceAmount: price.unit_amount,
+              priceCurrency: price.currency,
             },
           });
         }
@@ -181,11 +196,18 @@ export async function POST(req: Request) {
         select: { upcomingPlan: true, plan: true }
       });
 
+      const price = subUpdated.items?.data[0]?.price;
+
       const updateData: any = {
         status: subUpdated.status,
         cancelAtPeriodEnd: subUpdated.cancel_at_period_end,
         expiresAt,
       };
+
+      if (price) {
+        updateData.priceAmount = price.unit_amount;
+        updateData.priceCurrency = price.currency;
+      }
 
       if (updatedPlan) {
         updateData.plan = updatedPlan;
@@ -206,6 +228,8 @@ export async function POST(req: Request) {
         plan: updatedPlan || "standard",
         cancelAtPeriodEnd: subUpdated.cancel_at_period_end,
         expiresAt,
+        priceAmount: price?.unit_amount,
+        priceCurrency: price?.currency,
       };
 
       if (userId) {

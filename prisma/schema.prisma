@@ -116,6 +116,8 @@ model user_subscription {
   plan                 String   @default("standard") // standard, elite, savage
   upcomingPlan         String?  // Plan scheduling to switch to at period end
   cancelAtPeriodEnd    Boolean  @default(false)
+  priceAmount          Int?     // Amount in cents
+  priceCurrency        String?  // e.g., "usd"
   expiresAt            DateTime @db.Timestamp(6)
   createdAt            DateTime @default(now()) @db.Timestamp(6)
   updatedAt            DateTime @updatedAt @db.Timestamp(6)

@@ -2,9 +2,12 @@
 
 import { useCompletion } from "@ai-sdk/react";
 import { useState, useEffect } from "react";
-import { Loader2, Zap } from "lucide-react";
+import { useRef } from "react";
+import { Loader2, Zap, Copy, Check, Share2 } from "lucide-react";
+import { toBlob } from "html-to-image";
 import { AccessModal } from "./access-modal";
 import { Logo } from "./logo";
+import { ShareCard } from "./share-card";
 import { BUTTON_LABELS, TOPIC_LABELS, STANDARD_LANGUAGES, PREMIUM_LANGUAGES } from "../constants";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +29,10 @@ export function InsultGenerator({
   const [isBooming, setIsBooming] = useState(false);
   const [buttonLabel, setButtonLabel] = useState(initialButtonLabel);
   const [topicLabel, setTopicLabel] = useState(initialTopicLabel);
+  const [isCopying, setIsCopying] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const resultRef = useRef<HTMLDivElement>(null);
+  const shareCardRef = useRef<HTMLDivElement>(null);
 
   const triggerBoom = () => {
     setIsBooming(true);
@@ -73,6 +80,66 @@ export function InsultGenerator({
     // Cycle labels
     setButtonLabel(BUTTON_LABELS[Math.floor(Math.random() * BUTTON_LABELS.length)]);
     setTopicLabel(TOPIC_LABELS[Math.floor(Math.random() * TOPIC_LABELS.length)]);
+    setCopied(false);
+  };
+
+  const copyImage = async () => {
+    if (!shareCardRef.current) return;
+    setIsCopying(true);
+    try {
+      // Small delay to ensure any layout changes settle
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      const blob = await toBlob(shareCardRef.current, {
+        backgroundColor: "transparent", // Allow gradients to render correctly
+        cacheBust: true,
+        pixelRatio: 2, // High quality, better performance/compatibility
+        width: 450,
+        height: 800,
+        style: {
+          opacity: "1",
+          visibility: "visible",
+          position: "relative",
+          left: "0",
+          top: "0",
+        }
+      });
+
+      if (blob) {
+        const canCopy = navigator.clipboard && typeof ClipboardItem !== "undefined";
+
+        if (canCopy) {
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({
+                [blob.type]: blob,
+              }),
+            ]);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+            return;
+          } catch (copyErr) {
+            console.error("[Jerkstore] Clipboard write failed, falling back to download:", copyErr);
+          }
+        }
+
+        // Fallback: Download the image
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `jerkstore-roast-${Date.now()}.png`;
+        link.click();
+        URL.revokeObjectURL(url);
+
+        // Show a brief "Downloaded" state if copy failed
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    } catch (err) {
+      console.error("[Jerkstore] Copy failed:", err);
+    } finally {
+      setIsCopying(false);
+    }
   };
 
   const isSavage = plan === "savage";
@@ -83,10 +150,6 @@ export function InsultGenerator({
   return (
     <div className="relative w-full max-w-2xl mx-auto">
       <style jsx global>{`
-        @keyframes savage-shimmer {
-          0% { transform: skewX(-12deg) translateX(-100%); }
-          100% { transform: skewX(-12deg) translateX(200%); }
-        }
         @keyframes savage-float {
           0%, 100% { transform: translateY(0) rotate(3deg); }
           50% { transform: translateY(-5px) rotate(5deg); }
@@ -121,6 +184,33 @@ export function InsultGenerator({
           background: linear-gradient(135deg, #9333ea, #db2777, #2563eb);
           background-size: 200% 200%;
           animation: gradient-shift 5s ease infinite;
+        }
+        @keyframes fluid-shift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .nasty-gradient {
+          background: linear-gradient(135deg, #3d2b1f 0%, #5c4033 50%, #2a1d15 100%);
+          background-size: 200% 200%;
+          animation: fluid-shift 12s ease infinite;
+          border-color: #2a1d15 !important;
+        }
+        @keyframes stink-drift {
+          0% { transform: translateY(0) translateX(0); opacity: 0; }
+          20% { opacity: 0.4; }
+          50% { transform: translateY(-40px) translateX(10px); }
+          80% { opacity: 0.1; }
+          100% { transform: translateY(-80px) translateX(-5px); opacity: 0; }
+        }
+        .stink-line {
+          position: absolute;
+          width: 2px;
+          height: 20px;
+          background: #8b4513;
+          border-radius: 50%;
+          filter: blur(2px);
+          animation: stink-drift 3s infinite linear;
         }
         @keyframes gradient-shift {
           0% { background-position: 0% 50%; }
@@ -160,7 +250,7 @@ export function InsultGenerator({
         "p-4 sm:p-8 border-4 transition-all duration-700 relative overflow-hidden",
         isBooming && "booming-box",
         isSavage ? "savage-gradient border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] sm:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] text-white" :
-          isElite ? "bg-yellow-300 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black" :
+          isElite ? "bg-gradient-to-br from-yellow-300 via-yellow-200 to-yellow-400 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black" :
             "bg-white border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)] text-neutral-400"
       )}>
 
@@ -170,6 +260,11 @@ export function InsultGenerator({
             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30 mix-blend-overlay animate-pulse"></div>
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 translate-x-[-100%] animate-[savage-shimmer_3s_infinite_linear]"></div>
             <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, #000 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+          </div>
+        )}
+        {isElite && (
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] animate-[savage-shimmer_4s_infinite_linear]"></div>
           </div>
         )}
 
@@ -305,6 +400,15 @@ export function InsultGenerator({
           </button>
         </form>
 
+        <ShareCard
+          ref={shareCardRef}
+          input={input}
+          displayText={displayText}
+          isSavage={isSavage}
+          isElite={isElite}
+          isTrial={isTrial}
+        />
+
         {error && (
           <div className="mt-8 p-4 sm:p-6 border-4 border-black bg-red-100 text-red-600 font-bold uppercase text-xs italic shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center justify-between gap-4 text-center sm:text-left">
             <span>Error: {error.message || "Failed to generate roast. Try again, coward."}</span>
@@ -319,12 +423,24 @@ export function InsultGenerator({
         )}
 
         {(displayText || isLoading) && (
-          <div className={cn(
-            "mt-8 sm:mt-10 p-4 sm:p-8 font-mono text-lg sm:text-xl leading-relaxed relative overflow-hidden border-4 border-black transition-all duration-700",
-            isSavage ? "bg-black/60 backdrop-blur-xl text-white border-white/20 shadow-[0_0_30px_rgba(0,0,0,0.5)] sm:shadow-[0_0_50px_rgba(0,0,0,0.5)]" :
-              isElite ? "bg-white text-black shadow-[4px_4px_0px_0px_rgba(34,197,94,0.2)] sm:shadow-[8px_8px_0px_0px_rgba(34,197,94,0.2)]" :
-                "bg-neutral-50 text-neutral-400 border-dashed shadow-none"
-          )}>
+          <div
+            ref={resultRef}
+            className={cn(
+              "mt-8 sm:mt-10 p-4 sm:p-8 font-mono text-lg sm:text-xl leading-relaxed relative overflow-hidden border-4 border-black transition-all duration-700",
+              isSavage ? "bg-black/60 backdrop-blur-xl text-white border-white/20 shadow-[0_0_30px_rgba(0,0,0,0.5)] sm:shadow-[0_0_50px_rgba(0,0,0,0.5)]" :
+                isElite ? "bg-white text-black shadow-[4px_4px_0px_0px_rgba(34,197,94,0.2)] sm:shadow-[8px_8px_0px_0px_rgba(34,197,94,0.2)]" :
+                  "bg-neutral-50 text-neutral-400 border-dashed shadow-none"
+            )}
+          >
+            {/* Watermark */}
+            <div className={cn(
+              "absolute bottom-2 right-4 text-[8px] sm:text-[10px] font-black uppercase opacity-20 pointer-events-none select-none tracking-widest flex items-center gap-1",
+              isSavage ? "text-white" : "text-black"
+            )}>
+              <Logo className="scale-50 origin-right" iconOnly={true} />
+              JERKSTORE.PROXIMALCOAST.COM
+            </div>
+
             <div className={cn(
               "absolute top-0 right-0 px-3 sm:px-4 py-1 sm:py-2 text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] sm:tracking-[0.4em]",
               isSavage ? "bg-white text-purple-600" : "bg-black text-white"
@@ -345,17 +461,35 @@ export function InsultGenerator({
             </p>
 
             {displayText && !isLoading && (
-              <div className="mt-8 sm:mt-10 flex justify-end">
+              <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row gap-3 justify-end items-stretch sm:items-center">
+                <button
+                  onClick={copyImage}
+                  disabled={isCopying}
+                  className={cn(
+                    "px-4 sm:px-6 py-2 sm:py-3 font-black text-xs sm:text-sm uppercase transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 border-4 border-black",
+                    isSavage ? "bg-purple-600 text-white hover:bg-purple-500 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" :
+                      "bg-yellow-400 text-black hover:bg-yellow-300 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
+                    copied ? "bg-green-500 text-white" : ""
+                  )}
+                >
+                  {isCopying ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : copied ? (
+                    <>Made! <Check className="w-4 h-4" /></>
+                  ) : (
+                    <>Make Image <Copy className="w-4 h-4" /></>
+                  )}
+                </button>
                 <a
                   href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(displayText)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={cn(
-                    "w-full sm:w-auto justify-center px-4 sm:px-6 py-2 sm:py-3 font-black text-xs sm:text-sm uppercase transition-all duration-300 flex items-center gap-2 sm:gap-3 border-4 border-black",
+                    "px-4 sm:px-6 py-2 sm:py-3 font-black text-xs sm:text-sm uppercase transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 border-4 border-black",
                     isSavage ? "bg-white text-black hover:bg-neutral-100 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" : "bg-black text-white hover:bg-neutral-800 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
                   )}
                 >
-                  Share the Carnage <Zap className="w-4 h-4" />
+                  Post to X <Share2 className="w-4 h-4" />
                 </a>
               </div>
             )}

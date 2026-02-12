@@ -1,44 +1,58 @@
-
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useRefocusStore } from '../_store/store';
 import { cn } from '@/lib/utils';
-import { Command, MousePointer2 } from 'lucide-react';
+import { Command, MousePointer2, Scissors, ZoomIn, Scaling, Move, Loader2, Hand, Activity, Terminal, Slash, Cpu, Disc } from 'lucide-react';
 
 const ExportOverlay = () => {
   const currentTime = useRefocusStore((state) => state.currentTime);
   const getProjectDuration = useRefocusStore((state) => state.getProjectDuration);
   const setIsExporting = useRefocusStore((state) => state.setIsExporting);
 
-  // Use Project Duration for correct calculation (total time of edit, not source file)
-  // Calling getter inside render is OK for Zustand if state changes trigger re-render?
-  // getCurrentTransform calls get() which is disallowed inside render? No, this is store Hook.
-  // Actually, getProjectDuration is a function in state. Calling it is fine.
-  // But wait, the function USES state.segments.
-  // If we just got the function, it closes over 'get'?
-  // In Zustand `create`, methods use `get()`.
-  // So calling `getProjectDuration()` is safe.
   const duration = getProjectDuration();
   const progress = Math.min(100, Math.max(0, (currentTime / (duration || 1)) * 100));
 
   return (
-    <div className="absolute inset-0 z-50 bg-black/90 flex flex-col items-center justify-center text-white space-y-4">
-      <div className="text-3xl font-bold tracking-tight animate-pulse">Rendering Video...</div>
-      <div className="w-64 h-2 bg-neutral-800 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-blue-500 transition-all duration-300 ease-linear"
-          style={{ width: `${progress}%` }}
-        />
+    <div className="absolute inset-0 z-50 bg-[#02090E] flex flex-col items-center justify-center text-white space-y-16 selection:bg-[#28E7FF] selection:text-[#02090E]">
+      {/* TRON Legacy Grid Floor */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(40,231,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(40,231,255,0.1)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black,transparent:70%)]" />
+        <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-[#FF8F00]/10 to-transparent" />
       </div>
-      <div className="text-sm text-neutral-400 font-mono">
-        {progress.toFixed(0)}%
+
+      <div className="flex flex-col items-center space-y-6 relative">
+        <div className="text-[12px] font-black uppercase tracking-[0.5em] text-[#28E7FF] drop-shadow-[0_0_8px_#28E7FF]">VIDEO_EXPORT // UPLOAD_SEQUENCE</div>
+        <div className="text-8xl font-black italic tracking-tighter transform skew-x-[-12deg] flex items-center gap-4 group">
+          RENDERING<span className="text-[#28E7FF] drop-shadow-[0_0_15px_#28E7FF]">/</span><span className="text-[#FF8F00] drop-shadow-[0_0_15px_#FF8F00]">GRID</span>
+        </div>
       </div>
+
+      <div className="w-[600px] relative transform skew-x-[-12deg]">
+        <div className="h-2 w-full bg-white/5 border border-white/5 relative overflow-hidden">
+          <div
+            className="h-full bg-[#28E7FF] shadow-[0_0_20px_#28E7FF] transition-all duration-100 ease-linear"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+
+        <div className="flex justify-between mt-6 text-[11px] font-black text-[#28E7FF]/60 uppercase tracking-[0.3em] transform skew-x-[12deg]">
+          <div className="flex items-center gap-3">
+            <Disc className="w-4 h-4 animate-spin text-[#6FC3DF]" />
+            <span>RENDERING_FRAMES //</span>
+          </div>
+          <span className="text-[#6FC3DF] italic font-mono">{progress.toFixed(2)}%</span>
+        </div>
+      </div>
+
       <button
         onClick={() => setIsExporting(false)}
-        className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded border border-red-500/50 transition-colors"
+        className="group relative px-12 py-4 transform skew-x-[-12deg] transition-all hover:bg-[#FF8F00]/20"
       >
-        Cancel
+        <div className="absolute inset-0 border border-[#FF8F00]/30 group-hover:border-[#FF8F00] transition-colors" />
+        <div className="relative transform skew-x-[12deg] text-[10px] font-black uppercase tracking-[0.4em] text-[#FF8F00] drop-shadow-[0_0_5px_rgba(255,143,0,0.5)]">
+          CANCEL_RENDER //
+        </div>
       </button>
     </div>
   );
@@ -53,7 +67,6 @@ export function VideoPreview() {
   const videoSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const exportMusicRef = useRef<HTMLAudioElement>(null);
 
-
   // State
   const [isHovering, setIsHovering] = useState(false);
   const isDragging = useRef(false);
@@ -62,7 +75,6 @@ export function VideoPreview() {
   // Store Subscriptions
   const videoSrc = useRefocusStore((state) => state.videoSrc);
   const isPlaying = useRefocusStore((state) => state.isPlaying);
-  // Subscribe to isExporting to ensure re-render
   const isExporting = useRefocusStore((state) => state.isExporting);
   const videoVolume = useRefocusStore((state) => state.videoVolume);
   const segments = useRefocusStore((state) => state.segments);
@@ -73,15 +85,12 @@ export function VideoPreview() {
   const splitSegment = useRefocusStore((state) => state.splitSegment);
   const addKeyframe = useRefocusStore((state) => state.addKeyframe);
   const deleteSegment = useRefocusStore((state) => state.deleteSegment);
-  const selectedSegmentId = useRefocusStore((state) => state.selectedSegmentId);
   const updateKeyframe = useRefocusStore((state) => state.updateKeyframe);
   const setIsExporting = useRefocusStore((state) => state.setIsExporting);
-
 
   // --- Keyboard Shortcuts ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if input is focused
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
       switch (e.key.toLowerCase()) {
@@ -98,16 +107,14 @@ export function VideoPreview() {
         case 'delete':
         case 'backspace':
           const selSeg = useRefocusStore.getState().selectedSegmentId;
-          const selKey = useRefocusStore.getState().selectedKeyframeId;
           if (selSeg) deleteSegment(selSeg);
-          // if (selKey) deleteKeyframe(selKey); // Ambiguous if both selected?
           break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [play, pause, splitSegment, addKeyframe, deleteSegment]);
 
   // --- Audio Context Initialization ---
   useEffect(() => {
@@ -121,30 +128,19 @@ export function VideoPreview() {
     initAudio();
   }, []);
 
-
-  // --- Mouse Interaction (Scale/Pan) ---
-
+  // --- Mouse Interaction ---
   const handleWheel = (e: React.WheelEvent) => {
     if (!videoSrc) return;
-    // e.deltaY > 0 means scale DOWN, < 0 means scale UP
     const store = useRefocusStore.getState();
-    const { currentTime, keyframes, getSourceTime } = store;
-
-    // Logic: 
-    // 1. Find or Create Keyframe at current time
-    store.addKeyframe(); // This selects it or creates it
-
-    // 2. Get the new selected keyframe
+    store.addKeyframe();
     const newId = useRefocusStore.getState().selectedKeyframeId;
     if (!newId) return;
 
     const kf = useRefocusStore.getState().keyframes.find(k => k.id === newId);
     if (!kf) return;
 
-    // 3. Calc new scale
-    const delta = e.deltaY * -0.001; // Sensitivity
+    const delta = e.deltaY * -0.001;
     const newScale = Math.max(1, Math.min(10, kf.scale + delta));
-
     updateKeyframe(newId, { scale: newScale });
   };
 
@@ -152,8 +148,7 @@ export function VideoPreview() {
     if (e.button !== 0 || !videoSrc) return;
     isDragging.current = true;
 
-    // Ensure we have a keyframe to edit
-    useRefocusStore.getState().addKeyframe(); // Select/Create
+    useRefocusStore.getState().addKeyframe();
     const id = useRefocusStore.getState().selectedKeyframeId;
     const kf = useRefocusStore.getState().keyframes.find(k => k.id === id);
 
@@ -173,446 +168,165 @@ export function VideoPreview() {
     const id = useRefocusStore.getState().selectedKeyframeId;
     if (!id) return;
 
-    // Calculate Delta
-    // Need to sense container size to map pixels to %?
+    const kf = useRefocusStore.getState().keyframes.find(k => k.id === id);
+    if (!kf) return;
+
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
 
-    // Movement in %
-    // Moving mouse RIGHT should move Pan X (Focus Point) RIGHT?
-    // or Drag the VIDEO?
-    // Typically "Grab and Move" means dragging the content.
-    // If I drag content RIGHT, the focus point moves LEFT relative to content.
-    // Let's assume natural dragging (drag video).
-    // Drag Video Right -> Transform X moves + ?
-    // Transform is `translate(50 - x)`. 
-    // If x gets SMALLER, translate gets BIGGER (Right).
-    // So dragging Right -> x should decrease.
-
-    // Sensitivity: 100% = full width.
     const deltaX_px = e.clientX - dragStart.current.x;
     const deltaY_px = e.clientY - dragStart.current.y;
 
-    const deltaX_pct = (deltaX_px / rect.width) * 100;
-    const deltaY_pct = (deltaY_px / rect.height) * 100;
+    const deltaX_pct = ((deltaX_px / rect.width) * 100) / kf.scale;
+    const deltaY_pct = ((deltaY_px / rect.height) * 100) / kf.scale;
 
-    // Inverse for natural drag
-    const newX = dragStart.current.panX - deltaX_pct;
-    const newY = dragStart.current.panY - deltaY_pct;
-
-    updateKeyframe(id, { x: newX, y: newY });
+    updateKeyframe(id, {
+      x: dragStart.current.panX - deltaX_pct,
+      y: dragStart.current.panY - deltaY_pct
+    });
   };
 
   const handleMouseUp = () => {
     isDragging.current = false;
   };
 
-
-  // --- Export Logic ---
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
     if (!isExporting || !videoRef.current) return;
-
     const video = videoRef.current;
-
-    // Create canvas if needed (we use a hidden one for export)
-    // Actually we need to explicitly create one or use a ref.
-    // Let's create one dynamically or use the ref if we add it to JSX.
-    // We'll add a hidden canvas to JSX.
+    if (!canvasRef.current) { setIsExporting(false); return; }
     const canvas = canvasRef.current;
-    if (!canvas) {
-      console.error("No canvas found");
-      setIsExporting(false);
-      return;
-    }
-
-    // Setup Export
     const store = useRefocusStore.getState();
     store.pause();
-    store.seek(0); // Reset to start
-
-    // Setup Canvas Resolution (match video)
-    // Wait for video to be ready? It should be loaded.
+    store.seek(0);
     const { videoWidth, videoHeight } = video;
     canvas.width = videoWidth;
     canvas.height = videoHeight;
     const ctx = canvas.getContext('2d');
-
     if (!ctx) return;
-
-    // --- Export Sequence ---
     const executeExport = async () => {
-      console.log("Starting Export Sequence...");
       try {
-        // 1. Setup Canvas Stream
         const stream = canvas.captureStream(30);
-        console.log("Canvas stream created.");
-
-        // 2. Setup Audio (Await it!)
-        const ctx = audioCtxRef.current;
-        if (ctx) {
-          console.log("AudioContext State:", ctx.state);
-          if (ctx.state === 'suspended') {
-            await ctx.resume();
-            console.log("AudioContext Resumed. New State:", ctx.state);
-          }
-
-          const dest = ctx.createMediaStreamDestination();
-
-          // Video Source
+        const actx = audioCtxRef.current;
+        if (actx) {
+          if (actx.state === 'suspended') await actx.resume();
+          const dest = actx.createMediaStreamDestination();
           if (!videoSourceRef.current) {
             try {
-              console.log("Creating Video Source...");
-              videoSourceRef.current = ctx.createMediaElementSource(video);
-              videoSourceRef.current.connect(ctx.destination);
-              console.log("Video Source created and connected to speakers.");
-            } catch (e) {
-              console.warn("Create Video Source failed:", e);
-            }
+              videoSourceRef.current = actx.createMediaElementSource(video);
+              videoSourceRef.current.connect(actx.destination);
+            } catch (e) { }
           }
-
-          // Connect Video
-          if (videoSourceRef.current) {
-            videoSourceRef.current.connect(dest);
-            console.log("Video Source connected to Export Destination.");
-          } else {
-            // Fallback captureStream
-            console.warn("Using Fallback: captureStream for Video Audio.");
-            // @ts-ignore
-            const vStream = video.captureStream ? video.captureStream() : (video as any).mozCaptureStream ? (video as any).mozCaptureStream() : null;
-            if (vStream) {
-              const tracks = vStream.getAudioTracks();
-              console.log("Fallback Video Tracks found:", tracks.length);
-              if (tracks.length > 0) stream.addTrack(tracks[0]);
-            }
-          }
-
-          // Music Source
-          const musicRef = exportMusicRef.current;
-          if (musicRef) {
-            musicRef.currentTime = 0; // Ensure music starts at 0
-            console.log("Music Element Found via Ref.");
-            try {
-              // Use captureStream for music to be safe
-              // @ts-ignore
-              const mStream = musicRef.captureStream ? musicRef.captureStream() : (musicRef as any).mozCaptureStream ? (musicRef as any).mozCaptureStream() : null;
-              if (mStream) {
-                const mSource = ctx.createMediaStreamSource(mStream);
-                mSource.connect(dest);
-                console.log("Music Stream captured and connected to Export Destination.");
-              } else {
-                console.warn("Music captureStream not supported/failed.");
-              }
-            } catch (e) {
-              console.warn("Music capture failed", e);
-            }
-          } else {
-            console.log("No Music Element found.");
-          }
-
-          // Add Mixed Track to Stream
+          if (videoSourceRef.current) videoSourceRef.current.connect(dest);
           const mixedTracks = dest.stream.getAudioTracks();
-          console.log("Total Mixed Audio Tracks:", mixedTracks.length);
-          if (mixedTracks.length > 0) {
-            stream.addTrack(mixedTracks[0]);
-            console.log("Mixed Audio Track added to Recorder Stream.");
-          } else {
-            console.warn("NO AUDIO TRACKS in Destination Stream!");
-            // Only alert if we also didn't get a fallback track
-            if (stream.getAudioTracks().length === 0) {
-              alert("Warning: No audio tracks could be captured. The video may be silent.");
-            }
-          }
-        } else {
-          console.error("No AudioContext ref!");
+          if (mixedTracks.length > 0) stream.addTrack(mixedTracks[0]);
         }
-
-        // 3. Init Recorder
-        // Codec Priority
-        const mimeTypes = [
-          'video/mp4;codecs=avc1,mp4a.40.2',
-          'video/mp4',
-          'video/webm;codecs=vp9,opus',
-          'video/webm;codecs=vp8,opus',
-          'video/webm'
-        ];
-
-        let selectedMimeType = '';
-        for (const type of mimeTypes) {
-          if (MediaRecorder.isTypeSupported(type)) {
-            selectedMimeType = type;
-            break;
-          }
-        }
-
-        const options: MediaRecorderOptions = {
-          mimeType: selectedMimeType || undefined,
-          videoBitsPerSecond: 5000000, // 5 Mbps
-          audioBitsPerSecond: 192000   // 192 kbps
-        };
-
-        console.log("Selected MIME Type:", options.mimeType);
-
-        const recorder = new MediaRecorder(stream, options);
+        const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9,opus' });
         mediaRecorderRef.current = recorder;
         chunksRef.current = [];
-
-        recorder.ondataavailable = (e) => {
-          if (e.data.size > 0) chunksRef.current.push(e.data);
-        };
-
+        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
         recorder.onstop = () => {
-          const mime = options.mimeType || '';
-          const ext = mime.includes('mp4') ? 'mp4' : 'webm';
-          const type = mime || 'video/webm';
-          const blob = new Blob(chunksRef.current, { type });
+          const blob = new Blob(chunksRef.current, { type: 'video/webm' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `refocus-export-${Date.now()}.${ext}`;
+          a.download = `slice-dice-${Date.now()}.webm`;
           a.click();
-          URL.revokeObjectURL(url);
           setIsExporting(false);
-          const musicRef = exportMusicRef.current;
-          if (musicRef) {
-            musicRef.pause();
-          }
         };
-
         recorder.start();
         store.play();
-
-      } catch (err) {
-        console.error("Export Error", err);
-        setIsExporting(false);
-      }
+      } catch (err) { setIsExporting(false); }
     };
-
     executeExport();
+    return () => { if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop(); };
+  }, [isExporting, setIsExporting]);
 
-
-
-    return () => {
-      // Cleanup if component unmounts mid-export
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-        mediaRecorderRef.current.stop();
-      }
-    };
-  }, [isExporting]);
-
-  // Sync Video Play/Pause State
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !videoSrc) return;
-
-    if (isPlaying && video.paused) {
-      video.play().catch(console.error);
-    } else if (!isPlaying && !video.paused) {
-      video.pause();
+    if (video && videoSrc) {
+      if (isPlaying && video.paused) video.play().catch(() => { });
+      else if (!isPlaying && !video.paused) video.pause();
     }
   }, [isPlaying, videoSrc]);
 
-  // --- Playback Loop ---
   useEffect(() => {
     let animationFrameId: number;
-
     const loop = () => {
       const video = videoRef.current;
       const container = containerRef.current;
-
       if (video && container) {
         const store = useRefocusStore.getState();
-        const { currentTime, segments, getSourceTime, isExporting, audioSrc } = store;
-
-        // We use store.isPlaying as the source of truth for "should be playing"
+        const { currentTime, segments, getSourceTime } = store;
         const isStorePlaying = store.isPlaying;
-
-        // Sync music playback for export (Invisible Audio Element)
-        if (isExporting && isStorePlaying && audioSrc) {
-          const musicRef = exportMusicRef.current;
-          if (musicRef) {
-            if (musicRef.paused) musicRef.play().catch(() => { });
-
-            // Relaxed sync for export:
-            // Only seek if drift is > 0.5s to avoid audio stuttering.
-            // Seeking is expensive and causes audible glitches.
-            if (Math.abs(musicRef.currentTime - currentTime) > 0.5) {
-              console.warn("Export Sync: Correcting drift", musicRef.currentTime, currentTime);
-              musicRef.currentTime = currentTime;
-            }
-          }
-        }
-
         if (isStorePlaying) {
-          let currentSourceTime = video.currentTime;
-
-          // Check for manual seek (Video drift vs Store target)
-          const expectedSourceTime = getSourceTime(currentTime);
-
-          // If we drifted significantly, it's likely a user seek.
-          // Reduced threshold to 0.25s to catch small scrubs, relying on epsilon to avoid gap false positives.
-          if (Math.abs(expectedSourceTime - currentSourceTime) > 0.25) {
-            video.currentTime = expectedSourceTime;
-            // Crucial: Update our local time to match expected, ensuring we tick() with the NEW time,
-            // not the old lagging video time. This handles browser async video updates.
-            currentSourceTime = expectedSourceTime;
-          }
-
-          // Gap Jumping logic
-          const currentSegmentIndex = segments.findIndex(s => currentSourceTime >= s.start && currentSourceTime < s.end);
-
+          let cst = video.currentTime;
+          const est = getSourceTime(currentTime);
+          if (Math.abs(est - cst) > 0.25) { video.currentTime = est; cst = est; }
+          const currentSegmentIndex = segments.findIndex(s => cst >= s.start && cst < s.end);
           if (currentSegmentIndex !== -1) {
-            const seg = segments[currentSegmentIndex];
-            // Lookahead for end of segment (50ms)
-            if (seg.end - currentSourceTime < 0.05) {
-              const nextSegment = segments[currentSegmentIndex + 1];
-              if (nextSegment) {
-                // Jump to slightly inside the next segment to avoid boundary ambiguity
-                const jumpTo = nextSegment.start + 0.01;
-                video.currentTime = jumpTo;
-                store.tick(jumpTo);
-              } else {
-                store.tick(currentSourceTime);
-                if (currentSourceTime >= store.sourceDuration - 0.1) {
-                  store.pause();
-                  // Logic for Stop Export handled implicitly by store.pause() -> isPlaying false?
-                  // We need to detect "End of Export"
-                }
-              }
-            } else {
-              store.tick(currentSourceTime);
-            }
-          } else {
-            const nextSegment = segments.find(s => s.start > currentSourceTime);
-            if (nextSegment) {
-              const jumpTo = nextSegment.start + 0.01;
-              video.currentTime = jumpTo;
-              store.tick(jumpTo);
-            } else {
-              store.pause();
-            }
-          }
+            if (segments[currentSegmentIndex].end - cst < 0.05) {
+              const next = segments[currentSegmentIndex + 1];
+              if (next) { video.currentTime = next.start + 0.01; store.tick(next.start + 0.01); }
+              else { store.tick(cst); if (cst >= store.sourceDuration - 0.1) store.pause(); }
+            } else store.tick(cst);
+          } else store.pause();
         } else {
-          // Store is Paused.
-          // Sync Video Element to Store Time exactly.
-          const targetSourceTime = getSourceTime(currentTime);
-          // We use a small threshold to avoid fighting floating point
-          if (Math.abs(video.currentTime - targetSourceTime) > 0.05) {
-            video.currentTime = targetSourceTime;
-          }
-
-          // Also ensure video is actually paused (redundant to useEffect but safe)
-          if (!video.paused) {
-            video.pause();
-          }
-
-          // If Exporting ended (isPlaying -> false), stop recorder
-          if (isExporting && !isStorePlaying && currentTime > 0) {
-            // We paused, likely finished? Or user paused?
-            // If we are at the end, stop recorder.
-            // Assume pause during export = done.
-            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-              mediaRecorderRef.current.stop();
-            }
-          }
+          const target = getSourceTime(currentTime);
+          if (Math.abs(video.currentTime - target) > 0.05) video.currentTime = target;
         }
-
-        // Apply Transform
         const { scale, x, y } = store.getCurrentTransform();
-        container.style.transform = `translate(${50 - x}%, ${50 - y}%) scale(${scale})`;
+        container.style.transform = `translate(${(50 - x) * scale}%, ${(50 - y) * scale}%) scale(${scale})`;
 
-        // Render to Export Canvas if Exporting
-        if (isExporting) {
-          const canvas = canvasRef.current;
-          const ctx = canvas?.getContext('2d');
-          if (canvas && ctx) {
-            const w = canvas.width;
-            const h = canvas.height;
-
-            // Clear
-            ctx.fillStyle = "#000";
-            ctx.fillRect(0, 0, w, h);
-
-            // Apply Transform Matrix
-            ctx.save();
-            // 1. Center Origin
+        if (isExporting && canvasRef.current) {
+          const ctx = canvasRef.current.getContext('2d');
+          if (ctx) {
+            const w = canvasRef.current.width; const h = canvasRef.current.height;
+            ctx.fillStyle = "#02090E"; ctx.fillRect(0, 0, w, h); ctx.save();
             ctx.translate(w / 2, h / 2);
-
-            // 2. Apply Pan
-            // x,y are percentages of the container where focus is.
-            // 50,50 is center.
-            // If focus is 60,60 (right-down), we need to shift image LEFT-UP.
-            // Translate X = (50 - x)% * Width
-            // Translate Y = (50 - y)% * Height
-            const panX = ((50 - x) / 100) * w;
-            const panY = ((50 - y) / 100) * h;
-
-            ctx.translate(panX, panY);
-
-            // 3. Apply Scale
             ctx.scale(scale, scale);
-
-            // 4. Draw Image Centered
+            ctx.translate(((50 - x) / 100) * w, ((50 - y) / 100) * h);
             ctx.translate(-w / 2, -h / 2);
-            ctx.drawImage(video, 0, 0, w, h);
-
-            ctx.restore();
+            ctx.drawImage(video, 0, 0, w, h); ctx.restore();
           }
         }
       }
-
       animationFrameId = requestAnimationFrame(loop);
     };
-
     animationFrameId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animationFrameId);
   }, [isExporting]);
 
-  // Sync Volume
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.volume = videoVolume;
-    }
-  }, [videoVolume]);
+  useEffect(() => { if (videoRef.current) videoRef.current.volume = videoVolume; }, [videoVolume]);
 
-  // Sync Video Time (Aggressive)
-  // Ensures scrubbing while paused updates the video frame immediately
   useEffect(() => {
     const unsub = useRefocusStore.subscribe((state) => {
-      // Don't aggression sync if exporting, let loop handle it
       if (!state.isPlaying && !state.isExporting && videoRef.current) {
-        const targetTime = state.getSourceTime(state.currentTime);
-        if (Math.abs(videoRef.current.currentTime - targetTime) > 0.05) {
-          videoRef.current.currentTime = targetTime;
-        }
+        const target = state.getSourceTime(state.currentTime);
+        if (Math.abs(videoRef.current.currentTime - target) > 0.05) videoRef.current.currentTime = target;
       }
     });
     return () => unsub();
   }, []);
 
   const handleLoadedMetadata = () => {
-    if (videoRef.current) {
-      useRefocusStore.getState().setDuration(videoRef.current.duration);
-    }
+    if (videoRef.current) useRefocusStore.getState().setDuration(videoRef.current.duration);
   };
-
-  const audioSrc = useRefocusStore((state) => state.audioSrc);
 
   if (!videoSrc) {
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-neutral-900 border-2 border-dashed border-neutral-800 rounded-lg text-neutral-500">
-        <p className="mb-2 text-lg font-medium">No video selected</p>
-        <p className="text-sm">Upload a video to get started</p>
+      <div className="w-full h-full flex items-center justify-center bg-[#02090E] text-[#6FC3DF]/10 font-black italic text-9xl tracking-tighter select-none transform skew-x-[-12deg]">
+        VIEWER//
       </div>
     );
   }
 
   return (
     <div
-      className="relative w-full h-full bg-black overflow-hidden rounded-lg shadow-xl ring-1 ring-white/10 group select-none"
+      className="relative w-full h-full bg-[#02090E] overflow-hidden group select-none cursor-grab active:cursor-grabbing transform-gpu border border-[#28E7FF]/20"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => { setIsHovering(false); isDragging.current = false; }}
       onWheel={handleWheel}
@@ -623,48 +337,85 @@ export function VideoPreview() {
       <div
         ref={containerRef}
         className="absolute w-full h-full flex items-center justify-center origin-center will-change-transform"
-        style={{ transform: 'translate(0, 0) scale(1)' }}
       >
         <video
           ref={videoRef}
           src={videoSrc}
           className="max-w-full max-h-full object-contain pointer-events-none"
           playsInline
-          // muted removed, controlled by volume
           onLoadedMetadata={handleLoadedMetadata}
           crossOrigin="anonymous"
         />
       </div>
 
-      {/* Hidden Audio for Export */}
-      {audioSrc && (
-        <audio
-          ref={exportMusicRef}
-          src={audioSrc}
-          className="export-music hidden"
-          preload="auto"
-          crossOrigin="anonymous"
-        />
-      )}
-
-      {/* Hidden Canvas for Export */}
       <canvas ref={canvasRef} className="hidden pointer-events-none" />
-
-      {/* Exporting Overlay */}
       {isExporting && <ExportOverlay />}
 
-      {/* Overlay UI */}
-      <div className={cn(
-        "absolute top-4 left-4 bg-black/50 backdrop-blur px-2 py-1 rounded text-xs text-white/50 font-mono pointer-events-none transition-opacity duration-300",
-        isHovering && !isExporting ? "opacity-100" : "opacity-0"
-      )}>
-        <div className="flex gap-4">
-          <span className="flex items-center gap-1"><span className="bg-white/20 px-1 rounded text-white">X</span> Split</span>
-          <span className="flex items-center gap-1"><span className="bg-white/20 px-1 rounded text-white">I</span> Zoom</span>
-          <span className="flex items-center gap-1"><span className="bg-white/20 px-1 rounded text-white">Ws</span> Scale</span>
-          <span className="flex items-center gap-1"><MousePointer2 className="w-3 h-3" /> Pan</span>
+      {/* Legacy HUD */}
+      <div className="absolute inset-0 pointer-events-none font-mono">
+
+        {/* Optical HUD Frames - Cyan Bloom */}
+        <div className="absolute top-0 left-0 w-32 h-32 border-t-2 border-l-2 border-[#28E7FF]/20 group-hover:border-[#28E7FF] transition-all duration-700 shadow-[inset_0_0_20px_rgba(40,231,255,0.05)]" />
+        <div className="absolute top-0 right-0 w-32 h-32 border-t-2 border-r-2 border-[#FF8F00]/20 group-hover:border-[#FF8F00] transition-all duration-700 shadow-[inset_0_0_20px_rgba(255,143,0,0.05)]" />
+
+        {/* Top-Right: Trace Status - Orange Bloom */}
+        <div className="absolute top-10 right-10 flex flex-col items-end space-y-3 opacity-0 group-hover:opacity-100 transition-all duration-500">
+          <div className="bg-[#FF8F00]/5 border border-[#FF8F00]/30 text-[#FF8F00] px-6 py-2 text-[10px] font-black uppercase tracking-[0.4em] flex items-center gap-3 transform skew-x-[-12deg] shadow-[0_0_15px_rgba(255,143,0,0.2)]">
+            <div className="transform skew-x-[12deg] flex items-center gap-3">
+              <Activity className="w-4 h-4" />
+              SYSTEM_ACTIVE // V1.0
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom-Left: Grid Interface */}
+        <div className="absolute bottom-10 left-10 opacity-0 group-hover:opacity-100 transition-all duration-1000 transform translate-y-4 group-hover:translate-y-0">
+          <div className="bg-[#02090E]/80 backdrop-blur-md border border-[#28E7FF]/20 p-8 shadow-[0_0_60px_rgba(0,0,0,0.8)] relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-[1px] bg-[#28E7FF] opacity-30 shadow-[0_0_8px_#28E7FF]" />
+
+            <div className="text-[11px] font-black text-[#28E7FF] uppercase tracking-[0.5em] mb-8 flex items-center justify-between border-b border-[#28E7FF]/10 pb-4">
+              <div className="flex items-center gap-3">
+                <Terminal className="w-5 h-5 text-[#6FC3DF]" />
+                SHORTCUT_GUIDE
+              </div>
+              <span className="text-[#6FC3DF]/30">V1.0</span>
+            </div>
+
+            <div className="flex gap-10">
+              {[
+                { key: 'X', label: 'Slice', color: '#FF8F00' },
+                { key: 'I', label: 'Mark', color: '#6FC3DF' },
+                { key: 'DEL', label: 'Derez', color: '#FF8F00' },
+              ].map((item) => (
+                <div key={item.key} className="flex flex-col items-center gap-4 group/key">
+                  <div
+                    className="w-12 h-12 bg-[#02090E] border flex items-center justify-center text-[12px] font-black transform skew-x-[-12deg] transition-all shadow-[0_0_10px_rgba(255,255,255,0.05)] group-hover/key:shadow-[0_0_20px_var(--hover-color)]"
+                    style={{
+                      borderColor: `${item.color}40`,
+                      color: item.color,
+                      ['--hover-color' as any]: item.color
+                    }}
+                  >
+                    <div className="transform skew-x-[12deg]">{item.key}</div>
+                  </div>
+                  <span className="text-[10px] text-white/20 font-black uppercase tracking-widest">{item.label}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 pt-8 border-t border-[#28E7FF]/10 flex flex-col gap-3">
+              <div className="flex items-center gap-4 text-[10px] text-[#6FC3DF]/40 font-black uppercase tracking-widest">
+                <span className="w-6 h-[1px] bg-[#28E7FF] shadow-[0_0_5px_#28E7FF]" />
+                <span>MOD_DRAG // POSITION</span>
+              </div>
+              <div className="flex items-center gap-4 text-[10px] text-[#6FC3DF]/40 font-black uppercase tracking-widest">
+                <span className="w-6 h-[1px] bg-[#28E7FF] shadow-[0_0_5px_#28E7FF]" />
+                <span>MOD_SCROLL // MAGNIFY</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 }

@@ -1,22 +1,18 @@
-
 'use client';
 
 import React from 'react';
 import { useRefocusStore } from '../_store/store';
-import { Trash2, ZoomIn, Video } from 'lucide-react';
+import { Trash2, ZoomIn, Video, Crosshair, RefreshCcw, Sliders, Hash, Layers, Scissors, Disc, Activity } from 'lucide-react';
 
 export function PropertiesPanel() {
   const selectedKeyframeId = useRefocusStore((state) => state.selectedKeyframeId);
   const keyframes = useRefocusStore((state) => state.keyframes);
-  // We use upsertKeyframe for auto-keyframing on changes
   const upsertKeyframe = useRefocusStore((state) => state.upsertKeyframe);
   const deleteKeyframe = useRefocusStore((state) => state.deleteKeyframe);
   const getCurrentTransform = useRefocusStore((state) => state.getCurrentTransform);
 
   const selectedKeyframe = keyframes.find((k) => k.id === selectedKeyframeId);
 
-  // If no keyframe selected, we use the current interpolated values
-  // This allows "Scrub & Edit" workflow
   const displayValues = selectedKeyframe
     ? { scale: selectedKeyframe.scale, x: selectedKeyframe.x, y: selectedKeyframe.y }
     : getCurrentTransform();
@@ -26,168 +22,185 @@ export function PropertiesPanel() {
   };
 
   return (
-    <div className="w-80 border-l border-neutral-800 bg-neutral-900 flex flex-col h-full">
-      <div className="p-4 border-b border-neutral-800 flex items-center justify-between">
-        <h2 className="font-semibold text-white flex items-center gap-2">
-          <ZoomIn className="w-4 h-4 text-blue-500" />
-          Zoom Properties
-        </h2>
+    <div className="w-[360px] border-l border-[#28E7FF]/20 bg-[#02090E] flex flex-col h-full font-mono selection:bg-[#28E7FF] selection:text-[#02090E]">
+      {/* TRON Header Area */}
+      <div className="p-8 border-b border-[#28E7FF]/20 flex flex-col gap-6 bg-[#02090E] relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-[#28E7FF]/5 transform rotate-[45deg] translate-x-16 -translate-y-16 pointer-events-none" />
 
-        {/* Only show delete if actually selected */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => upsertKeyframe({ scale: 1, x: 50, y: 50 })}
-            className="text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 px-2 py-1 rounded transition-colors"
-            title="Reset Scale and Pan"
-          >
-            Reset All
-          </button>
-          {selectedKeyframe && (
+        <div className="flex items-center justify-between z-10">
+          <h2 className="font-black text-white text-[12px] uppercase tracking-[0.4em] flex items-center gap-3">
+            <Activity className="w-5 h-5 text-[#28E7FF] drop-shadow-[0_0_8px_#28E7FF]" />
+            CTRL_PAD // GRID
+          </h2>
+
+          <div className="flex gap-2">
             <button
-              onClick={() => deleteKeyframe(selectedKeyframe.id)}
-              className="p-1 hover:bg-neutral-800 rounded text-neutral-500 hover:text-red-500 transition-colors"
-              title="Delete Keyframe"
+              onClick={() => upsertKeyframe({ scale: 1, x: 50, y: 50 })}
+              className="w-10 h-10 bg-[#02090E] border border-[#28E7FF]/30 hover:border-[#28E7FF] text-[#28E7FF] transition-all flex items-center justify-center transform skew-x-[-12deg] shadow-[0_0_10px_rgba(40,231,255,0.1)]"
+              title="Reset"
             >
-              <Trash2 className="w-4 h-4" />
+              <RefreshCcw className="w-4 h-4 transform skew-x-[12deg]" />
             </button>
-          )}
+            {selectedKeyframe && (
+              <button
+                onClick={() => deleteKeyframe(selectedKeyframe.id)}
+                className="w-10 h-10 bg-[#02090E] border border-[#FF8F00]/40 text-[#FF8F00] hover:bg-[#FF8F00] hover:text-[#02090E] transition-all flex items-center justify-center transform skew-x-[-12deg] shadow-[0_0_15px_rgba(255,143,0,0.1)]"
+                title="Derez"
+              >
+                <Trash2 className="w-4 h-4 transform skew-x-[12deg]" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="p-6 space-y-6 flex-1 overflow-y-auto">
-        {/* Scale Control */}
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <label className="text-sm font-medium text-neutral-400">Scale</label>
-            <span className="text-xs font-mono bg-neutral-800 px-2 py-0.5 rounded text-white">
-              {displayValues.scale.toFixed(2)}x
-            </span>
+      <div className="p-10 space-y-16 flex-1 overflow-y-auto custom-scrollbar relative">
+        {/* Optical Magnification */}
+        <div className="space-y-8">
+          <div className="flex justify-between items-end border-b border-[#28E7FF]/10 pb-3">
+            <label className="text-[10px] font-black text-[#6FC3DF]/60 uppercase tracking-[0.3em]">OPTICAL_ZOOM // MAG</label>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-black text-white italic tracking-tighter drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
+                {displayValues.scale.toFixed(2)}
+              </span>
+              <span className="text-[10px] font-black text-[#28E7FF] opacity-60">X</span>
+            </div>
           </div>
-          <input
-            type="range"
-            min="1"
-            max="10"
-            step="0.1"
-            value={displayValues.scale}
-            onChange={(e) => handleUpdate({ scale: parseFloat(e.target.value) })}
-            className="w-full accent-blue-500 h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer"
-          />
+
+          <div className="relative h-12 flex items-center group">
+            <div className="absolute inset-x-0 h-[2px] bg-[#28E7FF]/10" />
+            <div className="absolute h-[4px] bg-[#28E7FF] shadow-[0_0_15px_#28E7FF]" style={{ left: '0', width: `${((displayValues.scale - 1) / 9) * 100}%` }} />
+
+            <input
+              type="range"
+              min="1"
+              max="10"
+              step="0.01"
+              value={displayValues.scale}
+              onChange={(e) => handleUpdate({ scale: parseFloat(e.target.value) })}
+              className="w-full absolute inset-0 opacity-0 cursor-ew-resize z-20"
+            />
+
+            {/* Blade Thumb */}
+            <div
+              className="pointer-events-none w-1 h-10 bg-white absolute top-1/2 -translate-y-1/2 -ml-[2px] z-10 shadow-[0_0_15px_white]"
+              style={{ left: `${((displayValues.scale - 1) / 9) * 100}%` }}
+            />
+          </div>
         </div>
 
-        {/* Position Controls (X/Y) */}
-        <div className="space-y-4 pt-4 border-t border-neutral-800">
-          <div className="flex justify-between items-center mb-2">
-            <label className="text-sm font-medium text-neutral-400">Focus Position</label>
+        {/* Spatial Axis Control */}
+        <div className="space-y-8 border-t border-[#28E7FF]/10 pt-10">
+          <div className="flex justify-between items-center">
+            <label className="text-[10px] font-black text-[#6FC3DF]/60 uppercase tracking-[0.3em] flex items-center gap-3">
+              <Crosshair className="w-5 h-5 text-[#28E7FF]/40" /> SPATIAL_AXIS
+            </label>
             <button
               onClick={() => handleUpdate({ x: 50, y: 50 })}
-              className="text-xs text-blue-500 hover:text-blue-400 transition-colors"
+              className="text-[11px] text-white hover:text-[#28E7FF] transition-all font-black uppercase tracking-widest bg-[#28E7FF]/5 px-4 py-1 transform skew-x-[-12deg] border border-[#28E7FF]/20 hover:shadow-[0_0_15px_rgba(40,231,255,0.1)]"
             >
-              Reset
+              <div className="transform skew-x-[12deg]">CENTER //</div>
             </button>
           </div>
 
-          {/* Visual Joystick */}
-          <div className="aspect-video bg-neutral-950 rounded border border-neutral-800 relative cursor-crosshair group overflow-hidden">
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
+          <div className="relative">
+            <div className="absolute -top-3 -left-3 w-6 h-6 border-t border-l border-[#28E7FF]/60" />
+            <div className="absolute -bottom-3 -right-3 w-6 h-6 border-b border-r border-[#FF8F00]/60" />
 
-            {/* Center marker */}
-            <div className="absolute top-1/2 left-1/2 w-2 h-2 -translate-x-1/2 -translate-y-1/2 bg-white/20 rounded-full" />
+            <div className="aspect-square w-full bg-[#01060a] border border-[#28E7FF]/20 relative cursor-crosshair group overflow-hidden shadow-inner">
+              {/* Micro Grid */}
+              <div className="absolute inset-0 opacity-[0.05] bg-[size:25px_25px] [background-image:linear-gradient(to_right,rgba(40,231,255,1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(40,231,255,1)_1px,transparent_1px)]" />
 
-            {/* Draggable Handle Area (Overlay) */}
-            <div
-              className="absolute inset-0 z-10"
-              onMouseMove={(e) => {
-                if (e.buttons === 1) { // Left click drag
+              <div
+                className="absolute inset-0 z-10"
+                onMouseMove={(e) => {
+                  if (e.buttons === 1) {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+                    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+                    handleUpdate({ x, y });
+                  }
+                }}
+                onMouseDown={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = ((e.clientX - rect.left) / rect.width) * 100;
                   const y = ((e.clientY - rect.top) / rect.height) * 100;
                   handleUpdate({ x, y });
-                }
-              }}
-              onMouseDown={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const x = ((e.clientX - rect.left) / rect.width) * 100;
-                const y = ((e.clientY - rect.top) / rect.height) * 100;
-                handleUpdate({ x, y });
-              }}
-            />
+                }}
+              />
 
-            {/* The Dot representing current X/Y */}
-            <div
-              className="absolute w-4 h-4 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)] border-2 border-white transform -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-all duration-75"
-              style={{ left: `${displayValues.x}%`, top: `${displayValues.y}%` }}
-            />
+              {/* Reticle */}
+              <div
+                className="absolute w-12 h-12 pointer-events-none transition-all duration-75 flex items-center justify-center"
+                style={{ left: `${displayValues.x}%`, top: `${displayValues.y}%`, transform: 'translate(-50%, -50%)' }}
+              >
+                <div className="absolute w-full h-[1px] bg-[#28E7FF]/40 border-b border-[#28E7FF]/10 shadow-[0_0_8px_rgba(40,231,255,0.2)]" />
+                <div className="absolute h-full w-[1px] bg-[#28E7FF]/40 border-r border-[#28E7FF]/10 shadow-[0_0_8px_rgba(40,231,255,0.2)]" />
+                <div className="w-2 h-2 rounded-full border border-[#28E7FF] bg-white shadow-[0_0_20px_#28E7FF]" />
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs text-neutral-500 mb-1 block">Pan X (%)</label>
-              <input
-                type="number"
-                value={Math.round(displayValues.x)}
-                onChange={(e) => handleUpdate({ x: Number(e.target.value) })}
-                className="w-full bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-sm text-white font-mono focus:border-blue-500 transition-colors outline-none"
-              />
+          <div className="grid grid-cols-2 gap-6">
+            <div className="bg-[#02090E] border border-[#28E7FF]/10 p-5 transform skew-x-[-12deg] hover:border-[#28E7FF]/60 transition-all group">
+              <div className="transform skew-x-[12deg] flex flex-col gap-1">
+                <span className="text-[10px] text-[#6FC3DF]/40 uppercase font-black group-hover:text-[#6FC3DF]/80 transition-colors">LONG_X //</span>
+                <span className="text-2xl font-black text-white italic tracking-tighter drop-shadow-[0_0_5px_rgba(255,255,255,0.1)]">{Math.round(displayValues.x)}</span>
+              </div>
             </div>
-            <div>
-              <label className="text-xs text-neutral-500 mb-1 block">Pan Y (%)</label>
-              <input
-                type="number"
-                value={Math.round(displayValues.y)}
-                onChange={(e) => handleUpdate({ y: Number(e.target.value) })}
-                className="w-full bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-sm text-white font-mono focus:border-blue-500 transition-colors outline-none"
-              />
+            <div className="bg-[#02090E] border border-[#28E7FF]/10 p-5 transform skew-x-[-12deg] hover:border-[#28E7FF]/60 transition-all group">
+              <div className="transform skew-x-[12deg] flex flex-col gap-1">
+                <span className="text-[10px] text-[#6FC3DF]/40 uppercase font-black group-hover:text-[#6FC3DF]/80 transition-colors">LAT_Y //</span>
+                <span className="text-2xl font-black text-white italic tracking-tighter drop-shadow-[0_0_5px_rgba(255,255,255,0.1)]">{Math.round(displayValues.y)}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Audio Mix */}
-        <div className="pt-4 border-t border-neutral-800 space-y-4">
-          <h3 className="text-sm font-medium text-neutral-400">Audio Mix</h3>
+        {/* Amplitude Mixer */}
+        <div className="pt-12 border-t border-[#28E7FF]/10 space-y-12">
+          <h3 className="text-[10px] font-black text-[#6FC3DF]/60 uppercase tracking-[0.4em] flex items-center gap-3">
+            <Disc className="w-5 h-5 text-[#28E7FF]/40" /> AMP_SIGNAL_MIX //
+          </h3>
 
-          {/* Original Audio Volume */}
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs text-neutral-500">
-              <span>Original Video</span>
-              <span>{(useRefocusStore.getState().videoVolume * 100).toFixed(0)}%</span>
+          <div className="space-y-6">
+            <div className="flex justify-between items-end px-1">
+              <span className="text-[10px] text-[#6FC3DF]/40 font-black uppercase tracking-widest italic">VIDEO_AUDIO //</span>
+              <span className="text-[10px] font-black text-[#28E7FF] tracking-widest font-mono drop-shadow-[0_0_5px_rgba(40,231,255,0.3)]">{(useRefocusStore.getState().videoVolume * 100).toFixed(0)}dB</span>
             </div>
-            <input
-              type="range"
-              min="0" max="1" step="0.05"
-              value={useRefocusStore((state) => state.videoVolume)}
-              onChange={(e) => useRefocusStore.getState().setVideoVolume(parseFloat(e.target.value))}
-              className="w-full accent-neutral-500 h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer"
-            />
+            <div className="relative h-1 bg-[#28E7FF]/10">
+              <div className="absolute h-full bg-[#28E7FF] shadow-[0_0_15px_#28E7FF]" style={{ width: `${useRefocusStore.getState().videoVolume * 100}%` }} />
+              <input
+                type="range"
+                min="0" max="1" step="0.01"
+                value={useRefocusStore((state) => state.videoVolume)}
+                onChange={(e) => useRefocusStore.getState().setVideoVolume(parseFloat(e.target.value))}
+                className="absolute inset-0 w-full opacity-0 cursor-pointer z-10"
+              />
+            </div>
           </div>
 
-          {/* Music Volume */}
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs text-neutral-500">
-              <span>Music</span>
-              <span>{(useRefocusStore((state) => state.musicVolume) * 100).toFixed(0)}%</span>
+          <div className="space-y-6">
+            <div className="flex justify-between items-end px-1">
+              <span className="text-[10px] text-[#FF8F00]/40 font-black uppercase tracking-widest italic">MUSIC_VOLUME //</span>
+              <span className="text-[10px] font-black text-[#FF8F00] tracking-widest font-mono drop-shadow-[0_0_5px_rgba(255,143,0,0.3)]">{(useRefocusStore((state) => state.musicVolume) * 100).toFixed(0)}dB</span>
             </div>
-            <input
-              type="range"
-              min="0" max="1" step="0.05"
-              value={useRefocusStore((state) => state.musicVolume)}
-              onChange={(e) => useRefocusStore.getState().setMusicVolume(parseFloat(e.target.value))}
-              className="w-full accent-blue-500 h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer"
-            />
-          </div>
-        </div>
-
-        {/* Easing (Future) */}
-        <div className="pt-4 border-t border-neutral-800 opacity-50 pointer-events-none">
-          <label className="text-sm font-medium text-neutral-400 mb-2 block">Easing</label>
-          <div className="flex gap-2">
-            <button className="flex-1 bg-neutral-800 py-1.5 rounded text-xs text-white border border-blue-500/50">Linear</button>
-            <button className="flex-1 bg-neutral-800 py-1.5 rounded text-xs text-neutral-500">Ease Out</button>
+            <div className="relative h-1 bg-[#FF8F00]/10">
+              <div className="absolute h-full bg-[#FF8F00] shadow-[0_0_15px_#FF8F00]" style={{ width: `${useRefocusStore.getState().musicVolume * 100}%` }} />
+              <input
+                type="range"
+                min="0" max="1" step="0.01"
+                value={useRefocusStore((state) => state.musicVolume)}
+                onChange={(e) => useRefocusStore.getState().setMusicVolume(parseFloat(e.target.value))}
+                className="absolute inset-0 w-full opacity-0 cursor-pointer z-10"
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="p-4 border-t border-neutral-800 text-[10px] text-neutral-600 font-mono text-center">
-        {selectedKeyframe ? `ID: ${selectedKeyframe.id.slice(0, 8)}` : 'Interpolated (Auto-Key on Edit)'}
+      <div className="p-6 bg-[#28E7FF]/5 border-t border-[#28E7FF]/10 text-[10px] text-[#6FC3DF]/30 font-black text-center tracking-[0.5em] uppercase">
+        MOD_CORE // SEQUENCER_GRID
       </div>
     </div>
   );

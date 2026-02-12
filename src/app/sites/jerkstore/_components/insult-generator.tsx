@@ -48,6 +48,8 @@ export function InsultGenerator({
   const [roasts, setRoasts] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [hasViewedAll, setHasViewedAll] = useState(true);
+  const [isSimulatingLoading, setIsSimulatingLoading] = useState(false);
+  const lastPromptRef = useRef({ topic: "", isEmail: false, language: "" });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setInput(e.target.value);
@@ -81,11 +83,45 @@ export function InsultGenerator({
       setShowAccessModal(true);
       return;
     }
+
+    const currentPrompt = { topic: input, isEmail, language };
+    const isSamePrompt =
+      lastPromptRef.current.topic === currentPrompt.topic &&
+      lastPromptRef.current.isEmail === currentPrompt.isEmail &&
+      lastPromptRef.current.language === currentPrompt.language;
+
+    // If same prompt and we have more buffered roasts to show, cycle instead of re-generating
+    if (isSamePrompt && !hasViewedAll && roasts.length > 0) {
+      setIsSimulatingLoading(true);
+      // Realistic random delay to "feel" like generation
+      const delay = 600 + Math.random() * 800;
+
+      setTimeout(() => {
+        const nextIdx = currentIndex + 1;
+        setCurrentIndex(nextIdx);
+        setDisplayText(roasts[nextIdx]);
+        if (nextIdx >= roasts.length - 1) {
+          setHasViewedAll(true);
+        }
+        setIsSimulatingLoading(false);
+      }, delay);
+
+      return;
+    }
+
+    // Otherwise, perform real generation
+    setRoasts([]);
+    setCurrentIndex(0);
+    setDisplayText("");
+    setHasViewedAll(false);
+
     submit({
       language,
       isEmail,
       topic: input,
     });
+
+    lastPromptRef.current = currentPrompt;
     // Cycle labels
     setButtonLabel(BUTTON_LABELS[Math.floor(Math.random() * BUTTON_LABELS.length)]);
     setTopicLabel(TOPIC_LABELS[Math.floor(Math.random() * TOPIC_LABELS.length)]);
@@ -409,7 +445,7 @@ export function InsultGenerator({
 
           <button
             type="submit"
-            disabled={isLoading || !input.trim() || !hasViewedAll}
+            disabled={isLoading || isSimulatingLoading || !input.trim()}
             className={cn(
               "w-full font-black text-xl sm:text-3xl py-4 sm:py-6 border-4 border-black transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed uppercase relative group overflow-hidden",
               isSavage ? "bg-black text-white hover:-translate-y-1 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] sm:hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]" :
@@ -418,12 +454,10 @@ export function InsultGenerator({
             )}
           >
             <span className="relative z-10 flex items-center justify-center gap-2 sm:gap-3">
-              {isLoading ? (
+              {(isLoading || isSimulatingLoading) ? (
                 <>
                   <Loader2 className="animate-spin w-6 h-6 sm:w-8 sm:h-8" /> {isSavage ? "SUMMONING THE ABYSS..." : "Cooking..."}
                 </>
-              ) : !hasViewedAll ? (
-                "VIEW ALL ROASTS FIRST"
               ) : (
                 <>
                   {buttonLabel} {isSavage && <Zap className="w-6 h-6 sm:w-8 sm:h-8 fill-purple-600" />}
@@ -481,34 +515,6 @@ export function InsultGenerator({
               {displayText}
             </p>
 
-            {roasts.length > 0 && (
-              <div className="flex justify-between items-center mt-6 py-4 border-t-2 border-dashed border-black/10">
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={prevRoast}
-                    disabled={currentIndex === 0}
-                    className="p-2 border-2 border-black bg-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-neutral-50 transition-colors"
-                  >
-                    ←
-                  </button>
-                  <span className="font-mono text-sm font-bold opacity-60">
-                    ROAST {currentIndex + 1} / {roasts.length}
-                  </span>
-                  <button
-                    onClick={nextRoast}
-                    disabled={currentIndex === roasts.length - 1}
-                    className="p-2 border-2 border-black bg-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-neutral-50 transition-colors"
-                  >
-                    →
-                  </button>
-                </div>
-                {!hasViewedAll && (
-                  <span className="text-[10px] font-black uppercase text-red-500 animate-pulse">
-                    Cycle to unlock next generate
-                  </span>
-                )}
-              </div>
-            )}
 
             {displayText && !isLoading && (
               <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row gap-3 justify-end items-stretch sm:items-center">

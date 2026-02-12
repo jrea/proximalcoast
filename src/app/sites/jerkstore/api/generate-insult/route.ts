@@ -112,7 +112,7 @@ export async function POST(req: Request) {
       isEmail: isEmail || false
     },
     orderBy: { createdAt: 'desc' },
-    take: 4,
+    take: 3,
     select: { content: true }
   });
 
@@ -125,7 +125,7 @@ ${IDENTITY}
 
 ${STYLE}
 
-${finalConstraints}${historyString}
+${finalConstraints}
 
 Language: ${language || 'English'}.
 
@@ -133,7 +133,9 @@ STRICT REQUIREMENT: You MUST generate exactly ${ROAST_COUNT} distinct roasts.
 Each roast should use a different Attack Style from the Jerkstore Code.
 Ensure variety in structure and metaphor. 
 If in Response Mode, provide 5 different ways to respond to the provided input.
-`;
+
+${historyString}
+`.trim();
 
   // The "Rider" Logic
   // Short input -> V3 (fast, cheap, witty)
@@ -145,9 +147,10 @@ If in Response Mode, provide 5 different ways to respond to the provided input.
   const selectedModel = isComplex ? deepseekR1 : deepseekV3;
 
   const v3Params = !isComplex ? {
-    temperature: 1.3,
+    temperature: 1.15,
     topP: 0.9,
-    frequencyPenalty: 0.7,
+    frequencyPenalty: 0.6,
+    presencePenalty: 0.6,
   } : {};
 
 
@@ -161,7 +164,7 @@ If in Response Mode, provide 5 different ways to respond to the provided input.
     }),
     system: systemPrompt,
     prompt: isEmail ? `Write 1 devastating email roasting this topic: ${topic}` : `Generate a pack of 5 roasts for this topic: ${topic}`,
-    maxOutputTokens: isEmail ? 8192 : 2048,
+    maxOutputTokens: 2048,
     ...v3Params,
   });
 

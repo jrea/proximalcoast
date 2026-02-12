@@ -5,16 +5,32 @@ import { useRefocusStore } from '../_store/store';
 import { cn } from '@/lib/utils';
 import { Activity, Terminal, Disc, Download, Plus } from 'lucide-react';
 
-const ExportOverlay = () => {
+const ExportOverlay = ({ onAbort }: { onAbort: () => void }) => {
   const currentTime = useRefocusStore((state) => state.currentTime);
   const getProjectDuration = useRefocusStore((state) => state.getProjectDuration);
-  const setIsExporting = useRefocusStore((state) => state.setIsExporting);
 
   const duration = getProjectDuration();
   const progress = Math.min(100, Math.max(0, (currentTime / (duration || 1)) * 100));
 
   return (
-    <div className="absolute inset-0 z-50 bg-[#02090E] flex flex-col items-center justify-center text-white space-y-12 sm:space-y-16 p-4 selection:bg-[#28E7FF] selection:text-[#02090E]">
+    <div className="absolute inset-0 z-[100] bg-[#02090E] flex flex-col items-center justify-center text-white space-y-12 sm:space-y-16 p-4 selection:bg-[#28E7FF] selection:text-[#02090E]">
+      <style>{`
+        @keyframes dualSpinCW {
+          0%, 15% { transform: rotate(0deg); }
+          85%, 100% { transform: rotate(2160deg); }
+        }
+        @keyframes dualSpinCCW {
+          0%, 15% { transform: rotate(0deg); }
+          85%, 100% { transform: rotate(-2160deg); }
+        }
+        .animate-dual-spin-cw {
+          animation: dualSpinCW 4s cubic-bezier(0.7, 0, 0.3, 1) infinite;
+        }
+        .animate-dual-spin-ccw {
+          animation: dualSpinCCW 4s cubic-bezier(0.7, 0, 0.3, 1) infinite;
+        }
+      `}</style>
+
       {/* TRON Legacy Grid Floor */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
         <div className="absolute inset-0 bg-[linear-gradient(rgba(40,231,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(40,231,255,0.1)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black,transparent:70%)]" />
@@ -24,7 +40,17 @@ const ExportOverlay = () => {
       <div className="flex flex-col items-center space-y-4 sm:space-y-6 relative text-center">
         <div className="text-[10px] sm:text-[12px] font-black uppercase tracking-[0.4em] sm:tracking-[0.5em] text-[#28E7FF] drop-shadow-[0_0_8px_#28E7FF]">VIDEO_EXPORT // UPLOAD_SEQUENCE</div>
         <div className="text-4xl sm:text-8xl font-black italic tracking-tighter transform skew-x-[-12deg] flex items-center gap-2 sm:gap-4 group">
-          RENDERING<span className="text-[#28E7FF] drop-shadow-[0_0_15px_#28E7FF]">/</span><span className="text-[#FF8F00] drop-shadow-[0_0_15px_#FF8F00]">GRID</span>
+          EXPORTING
+        </div>
+        <span className="text-[#FF8F00] drop-shadow-[0_0_15px_#FF8F00]">Export requires full video play though.</span>
+      </div>
+
+      <div className="flex items-center gap-2 sm:gap-4 relative h-16 sm:h-24">
+        <div className="w-4 sm:w-6 h-full relative flex items-center justify-center animate-dual-spin-cw">
+          <div className="w-4 h-full bg-[#28E7FF] transform skew-x-[-40deg] shadow-[0_0_20px_#28E7FF]" />
+        </div>
+        <div className="w-4 sm:w-6 h-full relative flex items-center justify-center animate-dual-spin-ccw">
+          <div className="w-4 h-full bg-[#FF8F00] transform skew-x-[-40deg] shadow-[0_0_20px_#FF8F00]" />
         </div>
       </div>
 
@@ -38,7 +64,7 @@ const ExportOverlay = () => {
 
         <div className="flex justify-between mt-6 text-[9px] sm:text-[11px] font-black text-[#28E7FF]/60 uppercase tracking-[0.3em] transform skew-x-[12deg]">
           <div className="flex items-center gap-2 sm:gap-3">
-            <Disc className="w-3 h-3 sm:w-4 sm:h-4 animate-spin text-[#6FC3DF]" />
+            <Activity className="w-3 h-3 sm:w-4 sm:h-4 text-[#6FC3DF]" />
             <span>RENDERING_FRAMES //</span>
           </div>
           <span className="text-[#6FC3DF] italic font-mono">{progress.toFixed(2)}%</span>
@@ -46,7 +72,7 @@ const ExportOverlay = () => {
       </div>
 
       <button
-        onClick={() => setIsExporting(false)}
+        onClick={onAbort}
         className="group relative px-8 sm:px-12 py-3 sm:py-4 transform skew-x-[-12deg] transition-all hover:bg-[#FF8F00]/20"
       >
         <div className="absolute inset-0 border border-[#FF8F00]/30 group-hover:border-[#FF8F00] transition-colors" />
@@ -180,8 +206,8 @@ export function VideoPreview() {
     const deltaX_px = e.clientX - dragStart.current.x;
     const deltaY_px = e.clientY - dragStart.current.y;
 
-    const deltaX_pct = ((deltaX_px / rect.width) * 100) / kf.scale;
-    const deltaY_pct = ((deltaY_px / rect.height) * 100) / kf.scale;
+    const deltaX_pct = (deltaX_px / rect.width) * 100;
+    const deltaY_pct = (deltaY_px / rect.height) * 100;
 
     updateKeyframe(id, {
       x: dragStart.current.panX - deltaX_pct,
@@ -193,6 +219,7 @@ export function VideoPreview() {
     isDragging.current = false;
   };
 
+  const isAbortedRef = useRef(false);
   const [isReadyToRecord, setIsReadyToRecord] = useState(false);
 
   // --- Export Logic ---
@@ -205,32 +232,31 @@ export function VideoPreview() {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const store = useRefocusStore.getState();
-
-    // Ensure metadata is loaded
-    if (video.videoWidth === 0) {
-      console.log('Export: Waiting for video metadata...');
-      const checkMetadata = () => {
-        if (video.videoWidth > 0) {
-          setIsExporting(true); // Re-trigger effect
-        } else {
-          setTimeout(checkMetadata, 100);
-        }
-      };
-      checkMetadata();
-      return;
-    }
-
-    // 1. Setup Canvas
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    console.log(`Export: Canvas sized to ${canvas.width}x${canvas.height}`);
-
-    // 2. Prepare for start
-    store.pause();
-    store.seek(0);
+    isAbortedRef.current = false;
 
     const executeExport = async () => {
       try {
+        // Ensure metadata is loaded
+        if (video.videoWidth === 0) {
+          console.log('Export: Waiting for video metadata loading...');
+          await new Promise((resolve) => {
+            const check = () => {
+              if (video.videoWidth > 0) resolve(true);
+              else setTimeout(check, 100);
+            };
+            check();
+          });
+        }
+
+        // 1. Setup Canvas
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        console.log(`Export: Canvas sized to ${canvas.width}x${canvas.height}`);
+
+        // 2. Prepare for start
+        store.pause();
+        store.seek(0);
+
         console.log('Export: Initializing stream and recorder...');
         const stream = canvas.captureStream(30);
         const actx = audioCtxRef.current;
@@ -263,8 +289,8 @@ export function VideoPreview() {
         };
 
         recorder.onstop = () => {
-          console.log(`Export: Recording stopped. Chunks: ${chunksRef.current.length}`);
-          if (chunksRef.current.length > 0) {
+          console.log(`Export: Recording stopped. Chunks: ${chunksRef.current.length}, Aborted: ${isAbortedRef.current}`);
+          if (chunksRef.current.length > 0 && !isAbortedRef.current) {
             const blob = new Blob(chunksRef.current, { type: 'video/webm' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -301,11 +327,14 @@ export function VideoPreview() {
   // Handle automatic completion
   useEffect(() => {
     const duration = useRefocusStore.getState().getProjectDuration();
-    if (isExporting && isReadyToRecord && (!isPlaying || currentTime >= duration - 0.05)) {
-      console.log('Export: Reached end of project. Finalizing...');
-      setIsExporting(false);
+    if (isExporting && isReadyToRecord) {
+      // Check if we reached the absolute end of the project duration
+      if (currentTime >= duration - 0.1) {
+        console.log(`Export: Reached end (Time: ${currentTime}, Duration: ${duration}). Finalizing...`);
+        setIsExporting(false);
+      }
     }
-  }, [isPlaying, isExporting, isReadyToRecord, currentTime, setIsExporting]);
+  }, [isExporting, isReadyToRecord, currentTime, setIsExporting]);
 
   // --- Sync Video Playback ---
   useEffect(() => {
@@ -419,7 +448,14 @@ export function VideoPreview() {
       </div>
 
       <canvas ref={canvasRef} className="hidden pointer-events-none" />
-      {isExporting && <ExportOverlay />}
+      {isExporting && (
+        <ExportOverlay
+          onAbort={() => {
+            isAbortedRef.current = true;
+            setIsExporting(false);
+          }}
+        />
+      )}
 
       {/* Legacy HUD */}
       <div className="absolute inset-0 pointer-events-none font-mono">

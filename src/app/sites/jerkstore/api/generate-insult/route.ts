@@ -102,7 +102,10 @@ export async function POST(req: Request) {
   }
 
   const recentRoasts = await prisma.jerkstore_insult.findMany({
-    where: { userId: session.user.id },
+    where: {
+      userId: session.user.id,
+      isEmail: isEmail || false
+    },
     orderBy: { createdAt: 'desc' },
     take: 4,
     select: { content: true }
@@ -141,6 +144,7 @@ Language: ${language || 'English'}.
               promptTokens: usage.inputTokens ?? 0,
               completionTokens: usage.outputTokens ?? 0,
               userId: session.user.id,
+              isEmail: isEmail || false,
             },
           });
         }

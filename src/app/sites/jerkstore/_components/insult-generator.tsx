@@ -299,82 +299,84 @@ export function InsultGenerator({
             />
           </div>
 
-          <div className="space-y-2 sm:space-y-3">
-            <label className={cn(
-              "block font-black text-lg sm:text-xl uppercase tracking-tight",
-              isSavage ? "text-white drop-shadow-md" : isElite ? "text-black" : "text-neutral-400"
-            )}>
-              Language
-            </label>
-            <select
-              className="w-full p-4 sm:p-5 border-4 border-black bg-white text-black font-mono text-lg sm:text-xl transition-all duration-300 focus:outline-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus:ring-4 focus:ring-black cursor-pointer"
-              value={language}
-              onChange={(e) => {
-                const val = e.target.value;
-                const isPremiumLang = !STANDARD_LANGUAGES.some(l => l.value === val);
-                if (isPremiumLang && !isElite && !isSavage) {
-                  triggerBoom();
-                } else {
-                  setLanguage(val);
-                }
-              }}
-            >
-              <optgroup label="Standard Languages">
-                {STANDARD_LANGUAGES.map((lang) => (
-                  <option key={lang.value} value={lang.value}>
-                    {lang.label}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Premium Languages (Elite/Savage)">
-                {PREMIUM_LANGUAGES.filter(lp => !STANDARD_LANGUAGES.some(ls => ls.value === lp.value)).map((lang) => (
-                  <option key={lang.value} value={lang.value}>
-                    {lang.label} {!isElite && !isSavage && "🔒"}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          </div>
-
-          <div
-            onClick={() => !isSavage && triggerBoom()}
-            className={cn(
-              "flex items-center gap-3 sm:gap-4 p-4 sm:p-5 border-4 transition-all duration-500 relative group overflow-hidden",
-              isSavage ? "bg-black/40 backdrop-blur-md border-white/20 cursor-default shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)]" :
-                "bg-neutral-100 border-black cursor-pointer hover:bg-neutral-200"
-            )}
-          >
-            <input
-              type="checkbox"
-              id="email-mode"
-              checked={isEmail}
-              disabled={!isSavage}
-              onChange={(e) => setIsEmail(e.target.checked)}
-              className={cn(
-                "w-6 h-6 sm:w-8 sm:h-8 border-4 border-black appearance-none cursor-pointer relative transition-all duration-300 shrink-0",
-                "checked:after:content-['✓'] checked:after:absolute checked:after:font-black checked:after:text-center checked:after:w-full checked:after:leading-[1.1rem] sm:checked:after:leading-[1.4rem]",
-                isSavage ? "bg-white border-white checked:after:text-purple-600" : "checked:bg-red-600",
-                "disabled:cursor-not-allowed disabled:bg-neutral-400"
-              )}
-            />
-            <div className="flex flex-col flex-grow">
-              <label
-                htmlFor={isSavage ? "email-mode" : undefined}
-                className={cn(
-                  "font-black uppercase text-xs sm:text-sm select-none cursor-pointer tracking-tight",
-                  isSavage ? "text-white" : "text-neutral-500"
-                )}
-              >
-                Maximum effort (300+ words)
+          <div className="flex flex-col sm:flex-row gap-4 sm:items-end">
+            <div className="flex-1 space-y-2 sm:space-y-3">
+              <label className={cn(
+                "block font-black text-lg sm:text-xl uppercase tracking-tight",
+                isSavage ? "text-white drop-shadow-md" : isElite ? "text-black" : "text-neutral-400"
+              )}>
+                Language
               </label>
-              {isSavage && <span className="text-[8px] sm:text-[10px] font-mono text-white/70 uppercase tracking-widest mt-0.5 font-bold">Max Tokens Activated</span>}
+              <select
+                className="w-full p-4 sm:p-5 border-4 border-black bg-white text-black font-mono text-lg sm:text-xl transition-all duration-300 focus:outline-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus:ring-4 focus:ring-black cursor-pointer"
+                value={language}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const isPremiumLang = !STANDARD_LANGUAGES.some(l => l.value === val);
+                  if (isPremiumLang && !isElite && !isSavage) {
+                    triggerBoom();
+                  } else {
+                    setLanguage(val);
+                  }
+                }}
+              >
+                <optgroup label="Standard Languages">
+                  {STANDARD_LANGUAGES.map((lang) => (
+                    <option key={lang.value} value={lang.value}>
+                      {lang.label}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Premium Languages (Elite/Savage)">
+                  {PREMIUM_LANGUAGES.filter(lp => !STANDARD_LANGUAGES.some(ls => ls.value === lp.value)).map((lang) => (
+                    <option key={lang.value} value={lang.value}>
+                      {lang.label} {!isElite && !isSavage && "🔒"}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
             </div>
 
-            {!isSavage && (
-              <span className="bg-red-600 text-white text-[8px] sm:text-[10px] px-2 sm:px-3 py-1 sm:py-1.5 font-black animate-pulse whitespace-nowrap border-2 border-black">
-                UPGRADE
-              </span>
-            )}
+            <div
+              onClick={() => !isSavage && triggerBoom()}
+              className={cn(
+                "flex-1 flex items-center gap-3 sm:gap-4 p-4 sm:p-5 border-4 transition-all duration-500 relative group overflow-hidden h-[68px] sm:h-[84px]",
+                isSavage ? "bg-black/40 backdrop-blur-md border-white/20 cursor-default shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)]" :
+                  "bg-neutral-100 border-black cursor-pointer hover:bg-neutral-200"
+              )}
+            >
+              <input
+                type="checkbox"
+                id="email-mode"
+                checked={isEmail}
+                disabled={!isSavage}
+                onChange={(e) => setIsEmail(e.target.checked)}
+                className={cn(
+                  "w-6 h-6 sm:w-8 sm:h-8 border-4 border-black appearance-none cursor-pointer relative transition-all duration-300 shrink-0",
+                  "checked:after:content-['✓'] checked:after:absolute checked:after:font-black checked:after:text-center checked:after:w-full checked:after:leading-[1.1rem] sm:checked:after:leading-[1.4rem]",
+                  isSavage ? "bg-white border-white checked:after:text-purple-600" : "checked:bg-red-600",
+                  "disabled:cursor-not-allowed disabled:bg-neutral-400"
+                )}
+              />
+              <div className="flex flex-col flex-grow">
+                <label
+                  htmlFor={isSavage ? "email-mode" : undefined}
+                  className={cn(
+                    "font-black uppercase text-xs sm:text-sm select-none cursor-pointer tracking-tight",
+                    isSavage ? "text-white" : "text-neutral-500"
+                  )}
+                >
+                  Maximum effort (300+ words)
+                </label>
+                {isSavage && <span className="text-[8px] sm:text-[10px] font-mono text-white/70 uppercase tracking-widest mt-0.5 font-bold line-clamp-1">Max Tokens Activated</span>}
+              </div>
+
+              {!isSavage && (
+                <span className="bg-red-600 text-white text-[8px] sm:text-[10px] px-2 sm:px-3 py-1 sm:py-1.5 font-black animate-pulse whitespace-nowrap border-2 border-black">
+                  UPGRADE
+                </span>
+              )}
+            </div>
           </div>
 
           <button
@@ -407,6 +409,7 @@ export function InsultGenerator({
           isSavage={isSavage}
           isElite={isElite}
           isTrial={isTrial}
+          isEmail={isEmail}
         />
 
         {error && (
@@ -434,52 +437,41 @@ export function InsultGenerator({
           >
             {/* Watermark */}
             <div className={cn(
-              "absolute bottom-2 right-4 text-[8px] sm:text-[10px] font-black uppercase opacity-20 pointer-events-none select-none tracking-widest flex items-center gap-1",
+              "absolute bottom-0 right-4 text-[8px] sm:text-[10px] font-black uppercase opacity-20 pointer-events-none select-none tracking-widest flex items-center gap-1",
               isSavage ? "text-white" : "text-black"
             )}>
               <Logo className="scale-50 origin-right" iconOnly={true} />
               JERKSTORE.PROXIMALCOAST.COM
             </div>
 
-            <div className={cn(
-              "absolute top-0 right-0 px-3 sm:px-4 py-1 sm:py-2 text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] sm:tracking-[0.4em]",
-              isSavage ? "bg-white text-purple-600" : "bg-black text-white"
-            )}>
-              {isSavage ? "DEIFIC VERDICT" : "Official Verdict"}
-            </div>
 
-            <h3 className={cn(
-              "font-black text-xl sm:text-2xl mb-4 sm:mb-6 border-b-4 pb-2 sm:pb-4 uppercase flex items-center gap-2 sm:gap-3",
-              isSavage ? "border-white/20 text-white" : "border-black text-black"
-            )}>
-              {isSavage ? <Zap className="w-5 h-5 sm:w-6 sm:h-6 fill-white" /> : null}
-              Result: {isLoading && <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />}
-            </h3>
 
             <p className={cn("whitespace-pre-wrap text-sm sm:text-xl", isSavage && "drop-shadow-md")}>
-              {displayText || (isLoading && (isSavage ? "Fracturing the victim's timeline..." : "Sharpening the knife..."))}
+              {displayText}
             </p>
 
             {displayText && !isLoading && (
               <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row gap-3 justify-end items-stretch sm:items-center">
-                <button
-                  onClick={copyImage}
-                  disabled={isCopying}
-                  className={cn(
-                    "px-4 sm:px-6 py-2 sm:py-3 font-black text-xs sm:text-sm uppercase transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 border-4 border-black",
-                    isSavage ? "bg-purple-600 text-white hover:bg-purple-500 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" :
-                      "bg-yellow-400 text-black hover:bg-yellow-300 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
-                    copied ? "bg-green-500 text-white" : ""
-                  )}
-                >
-                  {isCopying ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : copied ? (
-                    <>Made! <Check className="w-4 h-4" /></>
-                  ) : (
-                    <>Make Image <Copy className="w-4 h-4" /></>
-                  )}
-                </button>
+                {!isEmail && (
+                  <button
+                    onClick={copyImage}
+                    disabled={isCopying}
+                    className={cn(
+                      "px-4 sm:px-6 py-2 sm:py-3 font-black text-xs sm:text-sm uppercase transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 border-4 border-black",
+                      isSavage ? "bg-purple-600 text-white hover:bg-purple-500 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" :
+                        "bg-yellow-400 text-black hover:bg-yellow-300 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
+                      copied ? "bg-green-500 text-white" : ""
+                    )}
+                  >
+                    {isCopying ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : copied ? (
+                      <>Copied! <Check className="w-4 h-4" /></>
+                    ) : (
+                      <>Copy Image <Copy className="w-4 h-4" /></>
+                    )}
+                  </button>
+                )}
                 <a
                   href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(displayText)}`}
                   target="_blank"

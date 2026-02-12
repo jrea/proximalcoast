@@ -77,101 +77,13 @@ const ExportOverlay = ({ onAbort }: { onAbort: () => void }) => {
       >
         <div className="absolute inset-0 border border-[#FF8F00]/30 group-hover:border-[#FF8F00] transition-colors" />
         <div className="relative transform font-italic text-[9px] sm:text-[10px] font-black uppercase tracking-[0.4em] text-[#FF8F00] drop-shadow-[0_0_5px_rgba(255,143,0,0.5)]">
-          CANCEL_RENDER //
+          FINISH_NOW //
         </div>
       </button>
     </div>
   );
 };
 
-const ExportSettingsOverlay = () => {
-  const settings = useRefocusStore((state) => state.exportSettings);
-  const setSettings = useRefocusStore((state) => state.setExportSettings);
-  const setIsOpen = useRefocusStore((state) => state.setIsExportSettingsOpen);
-  const setIsExporting = useRefocusStore((state) => state.setIsExporting);
-  const duration = useRefocusStore((state) => state.getProjectDuration());
-
-  const presets = [
-    { label: 'HIGH_QUALITY', width: 1920, height: 1080, targetMB: null },
-    { label: 'SOCIAL_720P', width: 1280, height: 720, targetMB: null },
-    { label: 'TWITTER_5MB', width: 1280, height: 720, targetMB: 4.8 }, // Buffer for headers
-  ];
-
-  const handleApplyPreset = (p: typeof presets[0]) => {
-    let bitrate = 8000; // Default
-    if (p.targetMB) {
-      // Bitrate (kbps) = (MB * 8 * 1024) / duration
-      bitrate = Math.floor((p.targetMB * 8 * 1024) / duration);
-    }
-    setSettings({
-      width: p.width,
-      height: p.height,
-      targetSizeMB: p.targetMB,
-      bitrate: bitrate
-    });
-  };
-
-  return (
-    <div className="absolute inset-0 z-[110] bg-[#02090E]/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 sm:p-10 font-mono">
-      <div className="w-full max-w-xl flex flex-col items-center space-y-10 sm:space-y-16 relative">
-        <div className="text-center space-y-4">
-          <div className="text-[10px] font-black uppercase tracking-[0.6em] text-[#28E7FF] drop-shadow-[0_0_8px_#28E7FF]">EXPORT_CONFIG // ISO_GRID</div>
-          <h2 className="text-4xl sm:text-6xl font-black italic tracking-tighter skew-x-[-12deg] uppercase">PRESETS<span className="text-[#FF8F00]">/</span>MARK</h2>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-4 w-full h-auto">
-          {presets.map((p) => {
-            const isActive = settings.targetSizeMB === p.targetMB && settings.width === p.width;
-            return (
-              <button
-                key={p.label}
-                onClick={() => handleApplyPreset(p)}
-                className={cn(
-                  "group relative p-6 border transition-all transform skew-x-[-12deg] flex flex-col items-center gap-3",
-                  isActive
-                    ? "border-[#28E7FF] bg-[#28E7FF]/10 shadow-[0_0_30px_rgba(40,231,255,0.2)]"
-                    : "border-[#6FC3DF]/20 hover:border-[#6FC3DF] bg-[#02090E]"
-                )}
-              >
-                <div className="transform skew-x-[12deg] text-center">
-                  <div className="text-[10px] font-black tracking-widest text-[#28E7FF] mb-2">{isActive ? '>>> ' : ''}{p.label}</div>
-                  <div className="text-[9px] text-white/40 font-bold uppercase">{p.width}X{p.height}</div>
-                  {p.targetMB && <div className="text-[9px] text-[#FF8F00] font-black mt-1 uppercase tracking-tighter">LIMIT_{p.targetMB}MB</div>}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex flex-col items-center gap-6 sm:gap-10 w-full pt-8 border-t border-[#28E7FF]/10">
-          <div className="text-[9px] text-[#6FC3DF]/40 uppercase tracking-[0.4rem] font-black flex items-center gap-4">
-            <span className="w-8 h-[1px] bg-[#28E7FF] shadow-[0_0_5px_#28E7FF]" />
-            ESTIMATED_BITRATE // {settings.bitrate} KBPS
-            <span className="w-8 h-[1px] bg-[#28E7FF] shadow-[0_0_5px_#28E7FF]" />
-          </div>
-
-          <div className="flex items-center gap-6 sm:gap-10">
-            <button
-              onClick={() => setIsOpen(false)}
-              className="px-8 sm:px-12 py-3 border border-white/20 text-[10px] font-black uppercase tracking-widest opacity-40 hover:opacity-100 hover:border-white transition-all transform skew-x-[-12deg]"
-            >
-              <div className="transform skew-x-[12deg]">ABORT_PREVIEW</div>
-            </button>
-            <button
-              onClick={() => {
-                setIsOpen(false);
-                setIsExporting(true);
-              }}
-              className="px-10 sm:px-20 py-4 bg-[#FF8F00] text-[#02090E] text-[12px] font-black uppercase tracking-[0.5em] transform skew-x-[-12deg] hover:shadow-[0_0_50px_rgba(255,143,0,0.5)] transition-all"
-            >
-              <div className="transform skew-x-[12deg]">INITIALIZE_RENDER</div>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 export function VideoPreview() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -183,6 +95,7 @@ export function VideoPreview() {
   // --- Audio Handling Refs ---
   const audioCtxRef = useRef<AudioContext | null>(null);
   const videoSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const musicSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
 
   // State
   const [isHovering, setIsHovering] = useState(false);
@@ -193,7 +106,6 @@ export function VideoPreview() {
   const videoSrc = useRefocusStore((state) => state.videoSrc);
   const isPlaying = useRefocusStore((state) => state.isPlaying);
   const isExporting = useRefocusStore((state) => state.isExporting);
-  const isExportSettingsOpen = useRefocusStore((state) => state.isExportSettingsOpen);
   const exportSettings = useRefocusStore((state) => state.exportSettings);
   const currentTime = useRefocusStore((state) => state.currentTime);
   const videoVolume = useRefocusStore((state) => state.videoVolume);
@@ -216,7 +128,11 @@ export function VideoPreview() {
       switch (e.key.toLowerCase()) {
         case ' ':
           e.preventDefault();
-          useRefocusStore.getState().isPlaying ? pause() : play();
+          const store = useRefocusStore.getState();
+          if (audioCtxRef.current?.state === 'suspended') {
+            audioCtxRef.current.resume();
+          }
+          store.isPlaying ? pause() : play();
           break;
         case 'x':
           splitSegment();
@@ -268,6 +184,10 @@ export function VideoPreview() {
     if (e.button !== 0 || !videoSrc) return;
     isDragging.current = true;
 
+    if (audioCtxRef.current?.state === 'suspended') {
+      audioCtxRef.current.resume();
+    }
+
     useRefocusStore.getState().addKeyframe();
     const id = useRefocusStore.getState().selectedKeyframeId;
     const kf = useRefocusStore.getState().keyframes.find(k => k.id === id);
@@ -310,7 +230,7 @@ export function VideoPreview() {
     isDragging.current = false;
   };
 
-  const isAbortedRef = useRef(false);
+  const isAbortedRef = useRef(false); // No longer strictly used for discarding, but kept for future safety if needed
   const [isReadyToRecord, setIsReadyToRecord] = useState(false);
 
   // --- Export Logic ---
@@ -355,37 +275,50 @@ export function VideoPreview() {
         if (actx) {
           if (actx.state === 'suspended') await actx.resume();
           const dest = actx.createMediaStreamDestination();
+
+          // Mix Video Audio
           if (!videoSourceRef.current) {
             try {
               videoSourceRef.current = actx.createMediaElementSource(video);
               videoSourceRef.current.connect(actx.destination);
-            } catch (e) { console.warn('Audio source connection warning:', e); }
+            } catch (e) { console.warn('Video source connection warning:', e); }
           }
           if (videoSourceRef.current) videoSourceRef.current.connect(dest);
+
+          // Mix Music Audio
+          const musicElement = document.getElementById('slice-music-player') as HTMLAudioElement;
+          if (musicElement && !musicSourceRef.current) {
+            try {
+              musicSourceRef.current = actx.createMediaElementSource(musicElement);
+              musicSourceRef.current.connect(actx.destination);
+            } catch (e) { console.warn('Music source connection warning:', e); }
+          }
+          if (musicSourceRef.current) musicSourceRef.current.connect(dest);
+
           const mixedTracks = dest.stream.getAudioTracks();
           if (mixedTracks.length > 0) stream.addTrack(mixedTracks[0]);
         }
 
-        // --- Container Preference: Prefer MP4 (H.264) ---
-        let mimeType = 'video/mp4;codecs=avc1';
-        let extension = 'mp4';
+        // --- QuickTime & Social Compatibility: Prioritize H.264 + AAC ---
+        const candidates = [
+          { mime: 'video/mp4;codecs=avc1,mp4a.40.2', ext: 'mp4' }, // H.264 + AAC (Best for QuickTime)
+          { mime: 'video/mp4;codecs=avc1', ext: 'mp4' },          // H.264 (Generic)
+          { mime: 'video/mp4;codecs=hvc1,mp4a.40.2', ext: 'mp4' }, // HEVC + AAC
+          { mime: 'video/mp4', ext: 'mp4' },                      // Generic MP4
+          { mime: 'video/webm;codecs=vp9,opus', ext: 'webm' },    // WebM Fallback
+          { mime: 'video/webm', ext: 'webm' }
+        ];
 
-        if (!MediaRecorder.isTypeSupported(mimeType)) {
-          mimeType = 'video/mp4'; // General MP4
-          if (!MediaRecorder.isTypeSupported(mimeType)) {
-            mimeType = 'video/webm;codecs=vp9,opus'; // Modern WebM
-            extension = 'webm';
-            if (!MediaRecorder.isTypeSupported(mimeType)) {
-              mimeType = 'video/webm'; // Baseline WebM
-            }
-          }
-        }
+        const selected = candidates.find(c => MediaRecorder.isTypeSupported(c.mime)) || candidates[2];
+        let mimeType = selected.mime;
+        let extension = selected.ext;
 
         console.log(`Export: Using MIME ${mimeType} in .${extension} container`);
 
         const recorder = new MediaRecorder(stream, {
           mimeType,
-          videoBitsPerSecond: exportSettings.bitrate * 1000
+          videoBitsPerSecond: exportSettings.bitrate * 1000,
+          audioBitsPerSecond: 128000
         });
         mediaRecorderRef.current = recorder;
         chunksRef.current = [];
@@ -395,8 +328,8 @@ export function VideoPreview() {
         };
 
         recorder.onstop = () => {
-          console.log(`Export: Recording stopped. Chunks: ${chunksRef.current.length}, Aborted: ${isAbortedRef.current}`);
-          if (chunksRef.current.length > 0 && !isAbortedRef.current) {
+          console.log(`Export: Finalizing stream. Chunks: ${chunksRef.current.length}`);
+          if (chunksRef.current.length > 0) {
             const blob = new Blob(chunksRef.current, { type: mimeType });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -555,12 +488,10 @@ export function VideoPreview() {
 
       <canvas ref={canvasRef} className="hidden pointer-events-none" />
 
-      {isExportSettingsOpen && <ExportSettingsOverlay />}
 
       {isExporting && (
         <ExportOverlay
           onAbort={() => {
-            isAbortedRef.current = true;
             setIsExporting(false);
           }}
         />

@@ -46,6 +46,7 @@ export interface PlayerState {
   // Export Settings
   exportSettings: ExportSettings;
   isExportSettingsOpen: boolean;
+  audioContext: AudioContext | null;
 
   // Zoom Data
   keyframes: ZoomKeyframe[];
@@ -115,6 +116,7 @@ export const useRefocusStore = create<PlayerState>((set, get) => ({
     bitrate: 5000,
   },
   isExportSettingsOpen: false,
+  audioContext: null,
   keyframes: [],
   selectedKeyframeId: null,
   selectedSegmentId: null,
@@ -149,10 +151,10 @@ export const useRefocusStore = create<PlayerState>((set, get) => ({
       selectedKeyframeId: null,
       selectedSegmentId: null,
       exportSettings: {
-        width: width > 1280 ? 1280 : width,
-        height: height > 720 ? 720 : height,
-        targetSizeMB: null,
-        bitrate: 5000,
+        width: width > height ? 1280 : 720,
+        height: width > height ? 720 : 1280,
+        targetSizeMB: 4.8,
+        bitrate: Math.floor((4.8 * 8 * 1024) / duration) - 128,
       }
     });
   },

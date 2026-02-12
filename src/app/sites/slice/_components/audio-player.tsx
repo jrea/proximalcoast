@@ -54,8 +54,10 @@ export function AudioPlayer() {
   return (
     <audio
       ref={audioRef}
+      id="slice-music-player"
       src={audioSrc}
       preload="auto"
+      crossOrigin="anonymous"
       className="hidden" // Headless player
     />
   );

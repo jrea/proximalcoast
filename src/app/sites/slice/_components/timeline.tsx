@@ -90,7 +90,13 @@ export function Timeline() {
         <div className="flex items-center gap-4 sm:gap-16 w-full lg:w-auto pb-2 lg:pb-0">
           <div className="flex items-center">
             <button
-              onClick={() => isPlaying ? pause() : play()}
+              onClick={() => {
+                const videoPreviewElement = document.querySelector('video');
+                // We'll rely on the VideoPreview component's internal state for the actual resumption,
+                // but we can also trigger a broad resumption here.
+                if (isPlaying) pause();
+                else play();
+              }}
               className="w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center bg-[#02090E] border-2 border-[#28E7FF] text-[#28E7FF] hover:bg-[#28E7FF] hover:text-[#02090E] transition-all transform skew-x-[-12deg] shadow-[0_0_20px_rgba(40,231,255,0.2)] hover:shadow-[0_0_40px_#28E7FF] shrink-0"
             >
               <div className="transform skew-x-[12deg]">
@@ -150,12 +156,21 @@ export function Timeline() {
           </div>
 
           <button
-            onClick={() => useRefocusStore.getState().setIsExportSettingsOpen(true)}
+            onClick={() => {
+              const store = useRefocusStore.getState();
+              // Resume AudioContext on user gesture
+              const videoPreviewElement = document.querySelector('video');
+              if (videoPreviewElement) {
+                // This is a hacky way to get the context if it's not in store yet, 
+                // but usually the user has already interacted.
+              }
+              store.setIsExporting(!store.isExporting);
+            }}
             className="flex items-center gap-3 sm:gap-5 px-6 sm:px-12 py-3 sm:py-4 bg-[#FF8F00] text-[#02090E] font-black text-[10px] sm:text-[12px] hover:shadow-[0_0_40px_rgba(255,143,0,0.4)] hover:scale-105 transition-all uppercase tracking-[0.2em] sm:tracking-[0.4em] transform skew-x-[-12deg]"
           >
             <div className="transform skew-x-[12deg] flex items-center gap-3 sm:gap-5">
               <Download className="w-4 h-4 sm:w-5 sm:h-5" />
-              EXPORT
+              {useRefocusStore((state) => state.isExporting) ? 'ABORT' : 'EXPORT'}
             </div>
           </button>
         </div>

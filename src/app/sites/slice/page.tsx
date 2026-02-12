@@ -34,7 +34,7 @@ export default function RefocusPage() {
       const tempVideo = document.createElement('video');
       tempVideo.preload = 'metadata';
       tempVideo.onloadedmetadata = () => {
-        setVideo(url, tempVideo.duration);
+        setVideo(url, tempVideo.duration, tempVideo.videoWidth, tempVideo.videoHeight);
       };
       tempVideo.src = url;
     }

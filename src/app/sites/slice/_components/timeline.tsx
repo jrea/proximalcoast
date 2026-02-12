@@ -150,7 +150,7 @@ export function Timeline() {
           </div>
 
           <button
-            onClick={() => useRefocusStore.getState().setIsExporting(true)}
+            onClick={() => useRefocusStore.getState().setIsExportSettingsOpen(true)}
             className="flex items-center gap-3 sm:gap-5 px-6 sm:px-12 py-3 sm:py-4 bg-[#FF8F00] text-[#02090E] font-black text-[10px] sm:text-[12px] hover:shadow-[0_0_40px_rgba(255,143,0,0.4)] hover:scale-105 transition-all uppercase tracking-[0.2em] sm:tracking-[0.4em] transform skew-x-[-12deg]"
           >
             <div className="transform skew-x-[12deg] flex items-center gap-3 sm:gap-5">

@@ -17,22 +17,35 @@ export interface VideoSegment {
   end: number;   // Source End Time
 }
 
+export interface ExportSettings {
+  width: number;
+  height: number;
+  targetSizeMB: number | null; // null means auto/high quality
+  bitrate: number; // kbps
+}
+
 export interface PlayerState {
   // Video Source
   videoSrc: string | null;
   audioSrc: string | null;
-  sourceDuration: number; // Original duration of the video file
+  sourceDuration: number;
+  videoWidth: number;
+  videoHeight: number;
 
-  // Segments (The "Cut" logic)
+  // Segments
   segments: VideoSegment[];
 
   // Playback
-  currentTime: number; // Project Time (0 to projected duration)
+  currentTime: number;
   isPlaying: boolean;
   isExporting: boolean;
   playbackRate: number;
   videoVolume: number;
   musicVolume: number;
+
+  // Export Settings
+  exportSettings: ExportSettings;
+  isExportSettingsOpen: boolean;
 
   // Zoom Data
   keyframes: ZoomKeyframe[];
@@ -40,7 +53,7 @@ export interface PlayerState {
   selectedSegmentId: string | null;
 
   // Actions
-  setVideo: (src: string, duration: number) => void;
+  setVideo: (src: string, duration: number, width: number, height: number) => void;
   setAudio: (src: string) => void;
   setVideoVolume: (volume: number) => void;
   setMusicVolume: (volume: number) => void;
@@ -48,8 +61,10 @@ export interface PlayerState {
   play: () => void;
   pause: () => void;
   setIsExporting: (isExporting: boolean) => void;
+  setExportSettings: (settings: Partial<ExportSettings>) => void;
+  setIsExportSettingsOpen: (isOpen: boolean) => void;
   seek: (projectTime: number) => void;
-  tick: (sourceTime: number) => void; // Update based on video time
+  tick: (sourceTime: number) => void;
 
   // Segment CRUD
   splitSegment: () => void;
@@ -59,7 +74,7 @@ export interface PlayerState {
   // Keyframe CRUD
   addKeyframe: () => void;
   updateKeyframe: (id: string, updates: Partial<ZoomKeyframe>) => void;
-  upsertKeyframe: (updates: Partial<ZoomKeyframe>) => void; // Auto-keyframing
+  upsertKeyframe: (updates: Partial<ZoomKeyframe>) => void;
   deleteKeyframe: (id: string) => void;
   selectKeyframe: (id: string | null) => void;
 
@@ -84,18 +99,27 @@ export const useRefocusStore = create<PlayerState>((set, get) => ({
   videoSrc: null,
   audioSrc: null,
   sourceDuration: 0,
+  videoWidth: 0,
+  videoHeight: 0,
   segments: [],
-  currentTime: 0, // Project Time
+  currentTime: 0,
   isPlaying: false,
   isExporting: false,
   playbackRate: 1,
   videoVolume: 1,
   musicVolume: 0.5,
+  exportSettings: {
+    width: 1280,
+    height: 720,
+    targetSizeMB: null,
+    bitrate: 5000,
+  },
+  isExportSettingsOpen: false,
   keyframes: [],
   selectedKeyframeId: null,
   selectedSegmentId: null,
 
-  setVideo: (src, duration) => {
+  setVideo: (src, duration, width, height) => {
     const initialKeyframe: ZoomKeyframe = {
       id: uuidv4(),
       time: 0,
@@ -115,13 +139,21 @@ export const useRefocusStore = create<PlayerState>((set, get) => ({
       videoSrc: src,
       audioSrc: null,
       sourceDuration: duration,
+      videoWidth: width,
+      videoHeight: height,
       currentTime: 0,
       isPlaying: false,
       isExporting: false,
       keyframes: [initialKeyframe],
       segments: [initialSegment],
       selectedKeyframeId: null,
-      selectedSegmentId: null
+      selectedSegmentId: null,
+      exportSettings: {
+        width: width > 1280 ? 1280 : width,
+        height: height > 720 ? 720 : height,
+        targetSizeMB: null,
+        bitrate: 5000,
+      }
     });
   },
 
@@ -135,6 +167,10 @@ export const useRefocusStore = create<PlayerState>((set, get) => ({
   play: () => set({ isPlaying: true }),
   pause: () => set({ isPlaying: false }),
   setIsExporting: (isExporting) => set({ isExporting }),
+  setExportSettings: (settings) => set((state) => ({
+    exportSettings: { ...state.exportSettings, ...settings }
+  })),
+  setIsExportSettingsOpen: (isOpen) => set({ isExportSettingsOpen: isOpen }),
 
   seek: (projectTime) => {
     const duration = get().getProjectDuration();

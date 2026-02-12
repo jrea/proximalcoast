@@ -339,17 +339,24 @@ export function VideoPreview() {
           'video/webm;codecs=vp8,opus',
           'video/webm'
         ];
-        let options = { mimeType: '' };
+
+        let selectedMimeType = '';
         for (const type of mimeTypes) {
           if (MediaRecorder.isTypeSupported(type)) {
-            options.mimeType = type;
+            selectedMimeType = type;
             break;
           }
         }
 
+        const options: MediaRecorderOptions = {
+          mimeType: selectedMimeType || undefined,
+          videoBitsPerSecond: 5000000, // 5 Mbps
+          audioBitsPerSecond: 192000   // 192 kbps
+        };
+
         console.log("Selected MIME Type:", options.mimeType);
 
-        const recorder = new MediaRecorder(stream, options.mimeType ? options : undefined);
+        const recorder = new MediaRecorder(stream, options);
         mediaRecorderRef.current = recorder;
         chunksRef.current = [];
 
@@ -358,8 +365,9 @@ export function VideoPreview() {
         };
 
         recorder.onstop = () => {
-          const ext = options.mimeType.includes('mp4') ? 'mp4' : 'webm';
-          const type = options.mimeType || 'video/webm';
+          const mime = options.mimeType || '';
+          const ext = mime.includes('mp4') ? 'mp4' : 'webm';
+          const type = mime || 'video/webm';
           const blob = new Blob(chunksRef.current, { type });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -368,6 +376,10 @@ export function VideoPreview() {
           a.click();
           URL.revokeObjectURL(url);
           setIsExporting(false);
+          const musicRef = exportMusicRef.current;
+          if (musicRef) {
+            musicRef.pause();
+          }
         };
 
         recorder.start();
@@ -423,8 +435,12 @@ export function VideoPreview() {
           const musicRef = exportMusicRef.current;
           if (musicRef) {
             if (musicRef.paused) musicRef.play().catch(() => { });
-            // Aggressive sync for export
-            if (Math.abs(musicRef.currentTime - currentTime) > 0.1) {
+
+            // Relaxed sync for export:
+            // Only seek if drift is > 0.5s to avoid audio stuttering.
+            // Seeking is expensive and causes audible glitches.
+            if (Math.abs(musicRef.currentTime - currentTime) > 0.5) {
+              console.warn("Export Sync: Correcting drift", musicRef.currentTime, currentTime);
               musicRef.currentTime = currentTime;
             }
           }

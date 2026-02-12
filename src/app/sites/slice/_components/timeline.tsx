@@ -158,11 +158,17 @@ export function Timeline() {
           <button
             onClick={() => {
               const store = useRefocusStore.getState();
-              // Resume AudioContext on user gesture
-              const videoPreviewElement = document.querySelector('video');
-              if (videoPreviewElement) {
-                // This is a hacky way to get the context if it's not in store yet, 
-                // but usually the user has already interacted.
+              if (!store.isExporting) {
+                // Ensure we start from the beginning to avoid immediate completion
+                store.pause();
+                store.seek(0);
+
+                // Broad AudioContext resumption on user gesture
+                const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+                if (AudioContext) {
+                  const tempCtx = new AudioContext();
+                  tempCtx.resume();
+                }
               }
               store.setIsExporting(!store.isExporting);
             }}
@@ -170,7 +176,7 @@ export function Timeline() {
           >
             <div className="transform skew-x-[12deg] flex items-center gap-3 sm:gap-5">
               <Download className="w-4 h-4 sm:w-5 sm:h-5" />
-              {useRefocusStore((state) => state.isExporting) ? 'ABORT' : 'EXPORT'}
+              {useRefocusStore((state) => state.isExporting) ? 'FINISH' : 'EXPORT'}
             </div>
           </button>
         </div>

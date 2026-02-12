@@ -334,7 +334,7 @@ export function VideoPreview() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `slice-dice-${Date.now()}.${extension}`;
+            a.download = `slice-${Date.now()}.${extension}`;
             a.click();
             URL.revokeObjectURL(url);
           }
@@ -346,6 +346,12 @@ export function VideoPreview() {
         recorder.start();
         store.play();
         console.log('Export: Playback and recording started.');
+
+        // Final check on AudioContext
+        if (actx && actx.state === 'suspended') {
+          await actx.resume();
+        }
+
         setIsReadyToRecord(true);
       } catch (err) {
         console.error('Export failed:', err);
@@ -508,8 +514,8 @@ export function VideoPreview() {
         <div className="absolute top-4 sm:top-10 right-4 sm:right-10 flex flex-col items-end space-y-3 opacity-10 sm:opacity-0 group-hover:opacity-100 transition-all duration-500">
           <div className="bg-[#FF8F00]/5 border border-[#FF8F00]/30 text-[#FF8F00] px-3 sm:px-6 py-1.5 sm:py-2 text-[8px] sm:text-[10px] font-black uppercase tracking-[0.4em] flex items-center gap-2 sm:gap-3 transform skew-x-[-12deg] shadow-[0_0_15px_rgba(255,143,0,0.2)]">
             <div className="transform skew-x-[12deg] flex items-center gap-2 sm:gap-3">
-              <Activity className="w-3 h-3 sm:w-4 sm:h-4" />
-              SYSTEM_ACTIVE // V1.0
+              <Download className="w-4 h-4 sm:w-5 sm:h-5" />
+              {isExporting ? (isReadyToRecord ? 'FINISH' : 'INITIALIZING...') : 'EXPORT'}
             </div>
           </div>
         </div>

@@ -152,8 +152,23 @@
     }
   }
 
+  @keyframes scan {
+    from {
+      background-position: 0 0;
+    }
+
+    to {
+      background-position: 0 100%;
+    }
+  }
+
   @keyframes savage-shimmer {
-    0% { transform: skewX(-12deg) translateX(-100%); }
-    100% { transform: skewX(-12deg) translateX(200%); }
+    0% {
+      transform: skewX(-12deg) translateX(-100%);
+    }
+
+    100% {
+      transform: skewX(-12deg) translateX(200%);
+    }
   }
 }

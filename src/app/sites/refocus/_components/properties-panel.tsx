@@ -24,7 +24,7 @@ export function PropertiesPanel() {
   return (
     <div className="w-[360px] border-l border-[#28E7FF]/20 bg-[#02090E] flex flex-col h-full font-mono selection:bg-[#28E7FF] selection:text-[#02090E]">
       {/* TRON Header Area */}
-      <div className="p-8 border-b border-[#28E7FF]/20 flex flex-col gap-6 bg-[#02090E] relative overflow-hidden">
+      <div className="p-6 border-b border-[#28E7FF]/20 flex flex-col gap-5 bg-[#02090E] relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-[#28E7FF]/5 transform rotate-[45deg] translate-x-16 -translate-y-16 pointer-events-none" />
 
         <div className="flex items-center justify-between z-10">
@@ -54,9 +54,9 @@ export function PropertiesPanel() {
         </div>
       </div>
 
-      <div className="p-10 space-y-16 flex-1 overflow-y-auto custom-scrollbar relative">
+      <div className="p-6 space-y-12 flex-1 overflow-y-auto custom-scrollbar relative">
         {/* Optical Magnification */}
-        <div className="space-y-8">
+        <div className="space-y-6">
           <div className="flex justify-between items-end border-b border-[#28E7FF]/10 pb-3">
             <label className="text-[10px] font-black text-[#6FC3DF]/60 uppercase tracking-[0.3em]">OPTICAL_ZOOM // MAG</label>
             <div className="flex items-baseline gap-2">
@@ -90,7 +90,7 @@ export function PropertiesPanel() {
         </div>
 
         {/* Spatial Axis Control */}
-        <div className="space-y-8 border-t border-[#28E7FF]/10 pt-10">
+        <div className="space-y-6 border-t border-[#28E7FF]/10 pt-8">
           <div className="flex justify-between items-center">
             <label className="text-[10px] font-black text-[#6FC3DF]/60 uppercase tracking-[0.3em] flex items-center gap-3">
               <Crosshair className="w-5 h-5 text-[#28E7FF]/40" /> SPATIAL_AXIS
@@ -141,14 +141,14 @@ export function PropertiesPanel() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
-            <div className="bg-[#02090E] border border-[#28E7FF]/10 p-5 transform skew-x-[-12deg] hover:border-[#28E7FF]/60 transition-all group">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-[#02090E] border border-[#28E7FF]/10 p-4 transform skew-x-[-12deg] hover:border-[#28E7FF]/60 transition-all group">
               <div className="transform skew-x-[12deg] flex flex-col gap-1">
                 <span className="text-[10px] text-[#6FC3DF]/40 uppercase font-black group-hover:text-[#6FC3DF]/80 transition-colors">LONG_X //</span>
                 <span className="text-2xl font-black text-white italic tracking-tighter drop-shadow-[0_0_5px_rgba(255,255,255,0.1)]">{Math.round(displayValues.x)}</span>
               </div>
             </div>
-            <div className="bg-[#02090E] border border-[#28E7FF]/10 p-5 transform skew-x-[-12deg] hover:border-[#28E7FF]/60 transition-all group">
+            <div className="bg-[#02090E] border border-[#28E7FF]/10 p-4 transform skew-x-[-12deg] hover:border-[#28E7FF]/60 transition-all group">
               <div className="transform skew-x-[12deg] flex flex-col gap-1">
                 <span className="text-[10px] text-[#6FC3DF]/40 uppercase font-black group-hover:text-[#6FC3DF]/80 transition-colors">LAT_Y //</span>
                 <span className="text-2xl font-black text-white italic tracking-tighter drop-shadow-[0_0_5px_rgba(255,255,255,0.1)]">{Math.round(displayValues.y)}</span>
@@ -158,12 +158,12 @@ export function PropertiesPanel() {
         </div>
 
         {/* Amplitude Mixer */}
-        <div className="pt-12 border-t border-[#28E7FF]/10 space-y-12">
+        <div className="pt-8 border-t border-[#28E7FF]/10 space-y-8">
           <h3 className="text-[10px] font-black text-[#6FC3DF]/60 uppercase tracking-[0.4em] flex items-center gap-3">
             <Disc className="w-5 h-5 text-[#28E7FF]/40" /> AMP_SIGNAL_MIX //
           </h3>
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div className="flex justify-between items-end px-1">
               <span className="text-[10px] text-[#6FC3DF]/40 font-black uppercase tracking-widest italic">VIDEO_AUDIO //</span>
               <span className="text-[10px] font-black text-[#28E7FF] tracking-widest font-mono drop-shadow-[0_0_5px_rgba(40,231,255,0.3)]">{(useRefocusStore.getState().videoVolume * 100).toFixed(0)}dB</span>
@@ -180,7 +180,7 @@ export function PropertiesPanel() {
             </div>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div className="flex justify-between items-end px-1">
               <span className="text-[10px] text-[#FF8F00]/40 font-black uppercase tracking-widest italic">MUSIC_VOLUME //</span>
               <span className="text-[10px] font-black text-[#FF8F00] tracking-widest font-mono drop-shadow-[0_0_5px_rgba(255,143,0,0.3)]">{(useRefocusStore((state) => state.musicVolume) * 100).toFixed(0)}dB</span>
@@ -199,7 +199,7 @@ export function PropertiesPanel() {
         </div>
       </div>
 
-      <div className="p-6 bg-[#28E7FF]/5 border-t border-[#28E7FF]/10 text-[10px] text-[#6FC3DF]/30 font-black text-center tracking-[0.5em] uppercase">
+      <div className="p-4 bg-[#28E7FF]/5 border-t border-[#28E7FF]/10 text-[10px] text-[#6FC3DF]/30 font-black text-center tracking-[0.5em] uppercase">
         MOD_CORE // SEQUENCER_GRID
       </div>
     </div>

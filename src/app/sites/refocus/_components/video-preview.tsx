@@ -6,20 +6,66 @@ import { useRefocusStore } from '../_store/store';
 import { cn } from '@/lib/utils';
 import { Command, MousePointer2 } from 'lucide-react';
 
+const ExportOverlay = () => {
+  const currentTime = useRefocusStore((state) => state.currentTime);
+  const getProjectDuration = useRefocusStore((state) => state.getProjectDuration);
+  const setIsExporting = useRefocusStore((state) => state.setIsExporting);
+
+  // Use Project Duration for correct calculation (total time of edit, not source file)
+  // Calling getter inside render is OK for Zustand if state changes trigger re-render?
+  // getCurrentTransform calls get() which is disallowed inside render? No, this is store Hook.
+  // Actually, getProjectDuration is a function in state. Calling it is fine.
+  // But wait, the function USES state.segments.
+  // If we just got the function, it closes over 'get'?
+  // In Zustand `create`, methods use `get()`.
+  // So calling `getProjectDuration()` is safe.
+  const duration = getProjectDuration();
+  const progress = Math.min(100, Math.max(0, (currentTime / (duration || 1)) * 100));
+
+  return (
+    <div className="absolute inset-0 z-50 bg-black/90 flex flex-col items-center justify-center text-white space-y-4">
+      <div className="text-3xl font-bold tracking-tight animate-pulse">Rendering Video...</div>
+      <div className="w-64 h-2 bg-neutral-800 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-blue-500 transition-all duration-300 ease-linear"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      <div className="text-sm text-neutral-400 font-mono">
+        {progress.toFixed(0)}%
+      </div>
+      <button
+        onClick={() => setIsExporting(false)}
+        className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded border border-red-500/50 transition-colors"
+      >
+        Cancel
+      </button>
+    </div>
+  );
+};
+
 export function VideoPreview() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // State for interaction
+  // --- Audio Handling Refs ---
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const videoSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const exportMusicRef = useRef<HTMLAudioElement>(null);
+
+
+  // State
   const [isHovering, setIsHovering] = useState(false);
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
 
-  // Subscribe to changes
+  // Store Subscriptions
   const videoSrc = useRefocusStore((state) => state.videoSrc);
   const isPlaying = useRefocusStore((state) => state.isPlaying);
+  // Subscribe to isExporting to ensure re-render
+  const isExporting = useRefocusStore((state) => state.isExporting);
   const videoVolume = useRefocusStore((state) => state.videoVolume);
-  const segments = useRefocusStore((state) => state.segments); // for gap jumping
+  const segments = useRefocusStore((state) => state.segments);
 
   // Actions
   const play = useRefocusStore((state) => state.play);
@@ -29,17 +75,7 @@ export function VideoPreview() {
   const deleteSegment = useRefocusStore((state) => state.deleteSegment);
   const selectedSegmentId = useRefocusStore((state) => state.selectedSegmentId);
   const updateKeyframe = useRefocusStore((state) => state.updateKeyframe);
-  const getKeyframeAtCurrentTime = () => {
-    // Helper to find the keyframe responsible for current state to allow editing
-    // Ideally, we find the CLOSEST keyframe (within threshold?) or just add a new one if none?
-    // For "Scroll to scale", typically you want to influence the *current* zoom. 
-    // If there is no keyframe, it creates one. If there is, it updates it.
-    // BUT, store.addKeyframe logic handles "find existing or create new".
-    // So we can technically just call updators IF we know the ID, or use addKeyframe logic.
-    // Let's create a custom action in store or just use existing.
-    // Since `addKeyframe` updates `selectedKeyframeId`, we can call that, then update.
-    return useRefocusStore.getState().selectedKeyframeId;
-  };
+  const setIsExporting = useRefocusStore((state) => state.setIsExporting);
 
 
   // --- Keyboard Shortcuts ---
@@ -71,6 +107,18 @@ export function VideoPreview() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // --- Audio Context Initialization ---
+  useEffect(() => {
+    const initAudio = () => {
+      if (!audioCtxRef.current) {
+        // @ts-ignore
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtxRef.current = new AudioContext();
+      }
+    };
+    initAudio();
   }, []);
 
 
@@ -161,8 +209,6 @@ export function VideoPreview() {
 
 
   // --- Export Logic ---
-  const isExporting = useRefocusStore((state) => state.isExporting);
-  const setIsExporting = useRefocusStore((state) => state.setIsExporting);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -197,37 +243,145 @@ export function VideoPreview() {
 
     if (!ctx) return;
 
-    // Start Recorder
-    const stream = canvas.captureStream(30); // 30 FPS
-    const options = { mimeType: 'video/webm;codecs=vp9' };
+    // --- Export Sequence ---
+    const executeExport = async () => {
+      console.log("Starting Export Sequence...");
+      try {
+        // 1. Setup Canvas Stream
+        const stream = canvas.captureStream(30);
+        console.log("Canvas stream created.");
 
-    try {
-      const recorder = new MediaRecorder(stream, options);
-      mediaRecorderRef.current = recorder;
-      chunksRef.current = [];
+        // 2. Setup Audio (Await it!)
+        const ctx = audioCtxRef.current;
+        if (ctx) {
+          console.log("AudioContext State:", ctx.state);
+          if (ctx.state === 'suspended') {
+            await ctx.resume();
+            console.log("AudioContext Resumed. New State:", ctx.state);
+          }
 
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
+          const dest = ctx.createMediaStreamDestination();
 
-      recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'video/webm' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `refocus-export-${Date.now()}.webm`;
-        a.click();
-        URL.revokeObjectURL(url);
+          // Video Source
+          if (!videoSourceRef.current) {
+            try {
+              console.log("Creating Video Source...");
+              videoSourceRef.current = ctx.createMediaElementSource(video);
+              videoSourceRef.current.connect(ctx.destination);
+              console.log("Video Source created and connected to speakers.");
+            } catch (e) {
+              console.warn("Create Video Source failed:", e);
+            }
+          }
+
+          // Connect Video
+          if (videoSourceRef.current) {
+            videoSourceRef.current.connect(dest);
+            console.log("Video Source connected to Export Destination.");
+          } else {
+            // Fallback captureStream
+            console.warn("Using Fallback: captureStream for Video Audio.");
+            // @ts-ignore
+            const vStream = video.captureStream ? video.captureStream() : (video as any).mozCaptureStream ? (video as any).mozCaptureStream() : null;
+            if (vStream) {
+              const tracks = vStream.getAudioTracks();
+              console.log("Fallback Video Tracks found:", tracks.length);
+              if (tracks.length > 0) stream.addTrack(tracks[0]);
+            }
+          }
+
+          // Music Source
+          const musicRef = exportMusicRef.current;
+          if (musicRef) {
+            musicRef.currentTime = 0; // Ensure music starts at 0
+            console.log("Music Element Found via Ref.");
+            try {
+              // Use captureStream for music to be safe
+              // @ts-ignore
+              const mStream = musicRef.captureStream ? musicRef.captureStream() : (musicRef as any).mozCaptureStream ? (musicRef as any).mozCaptureStream() : null;
+              if (mStream) {
+                const mSource = ctx.createMediaStreamSource(mStream);
+                mSource.connect(dest);
+                console.log("Music Stream captured and connected to Export Destination.");
+              } else {
+                console.warn("Music captureStream not supported/failed.");
+              }
+            } catch (e) {
+              console.warn("Music capture failed", e);
+            }
+          } else {
+            console.log("No Music Element found.");
+          }
+
+          // Add Mixed Track to Stream
+          const mixedTracks = dest.stream.getAudioTracks();
+          console.log("Total Mixed Audio Tracks:", mixedTracks.length);
+          if (mixedTracks.length > 0) {
+            stream.addTrack(mixedTracks[0]);
+            console.log("Mixed Audio Track added to Recorder Stream.");
+          } else {
+            console.warn("NO AUDIO TRACKS in Destination Stream!");
+            // Only alert if we also didn't get a fallback track
+            if (stream.getAudioTracks().length === 0) {
+              alert("Warning: No audio tracks could be captured. The video may be silent.");
+            }
+          }
+        } else {
+          console.error("No AudioContext ref!");
+        }
+
+        // 3. Init Recorder
+        // Codec Priority
+        const mimeTypes = [
+          'video/mp4;codecs=avc1,mp4a.40.2',
+          'video/mp4',
+          'video/webm;codecs=vp9,opus',
+          'video/webm;codecs=vp8,opus',
+          'video/webm'
+        ];
+        let options = { mimeType: '' };
+        for (const type of mimeTypes) {
+          if (MediaRecorder.isTypeSupported(type)) {
+            options.mimeType = type;
+            break;
+          }
+        }
+
+        console.log("Selected MIME Type:", options.mimeType);
+
+        const recorder = new MediaRecorder(stream, options.mimeType ? options : undefined);
+        mediaRecorderRef.current = recorder;
+        chunksRef.current = [];
+
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunksRef.current.push(e.data);
+        };
+
+        recorder.onstop = () => {
+          const ext = options.mimeType.includes('mp4') ? 'mp4' : 'webm';
+          const type = options.mimeType || 'video/webm';
+          const blob = new Blob(chunksRef.current, { type });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `refocus-export-${Date.now()}.${ext}`;
+          a.click();
+          URL.revokeObjectURL(url);
+          setIsExporting(false);
+        };
+
+        recorder.start();
+        store.play();
+
+      } catch (err) {
+        console.error("Export Error", err);
         setIsExporting(false);
-      };
+      }
+    };
 
-      recorder.start();
-      store.play(); // Start Playback loop which will drive the render
-    } catch (err) {
-      console.error("Export failed", err);
-      alert("Export failed: " + (err as any).message);
-      setIsExporting(false);
-    }
+    executeExport();
+
+
 
     return () => {
       // Cleanup if component unmounts mid-export
@@ -236,6 +390,18 @@ export function VideoPreview() {
       }
     };
   }, [isExporting]);
+
+  // Sync Video Play/Pause State
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoSrc) return;
+
+    if (isPlaying && video.paused) {
+      video.play().catch(console.error);
+    } else if (!isPlaying && !video.paused) {
+      video.pause();
+    }
+  }, [isPlaying, videoSrc]);
 
   // --- Playback Loop ---
   useEffect(() => {
@@ -247,10 +413,22 @@ export function VideoPreview() {
 
       if (video && container) {
         const store = useRefocusStore.getState();
-        const { currentTime, segments, getSourceTime, isExporting } = store;
+        const { currentTime, segments, getSourceTime, isExporting, audioSrc } = store;
 
         // We use store.isPlaying as the source of truth for "should be playing"
         const isStorePlaying = store.isPlaying;
+
+        // Sync music playback for export (Invisible Audio Element)
+        if (isExporting && isStorePlaying && audioSrc) {
+          const musicRef = exportMusicRef.current;
+          if (musicRef) {
+            if (musicRef.paused) musicRef.play().catch(() => { });
+            // Aggressive sync for export
+            if (Math.abs(musicRef.currentTime - currentTime) > 0.1) {
+              musicRef.currentTime = currentTime;
+            }
+          }
+        }
 
         if (isStorePlaying) {
           let currentSourceTime = video.currentTime;
@@ -302,7 +480,7 @@ export function VideoPreview() {
             }
           }
         } else {
-          // Store is Paused. 
+          // Store is Paused.
           // Sync Video Element to Store Time exactly.
           const targetSourceTime = getSourceTime(currentTime);
           // We use a small threshold to avoid fighting floating point
@@ -347,7 +525,7 @@ export function VideoPreview() {
             // 1. Center Origin
             ctx.translate(w / 2, h / 2);
 
-            // 2. Apply Pan 
+            // 2. Apply Pan
             // x,y are percentages of the container where focus is.
             // 50,50 is center.
             // If focus is 60,60 (right-down), we need to shift image LEFT-UP.
@@ -405,6 +583,8 @@ export function VideoPreview() {
     }
   };
 
+  const audioSrc = useRefocusStore((state) => state.audioSrc);
+
   if (!videoSrc) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center bg-neutral-900 border-2 border-dashed border-neutral-800 rounded-lg text-neutral-500">
@@ -440,16 +620,22 @@ export function VideoPreview() {
         />
       </div>
 
+      {/* Hidden Audio for Export */}
+      {audioSrc && (
+        <audio
+          ref={exportMusicRef}
+          src={audioSrc}
+          className="export-music hidden"
+          preload="auto"
+          crossOrigin="anonymous"
+        />
+      )}
+
       {/* Hidden Canvas for Export */}
       <canvas ref={canvasRef} className="hidden pointer-events-none" />
 
       {/* Exporting Overlay */}
-      {isExporting && (
-        <div className="absolute inset-0 z-50 bg-black/80 flex flex-col items-center justify-center text-white">
-          <div className="text-2xl font-bold mb-2">Rendering Video...</div>
-          <div className="text-sm text-white/50">Please wait while the video plays through.</div>
-        </div>
-      )}
+      {isExporting && <ExportOverlay />}
 
       {/* Overlay UI */}
       <div className={cn(

@@ -1,5 +1,5 @@
-
-import { streamText } from 'ai';
+import { streamText, Output } from 'ai';
+import { z } from 'zod';
 import { deepseekV3, deepseekR1 } from '../../_lib/ai';
 
 import { IDENTITY } from "../../prompts/identity";
@@ -44,7 +44,8 @@ export async function POST(req: Request) {
 
   const plan = subscription?.plan || "trial";
 
-  const body = await req.json();
+  const fullBody = await req.json();
+  const body = fullBody.object || fullBody;
   const { language, topic: bodyTopic, prompt, isEmail } = body;
   const topic = bodyTopic || prompt;
 
@@ -84,6 +85,10 @@ export async function POST(req: Request) {
     return new Response(errorMsg, { status: 429 });
   }
 
+  // We are generating a pack of roasts/emails.
+  // Dynamic Count: 1 for Email Mode, 5 for standard roasts
+  const ROAST_COUNT = isEmail ? 1 : 5;
+
   const isFlagged = await moderateText(topic);
   if (isFlagged) {
     return new Response("That topic is pathetic and we won't roast it. Also, it violates our 'actual lawyer' content policy, you coward.", { status: 400 });
@@ -122,10 +127,12 @@ ${STYLE}
 
 ${finalConstraints}${historyString}
 
-IMPORTANT: YOU MUST OUTPUT THE ROAST ONLY IN THE REQUESTED LANGUAGE OR FORMAT. 
-IF THE LANGUAGE IS A TECHNICAL FORMAT (LIKE BINARY, MORSE CODE, BASE64), ENCODE THE ROAST CONTENT FULLY INTO THAT FORMAT.
-
 Language: ${language || 'English'}.
+
+STRICT REQUIREMENT: You MUST generate exactly ${ROAST_COUNT} distinct roasts. 
+Each roast should use a different Attack Style from the Jerkstore Code.
+Ensure variety in structure and metaphor. 
+If in Response Mode, provide 5 different ways to respond to the provided input.
 `;
 
   // The "Rider" Logic
@@ -143,32 +150,50 @@ Language: ${language || 'English'}.
     frequencyPenalty: 0.7,
   } : {};
 
+
+
   const result = await streamText({
     model: selectedModel,
+    output: Output.object({
+      schema: z.object({
+        roasts: z.array(z.string()).length(ROAST_COUNT),
+      }),
+    }),
     system: systemPrompt,
-    prompt: isEmail ? `Write a devastating email roasting this topic: ${topic}` : `Roast this topic: ${topic}`,
-    maxOutputTokens: plan === "savage" ? 2048 : 512,
+    prompt: isEmail ? `Write 1 devastating email roasting this topic: ${topic}` : `Generate a pack of 5 roasts for this topic: ${topic}`,
+    maxOutputTokens: isEmail ? 8192 : 2048,
     ...v3Params,
-    onFinish: async ({ text, usage }) => {
-      try {
-        if (text) {
-          await prisma.jerkstore_insult.create({
+  });
+
+  // Handle saving to DB when stream finishes
+  (async () => {
+    try {
+      const { roasts } = await result.output;
+      const usage = await result.totalUsage;
+
+      if (roasts && roasts.length > 0) {
+        // Flatten the usage across 5 records for simplicity
+        const perRoastInput = Math.ceil((usage.inputTokens ?? 0) / ROAST_COUNT);
+        const perRoastOutput = Math.ceil((usage.outputTokens ?? 0) / ROAST_COUNT);
+
+        await Promise.all(roasts.map((text: string) =>
+          prisma.jerkstore_insult.create({
             data: {
               content: text,
               topic: topic,
               language: language || 'English',
-              promptTokens: usage.inputTokens ?? 0,
-              completionTokens: usage.outputTokens ?? 0,
+              promptTokens: perRoastInput,
+              completionTokens: perRoastOutput,
               userId: session.user.id,
               isEmail: isEmail || false,
             },
-          });
-        }
-      } catch (dbError) {
-        console.error("[Jerkstore DB Error]", dbError);
+          })
+        ));
       }
-    },
-  });
+    } catch (error) {
+      console.error("[Jerkstore DB Error]", error);
+    }
+  })();
 
   return result.toTextStreamResponse();
 }

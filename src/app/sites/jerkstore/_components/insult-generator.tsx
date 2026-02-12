@@ -1,6 +1,7 @@
 "use client";
 
-import { useCompletion } from "@ai-sdk/react";
+import { experimental_useObject as useObject } from "@ai-sdk/react";
+import { z } from "zod";
 import { useState, useEffect } from "react";
 import { useRef } from "react";
 import { Loader2, Zap, Copy, Check, Share2 } from "lucide-react";
@@ -43,44 +44,71 @@ export function InsultGenerator({
   };
 
   const [displayText, setDisplayText] = useState("");
-  const { completion, input, handleInputChange, handleSubmit, isLoading, error } = useCompletion({
+  const [input, setInput] = useState("");
+  const [roasts, setRoasts] = useState<string[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [hasViewedAll, setHasViewedAll] = useState(true);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+  };
+
+  const { object, submit, isLoading, error } = useObject({
     api: "/api/generate-insult",
-    body: {
-      language,
-      isEmail,
+    schema: z.object({
+      roasts: z.array(z.string()).length(5),
+    }),
+    onFinish: ({ object }: { object?: { roasts?: string[] } }) => {
+      if (object?.roasts) {
+        setRoasts(object.roasts);
+        setCurrentIndex(0);
+        setHasViewedAll(false);
+      }
     },
-    streamProtocol: "text",
-    onFinish: (final) => {
-      console.log("[Jerkstore] Stream finished. Final length:", final.length);
-    },
-    onError: (err) => {
-      console.error("[Jerkstore] Stream error:", err);
-    }
   });
 
   useEffect(() => {
-    if (completion) {
-      setDisplayText(completion);
+    if (object?.roasts) {
+      // During streaming, show the current roast being typed or the first one
+      const current = object.roasts[currentIndex] || object.roasts[0] || "";
+      setDisplayText(current);
     }
-  }, [completion]);
-
-  useEffect(() => {
-    if (completion) {
-      console.log("[Jerkstore] New roast content chunk:", completion.length);
-    }
-  }, [completion]);
+  }, [object, currentIndex]);
 
   const onGenerate = (e: React.FormEvent) => {
+    e.preventDefault();
     if (!isActive) {
-      e.preventDefault();
       setShowAccessModal(true);
       return;
     }
-    handleSubmit(e);
+    submit({
+      language,
+      isEmail,
+      topic: input,
+    });
     // Cycle labels
     setButtonLabel(BUTTON_LABELS[Math.floor(Math.random() * BUTTON_LABELS.length)]);
     setTopicLabel(TOPIC_LABELS[Math.floor(Math.random() * TOPIC_LABELS.length)]);
     setCopied(false);
+  };
+
+  const nextRoast = () => {
+    if (currentIndex < roasts.length - 1) {
+      const newIndex = currentIndex + 1;
+      setCurrentIndex(newIndex);
+      setDisplayText(roasts[newIndex]);
+      if (newIndex === roasts.length - 1) {
+        setHasViewedAll(true);
+      }
+    }
+  };
+
+  const prevRoast = () => {
+    if (currentIndex > 0) {
+      const newIndex = currentIndex - 1;
+      setCurrentIndex(newIndex);
+      setDisplayText(roasts[newIndex]);
+    }
   };
 
   const copyImage = async () => {
@@ -380,7 +408,8 @@ export function InsultGenerator({
           </div>
 
           <button
-            disabled={isLoading || !input.trim()}
+            type="submit"
+            disabled={isLoading || !input.trim() || !hasViewedAll}
             className={cn(
               "w-full font-black text-xl sm:text-3xl py-4 sm:py-6 border-4 border-black transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed uppercase relative group overflow-hidden",
               isSavage ? "bg-black text-white hover:-translate-y-1 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] sm:hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]" :
@@ -393,6 +422,8 @@ export function InsultGenerator({
                 <>
                   <Loader2 className="animate-spin w-6 h-6 sm:w-8 sm:h-8" /> {isSavage ? "SUMMONING THE ABYSS..." : "Cooking..."}
                 </>
+              ) : !hasViewedAll ? (
+                "VIEW ALL ROASTS FIRST"
               ) : (
                 <>
                   {buttonLabel} {isSavage && <Zap className="w-6 h-6 sm:w-8 sm:h-8 fill-purple-600" />}
@@ -449,6 +480,35 @@ export function InsultGenerator({
             <p className={cn("whitespace-pre-wrap text-sm sm:text-xl", isSavage && "drop-shadow-md")}>
               {displayText}
             </p>
+
+            {roasts.length > 0 && (
+              <div className="flex justify-between items-center mt-6 py-4 border-t-2 border-dashed border-black/10">
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={prevRoast}
+                    disabled={currentIndex === 0}
+                    className="p-2 border-2 border-black bg-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-neutral-50 transition-colors"
+                  >
+                    ←
+                  </button>
+                  <span className="font-mono text-sm font-bold opacity-60">
+                    ROAST {currentIndex + 1} / {roasts.length}
+                  </span>
+                  <button
+                    onClick={nextRoast}
+                    disabled={currentIndex === roasts.length - 1}
+                    className="p-2 border-2 border-black bg-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-neutral-50 transition-colors"
+                  >
+                    →
+                  </button>
+                </div>
+                {!hasViewedAll && (
+                  <span className="text-[10px] font-black uppercase text-red-500 animate-pulse">
+                    Cycle to unlock next generate
+                  </span>
+                )}
+              </div>
+            )}
 
             {displayText && !isLoading && (
               <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row gap-3 justify-end items-stretch sm:items-center">

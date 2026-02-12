@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Project Context
 
 ## Architecture
@@ -22,3 +26,5 @@
 - Ensure **Aesthetics** are premium and modern.
 - Use **cn()** for conditional class names (avoid ternary operators for classes).
 - Use **pnpm** for building and package management.
+
+use nextjs 16, which uses `proxy.ts` not `middlware.ts`

@@ -22,7 +22,6 @@ export default async function proxy(req: NextRequest) {
 
   const rootDomain = process.env.ROOT_DOMAIN?.split(":")[0];
 
-  console.log(rootDomain, 'wtf?', hostname)
   // If it's the root domain (e.g. proximalcoast.com or lvh.me) or www, show the main site
   if (hostname === rootDomain || hostname === `www.${rootDomain}`) {
     return NextResponse.next();

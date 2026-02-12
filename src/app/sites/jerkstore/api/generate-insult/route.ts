@@ -1,6 +1,6 @@
 
 import { streamText } from 'ai';
-import { insultModel } from '../../_lib/ai';
+import { deepseekV3, deepseekR1 } from '../../_lib/ai';
 
 import { IDENTITY } from "../../prompts/identity";
 import { STYLE } from "../../prompts/style";
@@ -128,11 +128,27 @@ IF THE LANGUAGE IS A TECHNICAL FORMAT (LIKE BINARY, MORSE CODE, BASE64), ENCODE 
 Language: ${language || 'English'}.
 `;
 
+  // The "Rider" Logic
+  // Short input -> V3 (fast, cheap, witty)
+  // Long/Technical input -> R1 (context-heavy, better niche understanding)
+  // User examples: 
+  // - "someone was mean to me" (short) -> V3
+  // - "a specific job, a niche hobby, or a complex social dynamic" (complex) -> R1
+  const isComplex = topic.length > 50 || (topic.match(/,/g) || []).length >= 2;
+  const selectedModel = isComplex ? deepseekR1 : deepseekV3;
+
+  const v3Params = !isComplex ? {
+    temperature: 1.3,
+    topP: 0.9,
+    frequencyPenalty: 0.7,
+  } : {};
+
   const result = await streamText({
-    model: insultModel,
+    model: selectedModel,
     system: systemPrompt,
     prompt: isEmail ? `Write a devastating email roasting this topic: ${topic}` : `Roast this topic: ${topic}`,
     maxOutputTokens: plan === "savage" ? 2048 : 512,
+    ...v3Params,
     onFinish: async ({ text, usage }) => {
       try {
         if (text) {

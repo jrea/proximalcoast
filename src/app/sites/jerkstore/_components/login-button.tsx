@@ -89,7 +89,12 @@ export function LoginButton({
     } else {
       posthog?.capture(
         'login_clicked',
-        { provider: 'google', location: 'landing_page_button', label: text },
+        {
+          provider: 'google',
+          location: 'landing_page_button',
+          label: text,
+          original_text: text
+        },
         { transport: 'sendBeacon' }
       );
       // Small artificial delay to allow event loop to process the capture request queue

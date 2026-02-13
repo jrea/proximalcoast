@@ -11,6 +11,7 @@ import { RandomBurn } from "./_components/random-burn";
 import { prisma } from "@/lib/db"; // Import prisma
 import { LiveTicker } from "./_components/live-ticker"; // Import Ticker
 import { cn } from "@/lib/utils";
+import { BlurredRoast } from "./_components/blurred-roast";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://jerkstore.proximalcoast.com"),
@@ -39,29 +40,6 @@ export const metadata: Metadata = {
   },
 };
 
-const BAD_WORDS = ["goddamn", "fucked", "syphilis-ridden", "syphilitic", "lobotomized"];
-
-function BlurredRoast({ text }: { text: string }) {
-  const words = text.split(/(\s+)/);
-  return (
-    <>
-      {words.map((word, i) => {
-        const cleanWord = word.toLowerCase().replace(/[.,!?;:]/g, "");
-        if (BAD_WORDS.includes(cleanWord) && word.length > 0) {
-          return (
-            <Link key={i} href="/billing" className="inline-block cursor-pointer select-none bg-neutral-200 px-1 rounded mx-0.5 hover:bg-red-100 border-b-2 border-transparent hover:border-red-600 transition-all group/word" title="Click to unlock with Pro">
-              <span>{word[0]}</span>
-              <span className="blur-[4px] transition-all">
-                {word.substring(1)}
-              </span>
-            </Link>
-          );
-        }
-        return <span key={i}>{word}</span>;
-      })}
-    </>
-  );
-}
 
 const FAKE_REVIEWS = [
   {

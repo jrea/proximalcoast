@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Skull, RefreshCw, Quote, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { usePostHog } from 'posthog-js/react';
 
 const OFFENSIVE_UPSALES = [
   { topic: "Your Poverty", content: "Your insults are as weak as your bloodline. Pay $5/mo to actually hurt someone's feelings." },
@@ -40,10 +41,12 @@ export function RandomBurn() {
   const [burn, setBurn] = useState<{ content: string; topic: string | null; isUpsale?: boolean } | null>(null);
   const [loading, setLoading] = useState(false);
   const [clickCount, setClickCount] = useState(0);
+  const posthog = usePostHog();
 
   const grabBurn = async () => {
     setLoading(true);
     const newCount = clickCount + 1;
+    posthog?.capture('random_burn_clicked', { click_count: newCount });
 
     // Probability increases with each click: 1/7, 2/7... 7/7 (100%)
     const threshold = 7;
@@ -51,6 +54,7 @@ export function RandomBurn() {
 
     if (Math.random() < probability) {
       setClickCount(0); // Reset counter after showing the upsale
+      posthog?.capture('random_burn_upsell_shown');
       setTimeout(() => {
         const randomUpsale = OFFENSIVE_UPSALES[Math.floor(Math.random() * OFFENSIVE_UPSALES.length)];
         setBurn({ ...randomUpsale, isUpsale: true });
@@ -65,6 +69,9 @@ export function RandomBurn() {
       const res = await fetch("/api/random-insult");
       const data = await res.json();
       setBurn(data);
+      if (data && !data.error) {
+        posthog?.capture('random_burn_generated', { topic: data.topic, insultId: data.insultId });
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -97,13 +104,14 @@ export function RandomBurn() {
                 </span>
               )}
               <p className={`text-2xl font-serif font-black leading-tight italic px-4 ${burn.isUpsale ? 'text-red-700' : ''}`}>
-                "<BlurredRoast text={burn.content} />"
+                "{burn.content}"
               </p>
 
               {burn.isUpsale && (
                 <div className="mt-6 animate-bounce">
                   <Link
                     href="/billing"
+                    onClick={() => posthog?.capture('random_burn_upsell_click')}
                     className="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 font-black uppercase text-sm border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
                   >
                     Get Pro Now <ArrowRight className="w-4 h-4" />

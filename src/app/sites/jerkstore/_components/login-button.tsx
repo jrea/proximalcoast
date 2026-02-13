@@ -79,10 +79,23 @@ export function LoginButton({
 
   const handleAction = async () => {
     if (session) {
-      posthog?.capture('navigation_to_app', { from: 'landing_page_button', label: randomLabel || text });
+      // Use sendBeacon to ensure event is sent even if navigation happens immediately
+      posthog?.capture(
+        'navigation_to_app',
+        { from: 'landing_page_button', label: randomLabel || text },
+        { transport: 'sendBeacon' }
+      );
       router.push("/app");
     } else {
-      posthog?.capture('login_clicked', { provider: 'google', location: 'landing_page_button', label: text });
+      posthog?.capture(
+        'login_clicked',
+        { provider: 'google', location: 'landing_page_button', label: text },
+        { transport: 'sendBeacon' }
+      );
+      // Small artificial delay to allow event loop to process the capture request queue
+      // This is a safety fallback for browsers where sendBeacon might hit race conditions
+      await new Promise(resolve => setTimeout(resolve, 150));
+
       await authClient.signIn.social({
         provider: "google",
         callbackURL: "/app", // Redirect to dashboard after login

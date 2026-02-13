@@ -150,6 +150,7 @@ model jerkstore_insult {
   userId           String
   user             user     @relation(fields: [userId], references: [id], onDelete: Cascade)
   isEmail          Boolean  @default(false)
+  heatLevel        String   @default("spicy")
   createdAt        DateTime @default(now()) @db.Timestamp(6)
   safe_insult      jerkstore_insult_safe[]
 

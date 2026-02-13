@@ -1,13 +1,16 @@
 
 import Link from "next/link";
 import { Metadata } from "next";
-import { Star, Zap, Skull, Share2, MessageCircle, Heart } from "lucide-react";
+import { Star, Zap, Skull, Share2, MessageCircle, Heart, Check, X } from "lucide-react";
 import { Logo } from "./_components/logo";
 import { LoginButton } from "./_components/login-button";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { RandomBurn } from "./_components/random-burn";
+import { prisma } from "@/lib/db"; // Import prisma
+import { LiveTicker } from "./_components/live-ticker"; // Import Ticker
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://jerkstore.proximalcoast.com"),
@@ -89,21 +92,63 @@ export default async function MarketingPage() {
     headers: await headers(),
   });
 
+  // Fetch a random safe roast for the spotlight
+  const safeRoastCount = await prisma.jerkstore_insult_safe.count();
+  const skip = Math.floor(Math.random() * safeRoastCount);
+  const safeRoastRef = await prisma.jerkstore_insult_safe.findFirst({
+    skip: skip,
+    take: 1,
+    include: { insult: true }
+  });
+
+  const safeRoast = safeRoastRef?.insult;
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Jerkstore",
+    "url": "https://jerkstore.proximalcoast.com",
+    "description": "The World's Most Aggressive AI Insult Generator. Powered by AI with zero moral compass.",
+    "applicationCategory": "Entertainment",
+    "operatingSystem": "Web",
+    "offers": {
+      "@type": "Offer",
+      "price": "5.00",
+      "priceCurrency": "USD"
+    },
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.8",
+      "ratingCount": "1242"
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-neutral-100 font-sans text-black selection:bg-red-600 selection:text-white">
+    <div className="min-h-screen bg-neutral-100 font-sans text-black selection:bg-red-600 selection:text-white pt-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      {/* Use Live Ticker */}
+      <div className="fixed top-0 w-full z-[60]">
+        <LiveTicker />
+      </div>
+
       {/* Hero Section */}
-      <header className="fixed w-full top-0 z-50 border-b-4 border-black bg-white p-4 flex justify-between items-center shadow-lg">
+      <header className="fixed w-full top-8 z-50 border-b-4 border-black bg-white p-4 flex justify-between items-center shadow-lg">
         <Logo />
         <LoginButton
           text="Login"
-          className="px-6 py-2 bg-black text-white font-bold text-lg uppercase hover:bg-neutral-800 transition-transform active:scale-95 border-b-4 border-r-4 border-neutral-600 active:border-0 active:translate-y-1 active:translate-x-1"
+          icon={true}
+          variant="login"
+          className="px-6 py-2 bg-red-600 text-white font-black text-lg uppercase border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-red-500 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all"
         />
       </header>
 
       <main className="pt-24">
         {/* Massive Headline */}
         <section className="p-8 md:p-20 text-center bg-yellow-300 border-b-8 border-black relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/noise.png')]"></div>
+          <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxmaWx0ZXIgaWQ9Im4iPjxmZVR1cmJ1bGVuY2UgdHlwZT0iZnJhY3RhbE5vaXNlIiBiYXNlRnJlcXVlbmN5PSIwLjUiIG51bU9jdGF2ZXM9IjEiIHN0aXRjaFRpbGVzPSJzdGl0Y2giLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWx0ZXI9InVybCgjbikiIG9wYWNpdHk9IjAuNSIvPjwvc3ZnPg==')]"></div>
 
           <div className="inline-block bg-white border-4 border-black px-6 py-2  mb-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rotate-[-2deg]">
             <span className="font-bold font-mono uppercase text-sm md:text-base">🚀 #1 Product of the Day (in hell)</span>
@@ -159,8 +204,26 @@ export default async function MarketingPage() {
 
         <RandomBurn />
 
+        {/* Safe Roast Spotlight (Burn of the Day) */}
+        {safeRoast && (
+          <section className="py-12 bg-black text-white border-y-8 border-white overflow-hidden relative">
+            <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.4)_1px,transparent_1px)] [background-size:16px_16px] opacity-20 animate-pulse"></div>
+            <div className="max-w-4xl mx-auto text-center relative z-10 px-6">
+              <div className="inline-block bg-red-600 text-white font-black uppercase text-sm px-3 py-1 mb-4 rotate-2 border-2 border-white shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]">
+                Burn of the Day
+              </div>
+              <h3 className="text-3xl md:text-5xl font-black italic uppercase leading-none mb-6">
+                "{safeRoast.content}"
+              </h3>
+              <p className="font-mono text-sm text-neutral-400 uppercase tracking-widest">
+                Topic: {safeRoast.topic} • Verified Safe(ish)
+              </p>
+            </div>
+          </section>
+        )}
+
         {/* Viral Feed */}
-        <section className="border-y-8 border-black bg-white p-12 overflow-hidden">
+        <section className="border-b-8 border-black bg-white p-12 overflow-hidden">
           <div className="max-w-7xl mx-auto">
             <h3 className="text-5xl font-black uppercase mb-16 text-center italic tracking-tighter">
               <span className="bg-red-600 text-white px-4">Live</span> Wall of Shame
@@ -197,23 +260,96 @@ export default async function MarketingPage() {
           </div>
         </section>
 
-        {/* Pricing / CTA */}
-        <section className="grid grid-cols-1 md:grid-cols-2 min-h-[500px]">
-          <div className="bg-black text-white p-12 md:p-24 flex flex-col justify-center border-b-8 md:border-b-0 md:border-r-8 border-white box-border">
-            <h3 className="text-7xl font-black uppercase mb-6 leading-none tracking-tighter text-yellow-300">Unlimited<br />Rage.</h3>
-            <p className="text-2xl font-bold font-mono text-neutral-400 mb-8 max-w-md">Unlock the full power of our language model. Roast in 50+ languages. No limits.</p>
-            <Link href="/billing" className="self-start text-3xl font-black uppercase bg-white text-black px-8 py-4 hover:bg-red-600 hover:text-white transition-colors">
-              Get Pro Access &rarr;
-            </Link>
+        {/* Pricing Section */}
+        <section className="py-24 px-6 md:px-12 bg-neutral-100 border-b-8 border-black">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-16">
+              <h3 className="text-5xl md:text-7xl font-black uppercase italic tracking-tighter mb-4">
+                Choose Your <span className="text-red-600 bg-black px-2 inline-block transform -skew-x-12 pr-6">Pain</span>
+              </h3>
+              <p className="text-xl font-mono font-bold text-neutral-500 max-w-2xl mx-auto">
+                We accept all major credit cards and bits of your soul.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-stretch pt-8">
+
+              {/* Trial Tier - The Lame One */}
+              <div className="border-4 border-black bg-white p-6 relative flex flex-col hover:-translate-y-2 transition-transform shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)]">
+                <h4 className="text-3xl font-black uppercase italic text-neutral-400 mb-2">Trial</h4>
+                <div className="text-5xl font-black mb-6">$0</div>
+                <ul className="space-y-3 font-mono text-xs font-bold uppercase text-neutral-500 mb-8 flex-grow">
+                  <li className="flex gap-2"><Check className="w-4 h-4 text-black" /> 3 Roasts Total</li>
+                  <li className="flex gap-2"><Check className="w-4 h-4 text-black" /> Basic Insults</li>
+                  <li className="flex gap-2 opacity-50"><X className="w-4 h-4" /> No History</li>
+                  <li className="flex gap-2 opacity-50"><X className="w-4 h-4" /> Shame Included</li>
+                </ul>
+                <LoginButton text="Start Failure" className="w-full py-4 border-4 border-black font-black uppercase hover:bg-neutral-100 transition-colors bg-white text-black" />
+              </div>
+
+              {/* Standard Tier - SOLD OUT JOKE */}
+              <div className="border-4 border-black bg-neutral-200 p-6 relative flex flex-col opacity-60 grayscale cursor-not-allowed select-none transform scale-95 origin-bottom">
+                <div className="absolute -top-4 -right-4 bg-red-600 text-white font-black uppercase px-4 py-1 rotate-12 border-4 border-white shadow-md z-10">SOLD OUT</div>
+                <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,#000000_0,#000000_1px,transparent_0,transparent_50%)] [background-size:10px_10px] opacity-10 pointer-events-none"></div>
+
+                <h4 className="text-3xl font-black uppercase italic text-neutral-500 mb-2 decoration-red-600/50 decoration-4">Standard</h4>
+                <div className="text-5xl font-black mb-6 text-neutral-400">$1<span className="text-sm">/mo</span></div>
+                <ul className="space-y-3 font-mono text-xs font-bold uppercase text-neutral-400 mb-8 flex-grow">
+                  <li className="flex gap-2"><Check className="w-4 h-4" /> 3 Roasts / Day</li>
+                  <li className="flex gap-2"><Check className="w-4 h-4" /> Probably has Ads</li>
+                  <li className="flex gap-2"><Check className="w-4 h-4" /> Dishonors your ancestors</li>
+                </ul>
+                <button disabled className="w-full py-4 border-4 border-neutral-400 font-black uppercase bg-neutral-300 text-neutral-500 cursor-not-allowed">
+                  Out of Stock
+                </button>
+                <p className="mt-2 text-center text-[10px] font-mono font-bold text-red-600 uppercase">Due to supply chain issues</p>
+              </div>
+
+              {/* Elite Tier - Most Popular */}
+              <div className="border-4 border-black bg-yellow-300 p-6 relative flex flex-col shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] transform scale-105 z-10 hover:-translate-y-2 transition-transform">
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-black text-white px-4 py-1 font-black uppercase text-sm -rotate-2 whitespace-nowrap border-2 border-white shadow-lg">Most Popular</div>
+
+                <h4 className="text-3xl font-black uppercase italic mb-2">Elite</h4>
+                <div className="text-6xl font-black mb-6">$5<span className="text-xl font-bold">/mo</span></div>
+                <ul className="space-y-3 font-mono text-sm font-bold uppercase mb-8 flex-grow">
+                  <li className="flex gap-2"><Check className="w-5 h-5" /> 200 Roasts / Day</li>
+                  <li className="flex gap-2"><Check className="w-5 h-5" /> No Ads</li>
+                  <li className="flex gap-2"><Check className="w-5 h-5" /> Looks golden</li>
+                  <li className="flex gap-2 flex-row"><Check className="w-5 h-5" /> <span>Priority Queue <span className="text-[9px]">(does nothing)</span></span></li>
+                </ul>
+                <LoginButton text="Get Elite" className="w-full py-4 border-4 border-black font-black uppercase hover:bg-neutral-800 transition-colors bg-black text-white text-xl shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)]" />
+              </div>
+
+              {/* Savage Tier - God Mode */}
+              <div className="border-4 border-black bg-black text-white p-6 relative flex flex-col shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-2 transition-transform overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-900 via-pink-900 to-blue-900 opacity-50 group-hover:opacity-70 transition-opacity"></div>
+                <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.4)_1px,transparent_1px)] [background-size:16px_16px] opacity-30 animate-pulse"></div>
+
+                <div className="relative z-10">
+                  <h4 className="text-3xl font-black uppercase italic mb-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 drop-shadow-md">Savage</h4>
+                  <div className="text-5xl font-black mb-6">$99<span className="text-sm font-bold opacity-70">/mo</span></div>
+                  <ul className="space-y-3 font-mono text-xs font-bold uppercase mb-8 flex-grow text-white/90">
+                    <li className="flex gap-2"><Zap className="w-4 h-4 text-purple-400" /> 1000 Roasts / Day</li>
+                    <li className="flex gap-2"><Zap className="w-4 h-4 text-purple-400" /> Legendary Status</li>
+                    <li className="flex gap-2"><Zap className="w-4 h-4 text-purple-400" /> Max Length Mode</li>
+                    <li className="flex gap-2"><Zap className="w-4 h-4 text-purple-400" /> Your Mom Loves It</li>
+                  </ul>
+                  <LoginButton text="Ascend Now" className="w-full py-4 border-4 border-white font-black uppercase hover:bg-white hover:text-black transition-colors bg-transparent text-white backdrop-blur-md" />
+                </div>
+              </div>
+
+            </div>
           </div>
-          <div className="bg-red-600 p-12 md:p-24 flex flex-col justify-center items-center text-center">
-            <h3 className="text-white text-4xl font-black uppercase mb-8">Ready to ruin a friendship?</h3>
-            <LoginButton
-              text="Destroy my life"
-              className="bg-white text-black text-2xl font-black uppercase px-12 py-6 border-8 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[16px] active:translate-y-[16px] transition-all"
-            />
-            <p className="mt-6 text-white font-mono font-bold text-sm opacity-75 uppercase">Warning: Emotional damage likely.</p>
-          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="bg-red-600 p-12 md:p-24 flex flex-col justify-center items-center text-center border-t-8 border-black">
+          <h3 className="text-white text-4xl font-black uppercase mb-8">Ready to ruin a friendship?</h3>
+          <LoginButton
+            text="Destroy "
+            className="bg-white text-black text-2xl font-black uppercase px-12 py-6 border-8 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[16px] active:translate-y-[16px] transition-all"
+          />
+          <p className="mt-6 text-white font-mono font-bold text-sm opacity-75 uppercase">Warning: Emotional damage likely.</p>
         </section>
       </main>
 

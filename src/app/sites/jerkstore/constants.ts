@@ -147,3 +147,89 @@ export const getPlanFromId = (id: string | null | undefined) => {
     default: return null;
   }
 }
+
+export const RANDOM_TOPICS = [
+  "My boss's leadership style", "People who clap when the plane lands", "LinkedIn influencers",
+  "My ex's mixtape", "Crypto bros", "My dating life", "The HR department", "Landlords",
+  "Paper straws", "Slow Wi-Fi", "My own reflection", "People who use speakerphone in public",
+  "QR code menus", "Unskipping YouTube ads", "Self-checkout weight discrepancies", "Acoustic guitar guys",
+  "Gender reveal wildfires", "Corporate 'synergy'", "Reply-all email chains", "Astro-turfed lawns",
+  "Subscription-based heated seats", "Sidewalk snails (slow walkers)", "Gym vloggers", "Sent from my iPhone",
+  "Non-ironic NFTs", "Passive-aggressive Slack emojis", "Infinite group chats", "Influencers in the wild",
+  "Glitter bombs", "Solo podcasters", "Hidden shipping fees", "The 2:00 PM slump", "Deconstructed salads",
+  "Avocado toast inflation", "Pine needle IPAs", "Cracker-less charcuterie", "Oat milk elitists",
+  "Truffle oil abusers", "Dry January proponents", "Lemon-water mixologists", "Raw denim purists",
+  "Beige-core aesthetics", "MLM 'Boss Babes'", "Goat yoga", "Essential oil 'cures'", "Durian fruit",
+  "Artisanal ice cubes", "Mandatory fun days", "The company mission statement", "Open-plan offices",
+  "Breakroom fish-microwavers", "Emails that should have been meetings", "Performative productivity",
+  "Non-casual Casual Fridays", "Low toner lies", "Work-life 'integration'", "Mailroom nepo-babies",
+  "Icebreaker games", "The phrase 'Let's circle back'", "Unpaid internships", "LinkedIn work anniversaries",
+  "Ghosters", "Relationship soft-launches", "Main character syndrome", "Unsolicited life advice",
+  "Movie theater talkers", "The drunk designated driver", "Friends who don't 'like' posts", "Small talk weather",
+  "High school reunions", "The 'I'm not like others' trope", "Astrology as a personality", "Situationships",
+  "Love bombers", "Backhanded compliments", "Bluetooth pairing failures", "The Check Engine light",
+  "Middle seats on budget airlines", "Spirit Airlines legroom", "Hotel resort fees", "TSA liquid rules",
+  "Overhead bin hogs", "Two-year-old phone batteries", "9:00 AM software updates", "CAPTCHAs that fail humans",
+  "Autocorrect's 'ducking' obsession", "Sunglasses FaceID", "The sound of chewing", "The DMV waiting room",
+  "Daylight Savings Time", "The Game of Thrones finale", "Vindictive mosquitoes", "Wet socks",
+  "Plate sticker residue", "Cart-abandoners", "3:00 AM mufflers", "Printer ink prices", "The 1% battery warning",
+  "Sunday morning leaf blowers", "Slow lane tailgaters", "Three sneezes in a row", "Popcorn bag bottoms",
+  "Low-rise jeans revivals", "The word 'Moist'", "Grammar correctors", "Generic hold music",
+  "Barefoot flyers", "Popcorn kernel tooth-traps", "Pothole zip codes", "Notes app apologies",
+  "Subway smells", "Close-door buttons that don't work", "The sheer audacity", "My bank balance",
+  "Store-bought tomatoes", "The heat death of the universe", "My own poor choices", "Hobbyist gaslighting",
+  "Manifesting", "Aggressive pigeons", "The last cup of coffee", "Live-Laugh-Love signs", "Mumble rap",
+  "Pick-up artists", "Unsolicited dick pics", "Clickbait headlines", "Spoiler-heavy trailers",
+  "Public transport toenail-clippers", "Self-help gurus", "The phrase 'No offense, but...'", "Micromanagers",
+  "Door-to-door salespeople", "Telemarketers", "Spam folders", "Pop-up ads", "Cookie consent banners",
+  "Stolen parking spots", "Stepped-on LEGOs", "Cold coffee", "Burned toast", "Empty toilet paper rolls",
+  "Tangled earphones", "Buffering symbols", "Lost car keys", "Missing socks", "Biting your tongue",
+  "Brain freezes", "Paper cuts", "Stubbed toes", "Bad haircuts", "Awkward silences", "Forgetting names",
+  "Mistyping passwords", "Low shower pressure", "Luke-warm showers", "Noisy neighbors", "Barking dogs at night",
+  "Leaf blowers in the wind", "Traffic jams", "Construction noise", "Car alarms", "Crying babies on planes",
+  "Delayed flights", "Lost luggage", "Overbooked hotels", "Long lines", "Sold-out tickets", "Scalpers",
+  "Price gouging", "Hidden fees", "Service charges", "Mandatory gratuity", "Tipping fatigue", "Inflation",
+  "Recessions", "Tax season", "Audits", "Bureaucracy", "Red tape", "Politics", "The news", "Doomscrolling",
+  "Clickbait", "Trolls", "Cyberbullying", "Doxing", "Scams", "Phishing", "Identity theft", "Data breaches",
+  "Privacy concerns", "Surveillance", "Algorithmic bias", "Echo chambers", "Fake news", "Propaganda",
+  "Conspiracy theories", "Flat Earthers", "Anti-vaxxers", "MLMs", "Cults", "The patriarchy", "Toxic masculinity",
+  "Gatekeepers", "Karens", "Chads", "Beckys", "Boomers", "Millennials", "Gen Z", "Gen Alpha", "The generation gap",
+  "Cultural appropriation", "Virtue signaling", "Cancel culture", "Call-out culture", "Wokeism", "Anti-wokeism",
+  "Political correctness", "Microaggressions", "Privilege", "Inequality", "Injustice", "Corruption", "Greed",
+  "Apathy", "Ignorance", "Arrogance", "Hypocrisy", "Dishonesty", "Betrayal", "Disappointment", "Regret",
+  "Guilt", "Shame", "Insecurity", "Loneliness", "Boredom", "Existential dread", "Death", "Taxes",
+  "The DMV", "The IRS", "The HOA", "The TSA", "The FBI", "The CIA", "The lizard people", "The Illuminati",
+  "The Deep State", "The simulation we live in", "Glitch in the matrix", "Mandela effect", "Parallel universes",
+  "Alien abductions", "Zombie apocalypse", "Climate change", "Natural disasters", "Pandemics", "Apocalypse",
+  "Extinction", "Nothingness", "Entropy", "Chaos", "Order", "Control", "Free will", "Fate", "Destiny",
+  "Karma", "Luck", "Coincidence", "Synchronicity", "Serendipity", "Murphy's Law", "Occam's Razor",
+  "The Peter Principle", "The Dunning-Kruger effect", "The placebo effect", "The bystander effect",
+  "The halo effect", "The spotlight effect", "The Zeigarnik effect", "The Pareto principle", "The Stroop effect",
+  "The Mandela effect", "The butterfly effect", "The snowball effect", "The domino effect", "The IKEA effect",
+  "The Streisand effect", "The Pygmalion effect", "The Golem effect", "The Hawthorne effect", "The placebo effect",
+  "The nocebo effect", "The Barnum effect", "The Forer effect", "The Baader-Meinhof phenomenon",
+  "The Tetris effect", "The Von Restorff effect", "The Primacy effect", "The Recency effect", "The Zeigarnik effect",
+  "The Ostrich effect", "The Sunk Cost Fallacy", "The Gambler's Fallacy", "The Hot Hand Fallacy",
+  "The Bandwagon Effect", "The Confirmation Bias", "The Anchoring Bias", "The Availability Heuristic",
+  "The Representativeness Heuristic", "The Affect Heuristic", "The Hindsight Bias", "The Self-Serving Bias",
+  "The Fundamental Attribution Error", "The Actor-Observer Bias", "The In-group Bias", "The Out-group Bias",
+  "The IKEA effect", "The Endowment Effect", "The Loss Aversion Bias", "The Status Quo Bias", "The Decoy Effect"
+];
+
+export enum HeatLevel {
+  MILD = "mild",
+  SPICY = "spicy",
+  NUCLEAR = "nuclear"
+}
+
+export const HEAT_LEVELS = [
+  { value: HeatLevel.MILD, label: "Mild", desc: "Mild", color: "bg-blue-500" },
+  { value: HeatLevel.SPICY, label: "Spicy", desc: "Zesty", color: "bg-orange-500" },
+  { value: HeatLevel.NUCLEAR, label: "Nuclear", desc: "Taco bell aftermath", color: "bg-red-600" },
+];
+
+export const LOADING_MESSAGES = [
+  "Analyzing insecurities...", "Judging life choices...", "Accessing trauma database...",
+  "Consulting the dark web...", "Preparing emotional damage...", "Reviewing search history...",
+  "Scanning for weakness...", "Loading insults...", "Calculating cringe levels..."
+];

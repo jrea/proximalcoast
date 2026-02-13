@@ -2,7 +2,8 @@
 
 import { Logo } from "./logo";
 import { cn } from "@/lib/utils";
-import { forwardRef } from "react";
+import { forwardRef, useRef, useImperativeHandle } from "react";
+import { drawCardToCanvas } from "../_lib/draw-card";
 
 interface ShareCardProps {
   input: string;
@@ -11,26 +12,51 @@ interface ShareCardProps {
   isElite: boolean;
   isTrial: boolean;
   isEmail?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
-export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(({
+export interface ShareCardHandle {
+  drawToCanvas: (canvas: HTMLCanvasElement) => Promise<void>;
+}
+
+export const ShareCard = forwardRef<ShareCardHandle, ShareCardProps>(({
   input,
   displayText,
   isSavage,
   isElite,
   isTrial,
-  isEmail = false
+  isEmail = false,
+  className,
+  style
 }, ref) => {
+  const divRef = useRef<HTMLDivElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    drawToCanvas: async (canvas: HTMLCanvasElement) => {
+      await drawCardToCanvas(canvas, {
+        input,
+        displayText,
+        isSavage,
+        isElite,
+        isTrial,
+        isEmail
+      });
+    }
+  }));
+
   return (
     <div
-      ref={ref}
+      ref={divRef}
+      style={style}
       className={cn(
-        "p-12 pb-0 font-sans flex flex-col justify-between border-[12px] border-black overflow-hidden relative w-[800px] h-[1000px]",
+        "font-sans flex flex-col justify-between border-[12px] border-black overflow-hidden relative w-[800px] h-[1000px]",
         "absolute top-0 left-0 -z-50 opacity-1 pointer-events-none", // Hidden but renderable for capture
         isSavage ? "bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 text-white" :
           isElite ? "bg-gradient-to-br from-yellow-300 via-yellow-200 to-yellow-400 text-black" :
             isTrial ? "bg-[#4b3621] text-[#a98467] border-[#2a1d15]" :
-              "bg-white text-black"
+              "bg-white text-black",
+        className
       )}
     >
 
@@ -69,80 +95,48 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(({
         </div>
       )}
 
-      {/* North Zone: Input Box (at the bottom of this 200px zone) */}
-      <div className="relative z-10 w-full h-[200px] flex flex-col justify-end">
+      {/* North Zone: Input Box (Less Prominent) */}
+      <div className="relative z-10 w-full flex-shrink-0 flex flex-col justify-end pb-2 pt-6 px-6">
         <div className={cn(
-          "p-4 border-[6px] border-black font-mono text-3xl shadow-[10px_10px_0px_0px_rgba(0,0,0,1)]",
-          isSavage ? "bg-white/10 backdrop-blur-md text-white border-white/20" :
+          "inline-block self-start px-4 py-3 border-[4px] border-black font-mono text-2xl shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] rotate-[-1deg] transition-all",
+          isSavage ? "bg-white/10 backdrop-blur-md text-white border-white/20 shadow-white/10" :
             isTrial ? "bg-[#3d2b1f] text-white/50 border-[#2a1d15]" : "bg-white text-black"
         )}>
+          <span className="opacity-50 text-[0.6em] uppercase tracking-wider mr-2">Targeting:</span>
           {input || "Unnamed Victim"}
         </div>
       </div>
 
-      {/* Middle Zone: Roast Text (Vertically Centered) */}
-      <div className="relative z-10 flex-grow flex flex-col justify-center py-8">
+      {/* Middle Zone: Roast Text (Vertically Centered & Scaled) */}
+      <div className="relative z-10 flex-grow flex flex-col justify-center px-6 py-2">
         <div className={cn(
-          "font-black italic leading-[1.15]",
+          "font-black italic leading-[0.9] break-words hyphens-auto text-balance tracking-tight",
           isEmail ? "text-sm" :
-            displayText.length > 500 ? "text-2xl" :
-              displayText.length > 200 ? "text-3xl" :
-                displayText.length > 100 ? "text-4xl" : "text-5xl",
-          isTrial ? "font-[family-name:var(--font-comic)] text-[#a98467]" : "font-[family-name:var(--font-fraunces)]"
+            displayText.length > 500 ? "text-4xl" :
+              displayText.length > 300 ? "text-5xl" :
+                displayText.length > 200 ? "text-6xl" :
+                  displayText.length > 100 ? "text-7xl" :
+                    displayText.length > 50 ? "text-8xl" : "text-9xl",
+          isTrial ? "font-[family-name:var(--font-comic)] text-[#a98467]" : "font-[family-name:var(--font-fraunces)]",
+          isSavage ? "text-white" : "text-black"
         )}>
-          {displayText || "Calculating damage..."}
+          {displayText ? (
+            displayText
+          ) : (
+            <span className="opacity-30">Waiting for roast...</span>
+          )}
         </div>
       </div>
 
-      {/* South Zone: Footer */}
-      <footer className="relative z-10 flex flex-col items-center text-center mt-auto">
-        {isSavage ? (
-          <div className="relative w-full flex flex-col items-center pb-4 pt-6">
-            <div className="relative flex items-center justify-center p-4">
-              {/* Logo Card */}
-              <div className="relative z-10 bg-white p-4 rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.4),0_0_0_8px_rgba(255,255,255,0.2)] border-[4px] border-black rotate-[-3deg]">
-                <Logo iconOnly={true} iconClassName="w-10 h-10 text-purple-600 fill-purple-200 stroke-[4px]" />
-                <div className="absolute -bottom-3 -right-3 bg-white text-purple-600 font-black px-3 py-1 text-[10px] uppercase border-[2px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rotate-[10deg] skew-x-[-10deg]">
-                  SAVAGE
-                </div>
-              </div>
-            </div>
-
-            <div className="text-center group mt-2">
-              <div className="text-3xl font-[family-name:var(--font-bebas)] tracking-[0.1em] uppercase mb-1">JERKSTORE</div>
-              <div className="text-[10px] font-mono font-bold uppercase tracking-[0.4em] opacity-40">jerkstore.proximalcoast.com</div>
-            </div>
-          </div>
-        ) : isElite ? (
-          <div className="w-full">
-            <div className="bg-black text-yellow-400 p-4 border-[6px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden mb-4">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-400/10 rotate-45 translate-x-16 -translate-y-16" />
-              <div className="flex justify-between items-center relative z-10 text-left">
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-black tracking-[0.3em] opacity-50 uppercase mb-1 relative">
-                    Elite Verification
-                    <span className="absolute -bottom-1 -right-6 bg-black text-white px-2 py-0.5 text-[8px] skew-x-[-10deg] border border-white/20">ELITE</span>
-                  </span>
-                  <span className="text-xl font-[family-name:var(--font-syne)] font-extrabold uppercase tracking-tight">JERKSTORE ROAST</span>
-                </div>
-                <Logo iconOnly={true} iconClassName="w-8 h-8 text-yellow-400 stroke-[4px]" />
-              </div>
-            </div>
-            <div className="text-[10px] font-mono font-bold uppercase tracking-widest opacity-40 mb-2">
-              jerkstore.proximalcoast.com
-            </div>
-          </div>
-        ) : (
-          <div className="w-full flex flex-col items-center gap-2 bg-white/10 backdrop-blur-sm p-4 border-[6px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mb-4">
-            <Logo
-              iconClassName="w-8 h-8"
-              textClassName="text-2xl font-[family-name:var(--font-bebas)] uppercase tracking-widest text-black"
-            />
-            <div className="text-[10px] font-mono font-bold uppercase tracking-widest opacity-40">
-              jerkstore.proximalcoast.com
-            </div>
-          </div>
-        )}
+      {/* South Zone: Minimal Watermark */}
+      <footer className="relative z-10 flex items-center justify-center p-6 mt-auto">
+        <Logo
+          className={cn(
+            "opacity-70",
+            isSavage || isTrial ? "text-white" : "text-black"
+          )}
+          iconClassName="w-4 h-4 text-red-600"
+        />
       </footer>
     </div>
   );

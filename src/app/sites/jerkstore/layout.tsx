@@ -1,4 +1,5 @@
 import { Fraunces, Syne, Bebas_Neue, Comic_Neue } from "next/font/google";
+import { CookieBanner } from "./_components/cookie-banner";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
@@ -34,6 +35,7 @@ export default function JerkstoreLayout({
   return (
     <div className={`${fraunces.variable} ${syne.variable} ${bebas.variable} ${comic.variable} font-sans`}>
       {children}
+      <CookieBanner />
     </div>
   );
 }

@@ -2,9 +2,9 @@ import { streamText, Output } from 'ai';
 import { z } from 'zod';
 import { deepseekV3, deepseekR1 } from '../../_lib/ai';
 
-import { IDENTITY } from "../../prompts/identity";
-import { STYLE } from "../../prompts/style";
-import { CONSTRAINTS } from "../../prompts/constraints";
+import { NUCLEAR_IDENTITY, SPICY_IDENTITY, MILD_IDENTITY } from "../../prompts/identity";
+import { NUCLEAR_STYLE, SPICY_STYLE, MILD_STYLE } from "../../prompts/style";
+import { NUCLEAR_CONSTRAINTS, SPICY_CONSTRAINTS, MILD_CONSTRAINTS } from "../../prompts/constraints";
 import { EMAIL_CONSTRAINTS } from "../../prompts/email";
 
 export const maxDuration = 60;
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
 
   const fullBody = await req.json();
   const body = fullBody.object || fullBody;
-  const { language, topic: bodyTopic, prompt, isEmail } = body;
+  const { language, topic: bodyTopic, prompt, isEmail, heatLevel } = body;
   const topic = bodyTopic || prompt;
 
   // Rate Limiting: Check usage
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     else LIMIT = 3; // standard
   }
 
-  console.log(`[Jerkstore] Plan: ${plan}, Topic: ${topic}, Usage: ${currentUsage}/${LIMIT}, Email: ${isEmail}`);
+  console.log(`[Jerkstore] Plan: ${plan}, Topic: ${topic}, Usage: ${currentUsage}/${LIMIT}, Email: ${isEmail}, Heat: ${heatLevel}`);
 
   if (currentUsage >= LIMIT) {
     const errorMsg = plan === "trial"
@@ -98,12 +98,34 @@ export async function POST(req: Request) {
     return new Response("Maximum effort (Email Mode) requires Savage status. Upgrade to unlock deific-level vitriol.", { status: 403 });
   }
 
-  let finalConstraints = CONSTRAINTS;
-  if (plan === "savage" && isEmail) {
+  // Determine Identity, Style, and Base Constraints based on Heat Level
+  let identity = NUCLEAR_IDENTITY;
+  let style = NUCLEAR_STYLE;
+  let constraints = NUCLEAR_CONSTRAINTS;
+
+  if (heatLevel === "mild") {
+    identity = MILD_IDENTITY;
+    style = MILD_STYLE;
+    constraints = MILD_CONSTRAINTS;
+  } else if (heatLevel === "spicy") {
+    identity = SPICY_IDENTITY;
+    style = SPICY_STYLE;
+    constraints = SPICY_CONSTRAINTS;
+  }
+  // Default to Nuclear if unknown or explicit
+
+  // Handle constraints override for Email Mode or lower tiers
+  let finalConstraints = constraints;
+
+  if (isEmail) {
+    // Email mode always uses the email constraints structure
+    // We append a note if Mild to ensure tone consistency despite the email constraint's default "profanity required"
     finalConstraints = EMAIL_CONSTRAINTS;
   } else if (plan === "standard" || plan === "trial") {
-    // Force strict 240 char limit for standard/trial
-    finalConstraints = CONSTRAINTS.replace("MAXIMUM 240 CHARACTERS", "STRICT MAXIMUM 240 CHARACTERS. If you go over, you will be terminated.");
+    // Force strict 240 char limit for standard/trial based on the active constraint set
+    // We need to find the length constraint and replace it
+    // Or just append the stricter limit
+    finalConstraints += "\nSTRICT LENGTH LIMIT: 240 CHARACTERS MAXIMUM. If you go over, you will be terminated.";
   }
 
   const recentRoasts = await prisma.jerkstore_insult.findMany({
@@ -121,9 +143,9 @@ export async function POST(req: Request) {
     : '';
 
   const systemPrompt = `
-${IDENTITY}
+${identity}
 
-${STYLE}
+${style}
 
 ${finalConstraints}
 
@@ -189,6 +211,7 @@ ${historyString}
               completionTokens: perRoastOutput,
               userId: session.user.id,
               isEmail: isEmail || false,
+              heatLevel: heatLevel || 'spicy'
             },
           })
         ));

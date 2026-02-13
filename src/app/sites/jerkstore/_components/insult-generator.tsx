@@ -5,12 +5,15 @@ import { z } from "zod";
 import { useState, useEffect } from "react";
 import { useRef } from "react";
 import { Loader2, Zap, Copy, Check, Share2 } from "lucide-react";
-import { toBlob } from "html-to-image";
+// import { toBlob } from "html-to-image";
 import { AccessModal } from "./access-modal";
 import { Logo } from "./logo";
-import { ShareCard } from "./share-card";
-import { BUTTON_LABELS, TOPIC_LABELS, STANDARD_LANGUAGES, PREMIUM_LANGUAGES } from "../constants";
+import { ShareCard, type ShareCardHandle } from "./share-card";
+import { HeatLevelSelector } from "./heat-level-selector";
+import { BUTTON_LABELS, TOPIC_LABELS, STANDARD_LANGUAGES, PREMIUM_LANGUAGES, RANDOM_TOPICS, HeatLevel, HEAT_LEVELS, LOADING_MESSAGES } from "../constants";
 import { cn } from "@/lib/utils";
+
+import { usePostHog } from 'posthog-js/react';
 
 export function InsultGenerator({
   isActive,
@@ -23,17 +26,39 @@ export function InsultGenerator({
   initialButtonLabel: string;
   initialTopicLabel: string;
 }) {
+  const posthog = usePostHog();
   const [language, setLanguage] = useState("English");
   const [isEmail, setIsEmail] = useState(false);
   const [showAccessModal, setShowAccessModal] = useState(false);
   const [showSavageUpsell, setShowSavageUpsell] = useState(false);
   const [isBooming, setIsBooming] = useState(false);
+
+  const [heatLevel, setHeatLevel] = useState<HeatLevel>(HeatLevel.SPICY);
+  const [isRandomizing, setIsRandomizing] = useState(false);
+
+
+  const handleRandomTopic = () => {
+    posthog?.capture('random_topic_selected');
+    setIsRandomizing(true);
+    let count = 0;
+    const interval = setInterval(() => {
+      setInput(RANDOM_TOPICS[Math.floor(Math.random() * RANDOM_TOPICS.length)]);
+      count++;
+      if (count > 10) {
+        clearInterval(interval);
+        setIsRandomizing(false);
+      }
+    }, 50);
+  };
+
+
+
   const [buttonLabel, setButtonLabel] = useState(initialButtonLabel);
   const [topicLabel, setTopicLabel] = useState(initialTopicLabel);
   const [isCopying, setIsCopying] = useState(false);
   const [copied, setCopied] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
-  const shareCardRef = useRef<HTMLDivElement>(null);
+  const shareCardRef = useRef<ShareCardHandle>(null);
 
   const triggerBoom = () => {
     setIsBooming(true);
@@ -49,7 +74,7 @@ export function InsultGenerator({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [hasViewedAll, setHasViewedAll] = useState(true);
   const [isSimulatingLoading, setIsSimulatingLoading] = useState(false);
-  const lastPromptRef = useRef({ topic: "", isEmail: false, language: "" });
+  const lastPromptRef = useRef({ topic: "", isEmail: false, language: "", heatLevel: "spicy" });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setInput(e.target.value);
@@ -77,21 +102,37 @@ export function InsultGenerator({
     }
   }, [object, currentIndex]);
 
+  const [loadingMessage, setLoadingMessage] = useState("Initializing hate...");
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if ((isLoading || isSimulatingLoading)) {
+      setLoadingMessage(LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]);
+      interval = setInterval(() => {
+        setLoadingMessage(LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]);
+      }, 2000);
+    }
+    return () => clearInterval(interval);
+  }, [isLoading, isSimulatingLoading]);
+
   const onGenerate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isActive) {
+      posthog?.capture('insult_generation_blocked', { plan });
       setShowAccessModal(true);
       return;
     }
 
-    const currentPrompt = { topic: input, isEmail, language };
+    const currentPrompt = { topic: input, isEmail, language, heatLevel }; // Include heatLevel
     const isSamePrompt =
       lastPromptRef.current.topic === currentPrompt.topic &&
       lastPromptRef.current.isEmail === currentPrompt.isEmail &&
-      lastPromptRef.current.language === currentPrompt.language;
+      lastPromptRef.current.language === currentPrompt.language &&
+      lastPromptRef.current.heatLevel === currentPrompt.heatLevel;
 
     // If same prompt and we have more buffered roasts to show, cycle instead of re-generating
     if (isSamePrompt && !hasViewedAll && roasts.length > 0) {
+      posthog?.capture('insult_view_cached', { topic: input, heatLevel });
       setIsSimulatingLoading(true);
       // Realistic random delay to "feel" like generation
       const delay = 600 + Math.random() * 800;
@@ -115,10 +156,19 @@ export function InsultGenerator({
     setDisplayText("");
     setHasViewedAll(false);
 
+    posthog?.capture('insult_generated', {
+      topic: input,
+      language,
+      isEmail,
+      heatLevel,
+      plan
+    });
+
     submit({
       language,
       isEmail,
       topic: input,
+      heatLevel, // Pass to API
     });
 
     lastPromptRef.current = currentPrompt;
@@ -149,24 +199,17 @@ export function InsultGenerator({
 
   const copyImage = async () => {
     if (!shareCardRef.current) return;
+    posthog?.capture('roast_copied_image', { topic: input });
     setIsCopying(true);
     try {
-      // Small delay to ensure any layout changes settle
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // Create an offscreen canvas for rendering
+      const canvas = document.createElement("canvas");
 
-      const blob = await toBlob(shareCardRef.current, {
-        backgroundColor: "transparent", // Allow gradients to render correctly
-        cacheBust: true,
-        pixelRatio: 2, // High quality, better performance/compatibility
-        width: 800,
-        height: 1000,
-        style: {
-          opacity: "1",
-          visibility: "visible",
-          position: "relative",
-          left: "0",
-          top: "0",
-        }
+      // Draw to the canvas
+      await shareCardRef.current.drawToCanvas(canvas);
+
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, "image/png", 1.0);
       });
 
       if (blob) {
@@ -195,7 +238,6 @@ export function InsultGenerator({
         link.click();
         URL.revokeObjectURL(url);
 
-        // Show a brief "Downloaded" state if copy failed
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }
@@ -341,6 +383,10 @@ export function InsultGenerator({
         />
 
         <form onSubmit={onGenerate} className="space-y-6 sm:space-y-8 relative z-10">
+
+          {/* Heat Level Selector */}
+
+
           <div className="space-y-2 sm:space-y-3">
             <div className="flex justify-between items-end">
               <label className={cn(
@@ -349,18 +395,36 @@ export function InsultGenerator({
               )}>
                 {topicLabel}
               </label>
-              {isSavage && <span className="bg-white text-black px-2 py-0.5 text-[8px] sm:text-[10px] font-black skew-x-[-12deg] shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)]">INFINITY UNLOCKED</span>}
+              <div className="text-[10px] font-mono font-bold uppercase text-right opacity-50">
+                {HEAT_LEVELS.find(h => h.value === heatLevel)?.desc}
+              </div>
             </div>
-            <input
-              className={cn(
-                "w-full p-4 sm:p-5 border-4 border-black font-mono text-lg sm:text-xl focus:outline-none transition-all duration-300 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
-                isSavage ? "bg-white text-black placeholder:text-neutral-400 focus:ring-4 focus:ring-black" :
-                  "bg-white text-black focus:ring-4 focus:ring-yellow-400"
-              )}
-              value={input}
-              onChange={handleInputChange}
-              placeholder="e.g. My boss, or a resignation email..."
-            />
+
+            <div className="relative">
+              <input
+                className={cn(
+                  "w-full p-4 sm:p-5 pr-12 border-4 border-black font-mono text-lg sm:text-xl focus:outline-none transition-all duration-300 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
+                  isSavage ? "bg-white text-black placeholder:text-neutral-400 focus:ring-4 focus:ring-black" :
+                    "bg-white text-black focus:ring-4 focus:ring-yellow-400"
+                )}
+                value={input}
+                onChange={handleInputChange}
+                placeholder="e.g. My boss, or a resignation email..."
+              />
+              <button
+                type="button"
+                onClick={handleRandomTopic}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-2xl hover:scale-110 active:scale-95 transition-transform"
+                title="Random Topic"
+              >
+                🎲
+              </button>
+              <HeatLevelSelector
+                heatLevel={heatLevel}
+                setHeatLevel={setHeatLevel}
+                className="absolute -bottom-[46px] right-[2px] z-20 border-t-0"
+              />
+            </div>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 sm:items-end">
@@ -443,6 +507,10 @@ export function InsultGenerator({
             </div>
           </div>
 
+
+
+          // ... rest of constraints ...
+
           <button
             type="submit"
             disabled={isLoading || isSimulatingLoading || !input.trim()}
@@ -456,7 +524,8 @@ export function InsultGenerator({
             <span className="relative z-10 flex items-center justify-center gap-2 sm:gap-3">
               {(isLoading || isSimulatingLoading) ? (
                 <>
-                  <Loader2 className="animate-spin w-6 h-6 sm:w-8 sm:h-8" /> {isSavage ? "SUMMONING THE ABYSS..." : "Cooking..."}
+                  <Loader2 className="animate-spin w-6 h-6 sm:w-8 sm:h-8" />
+                  <span className="min-w-[200px] text-left">{isSavage ? "SUMMONING THE ABYSS..." : loadingMessage}</span>
                 </>
               ) : (
                 <>
@@ -542,6 +611,7 @@ export function InsultGenerator({
                   href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(displayText)}`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => posthog?.capture('roast_shared_x', { topic: input })}
                   className={cn(
                     "px-4 sm:px-6 py-2 sm:py-3 font-black text-xs sm:text-sm uppercase transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 border-4 border-black",
                     isSavage ? "bg-white text-black hover:bg-neutral-100 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" : "bg-black text-white hover:bg-neutral-800 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"

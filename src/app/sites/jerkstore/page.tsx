@@ -6,12 +6,13 @@ import { Logo } from "./_components/logo";
 import { LoginButton } from "./_components/login-button";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { RandomBurn } from "./_components/random-burn";
 import { prisma } from "@/lib/db"; // Import prisma
 import { LiveTicker } from "./_components/live-ticker"; // Import Ticker
 import { cn } from "@/lib/utils";
 import { BlurredRoast } from "./_components/blurred-roast";
+import { InsultGenerator } from "./_components/insult-generator";
+import { BUTTON_LABELS, TOPIC_LABELS } from "./constants";
+import { InsultCarousel } from "./_components/insult-carousel";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://jerkstore.proximalcoast.com"),
@@ -79,7 +80,40 @@ export default async function MarketingPage() {
     include: { insult: true }
   });
 
+  const mildInsults = await prisma.jerkstore_insult.findMany({
+    where: { heatLevel: 'mild' },
+    select: { content: true, topic: true },
+    take: 50,
+    orderBy: { createdAt: 'desc' }
+  });
+
   const safeRoast = safeRoastRef?.insult;
+
+  // Determine Plan & Access for Home Page Generator
+  let plan = "trial";
+  let isActive = true; // Always allow roasting on home page (limits applied by API/Frontend logic)
+
+  if (session) {
+    const subscription = await prisma.user_subscription.findUnique({
+      where: {
+        userId_siteSlug: {
+          userId: session.user.id,
+          siteSlug: "jerkstore",
+        },
+      },
+    });
+
+    const isSubActive = !!(subscription &&
+      (subscription.status === "active" || subscription.status === "trialing") &&
+      new Date(subscription.expiresAt) > new Date());
+
+    if (isSubActive) {
+      plan = subscription?.plan || "trial";
+    }
+  }
+
+  const randomButtonLabel = BUTTON_LABELS[Math.floor(Math.random() * BUTTON_LABELS.length)];
+  const randomTopicLabel = TOPIC_LABELS[Math.floor(Math.random() * TOPIC_LABELS.length)];
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -142,11 +176,14 @@ export default async function MarketingPage() {
           </p>
 
           <div className="flex flex-col md:flex-row justify-center gap-6 relative z-20">
-            <LoginButton
-              text="Let Me Roast!"
-              icon={true}
-              className="bg-black text-white text-2xl font-black uppercase px-10 py-5 border-4 border-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center gap-3 justify-center"
-            />
+            <div className="w-full max-w-2xl transform hover:scale-[1.01] transition-transform duration-500">
+              <InsultGenerator
+                isActive={isActive}
+                plan={plan}
+                initialButtonLabel={randomButtonLabel}
+                initialTopicLabel={randomTopicLabel}
+              />
+            </div>
           </div>
         </section>
 
@@ -180,25 +217,17 @@ export default async function MarketingPage() {
         </section>
 
 
-        <RandomBurn />
+        <InsultCarousel insults={mildInsults} />
 
         {/* Safe Roast Spotlight (Burn of the Day) */}
-        {safeRoast && (
-          <section className="py-12 bg-black text-white border-y-8 border-white overflow-hidden relative">
-            <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.4)_1px,transparent_1px)] [background-size:16px_16px] opacity-20 animate-pulse"></div>
-            <div className="max-w-4xl mx-auto text-center relative z-10 px-6">
-              <div className="inline-block bg-red-600 text-white font-black uppercase text-sm px-3 py-1 mb-4 rotate-2 border-2 border-white shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]">
-                Burn of the Day
-              </div>
-              <h3 className="text-3xl md:text-5xl font-black italic uppercase leading-none mb-6">
-                "{safeRoast.content}"
-              </h3>
-              <p className="font-mono text-sm text-neutral-400 uppercase tracking-widest">
-                Topic: {safeRoast.topic} • Verified Safe(ish)
-              </p>
-            </div>
-          </section>
-        )}
+        <section className="py-12 bg-black text-white border-y-8 border-white overflow-hidden relative">
+          <InsultCarousel
+            insults={mildInsults}
+            variant="dark"
+            title="Burn of the Day"
+            subtitle="Verified Safe(ish)"
+          />
+        </section>
 
         {/* Viral Feed */}
         <section className="border-b-8 border-black bg-white p-12 overflow-hidden">

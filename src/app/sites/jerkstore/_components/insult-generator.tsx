@@ -33,7 +33,8 @@ export function InsultGenerator({
   const [showSavageUpsell, setShowSavageUpsell] = useState(false);
   const [isBooming, setIsBooming] = useState(false);
 
-  const [heatLevel, setHeatLevel] = useState<HeatLevel>(HeatLevel.SPICY);
+  const isTrial = plan === "trial";
+  const [heatLevel, setHeatLevel] = useState<HeatLevel>(isTrial ? HeatLevel.MILD : HeatLevel.SPICY);
   const [isRandomizing, setIsRandomizing] = useState(false);
 
 
@@ -50,6 +51,17 @@ export function InsultGenerator({
       }
     }, 50);
   };
+
+  const [guestHandle, setGuestHandle] = useState<string | null>(null);
+  const [handleInput, setHandleInput] = useState("");
+
+  useEffect(() => {
+    // Check for guest handle cookie
+    const match = document.cookie.match(new RegExp('(^| )x-jerkstore-handle=([^;]+)'));
+    if (match) {
+      setGuestHandle(match[2]);
+    }
+  }, []);
 
 
 
@@ -91,6 +103,13 @@ export function InsultGenerator({
         setCurrentIndex(0);
         setHasViewedAll(false);
       }
+      // Check for new handle on finish
+      setTimeout(() => {
+        const match = document.cookie.match(new RegExp('(^| )x-jerkstore-handle=([^;]+)'));
+        if (match) {
+          setGuestHandle(match[2]);
+        }
+      }, 1000); // Small delay to ensure cookie is set by browser
     },
   });
 
@@ -169,6 +188,7 @@ export function InsultGenerator({
       isEmail,
       topic: input,
       heatLevel, // Pass to API
+      username: !guestHandle ? handleInput : undefined, // Only send if we don't have one
     });
 
     lastPromptRef.current = currentPrompt;
@@ -251,7 +271,7 @@ export function InsultGenerator({
   const isSavage = plan === "savage";
   const isElite = plan === "elite";
   const isStandard = plan === "standard";
-  const isTrial = plan === "trial";
+  // isTrial is already declared above
 
   return (
     <div className="relative w-full max-w-2xl mx-auto">
@@ -423,9 +443,45 @@ export function InsultGenerator({
                 heatLevel={heatLevel}
                 setHeatLevel={setHeatLevel}
                 className="absolute -bottom-[46px] right-[2px] z-20 border-t-0"
+                isTrial={isTrial}
+                onLockedClick={() => setShowAccessModal(true)}
               />
             </div>
           </div>
+
+          {!isActive && !guestHandle && (
+            <div className="relative">
+              <label className={cn(
+                "block font-black text-xs sm:text-sm uppercase tracking-tight mb-1",
+                isSavage ? "text-white" : "text-neutral-500"
+              )}>
+                Claim Handle (Optional)
+              </label>
+              <input
+                className={cn(
+                  "w-full p-3 border-4 border-black font-mono text-sm focus:outline-none transition-all duration-300",
+                  isSavage ? "bg-white text-black" : "bg-white text-black focus:ring-2 focus:ring-yellow-400"
+                )}
+                value={handleInput}
+                onChange={(e) => setHandleInput(e.target.value)}
+                placeholder="e.g. Failure_King_99 (Wrap in ' ' if spaces needed? No, standard string)"
+                maxLength={20}
+              />
+              <div className="text-[10px] text-neutral-400 mt-1 uppercase font-bold">
+                Leave blank for auto-generated shame.
+              </div>
+            </div>
+          )}
+
+          {guestHandle && !isActive && (
+            <div className={cn(
+              "text-center font-mono text-xs uppercase tracking-widest opacity-50",
+              isSavage ? "text-white" : "text-neutral-500"
+            )}>
+              Roasting as: <span className="font-bold border-b-2 border-black/20">{guestHandle}</span>
+            </div>
+          )}
+
 
           <div className="flex flex-col sm:flex-row gap-4 sm:items-end">
             <div className="flex-1 space-y-2 sm:space-y-3">
@@ -509,7 +565,7 @@ export function InsultGenerator({
 
 
 
-          // ... rest of constraints ...
+
 
           <button
             type="submit"

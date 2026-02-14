@@ -117,7 +117,7 @@ export async function POST(req: Request) {
           if (user) {
             await stripe.customers.update(session.customer as string, {
               name: user.name,
-              email: user.email,
+              email: user.email || undefined,
               metadata: { userId },
             });
           }

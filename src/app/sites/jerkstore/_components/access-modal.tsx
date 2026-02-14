@@ -6,6 +6,8 @@ import { Check, ShieldAlert, X, ChevronLeft, Loader2, Zap } from "lucide-react";
 import { JerkstoreCheckoutForm } from "./checkout-form";
 import { useRouter } from "next/navigation";
 
+import { usePostHog } from 'posthog-js/react';
+
 export function AccessModal({
   onClose,
   tier = 'trial',
@@ -17,6 +19,7 @@ export function AccessModal({
   isActive?: boolean,
   onSuccess?: () => void
 }) {
+  const posthog = usePostHog();
   const [activeTier, setActiveTier] = useState<'trial' | 'elite' | 'savage'>(tier);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -28,9 +31,10 @@ export function AccessModal({
   const isTrial = activeTier === 'trial';
   const priceId = isSavage ? process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_SAVAGE : isTrial ? process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_FREE : process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_ELITE;
   const price = isSavage ? "99" : isTrial ? "0" : "5";
-  const planName = isSavage ? "Savage God Mode" : isTrial ? "Poopy Trial (Card Required) 💩" : "Diamond Hands Pro";
+  const planName = isSavage ? "Savage God Mode" : isTrial ? "Poopy Trial (Daily) 💩" : "Diamond Hands Pro";
 
   const handleInstantUpgrade = async () => {
+    posthog?.capture('upgrade_initiated', { plan: activeTier });
     setLoading(true);
     setError(null);
     try {
@@ -45,6 +49,7 @@ export function AccessModal({
       });
 
       if (response.ok) {
+        posthog?.capture('upgrade_success', { plan: activeTier });
         if (onSuccess) {
           onSuccess();
         } else {
@@ -53,9 +58,11 @@ export function AccessModal({
         }
       } else {
         const data = await response.json();
+        posthog?.capture('upgrade_failed', { plan: activeTier, error: data.error });
         setError(data.error || "Failed to upgrade. Maybe your credit is as bad as your roasts?");
       }
     } catch (err) {
+      posthog?.capture('upgrade_error', { plan: activeTier });
       setError("Something went wrong. The internet is failing you.");
     } finally {
       setLoading(false);
@@ -67,7 +74,10 @@ export function AccessModal({
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
-        onClick={onClose}
+        onClick={() => {
+          posthog?.capture('modal_closed', { reason: 'backdrop_click' });
+          onClose?.();
+        }}
       />
 
       {/* Modal Content */}
@@ -90,7 +100,10 @@ export function AccessModal({
             </span>
           </div>
           <button
-            onClick={onClose}
+            onClick={() => {
+              posthog?.capture('modal_closed', { reason: 'close_button' });
+              onClose?.();
+            }}
             className="hover:text-red-500 transition-colors"
           >
             <X className="w-6 h-6 sm:w-8 sm:h-8 stroke-[3px]" />
@@ -128,7 +141,7 @@ export function AccessModal({
 
                   <ul className={`space-y-2 mb-4 sm:mb-6 font-bold font-mono text-[10px] sm:text-sm leading-tight ${isSavage ? 'text-white' : ''}`}>
                     <li className="flex items-center gap-2">
-                      <Check className="w-3 h-3 sm:w-4 sm:h-4 stroke-[4px]" /> {isSavage ? "1000 ROASTS / DAY" : isTrial ? "3 TOTAL BURNS (EVER)" : "200 ROASTS / DAY"}
+                      <Check className="w-3 h-3 sm:w-4 sm:h-4 stroke-[4px]" /> {isSavage ? "1000 ROASTS / DAY" : isTrial ? "3 ROASTS / DAY" : "200 ROASTS / DAY"}
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="w-3 h-3 sm:w-4 sm:h-4 stroke-[4px]" /> {isSavage ? "SOUL-CRUSHING EMAILS" : isTrial ? "BASIC VERBAL ASSAULT" : "MULTI-LANGUAGE SNARK"}
@@ -143,7 +156,10 @@ export function AccessModal({
                       type="checkbox"
                       id="modal-terms"
                       checked={termsAccepted}
-                      onChange={(e) => setTermsAccepted(e.target.checked)}
+                      onChange={(e) => {
+                        setTermsAccepted(e.target.checked);
+                        if (e.target.checked) posthog?.capture('terms_accepted', { plan: activeTier });
+                      }}
                       className="w-4 h-4 sm:w-5 sm:h-5 border-2 sm:border-4 border-black text-black focus:ring-0 cursor-pointer mt-0.5"
                     />
                     <label
@@ -164,7 +180,10 @@ export function AccessModal({
                         Shed your mortal skin to proceed
                       </p>
                       <button
-                        onClick={() => setActiveTier('elite')}
+                        onClick={() => {
+                          setActiveTier('elite');
+                          posthog?.capture('tier_switched', { from: 'savage', to: 'elite' });
+                        }}
                         className="text-[10px] font-black uppercase underline decoration-purple-500 hover:text-purple-400 transition-colors"
                       >
                         Wait, I'm semi-poor. Show me Elite ($5).
@@ -176,7 +195,10 @@ export function AccessModal({
                         Elite status pending.
                       </p>
                       <button
-                        onClick={() => setActiveTier('savage')}
+                        onClick={() => {
+                          setActiveTier('savage');
+                          posthog?.capture('tier_switched', { from: 'elite', to: 'savage' });
+                        }}
                         className="text-[10px] font-black uppercase underline decoration-black hover:text-red-600 transition-colors"
                       >
                         Nevermind, I want to be a GOD. Show Savage ($99).

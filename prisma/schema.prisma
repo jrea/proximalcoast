@@ -90,12 +90,14 @@ model session {
 model user {
   id            String       @id
   name          String
-  email         String       @unique
+  email         String?       @unique
   emailVerified Boolean
   image         String?
   createdAt     DateTime     @db.Timestamp(6)
   updatedAt     DateTime     @db.Timestamp(6)
   stripeCustomerId   String? @unique
+  username           String? @unique
+  isGuest            Boolean @default(false)
   account       account[]
   invitation    invitation[]
   member        member[]
@@ -189,6 +191,15 @@ model overmake_estimate {
   userId    String
   user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  @@schema("main")
+}
+
+model jerkstore_ip_tracking {
+  ip        String   @id
+  count     Int      @default(0)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
   @@schema("main")
 }

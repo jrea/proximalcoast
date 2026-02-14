@@ -516,7 +516,7 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                   <></> // Placeholder for when inactive specific content was here
                 )}
                 <p className="text-center font-mono text-[10px] text-neutral-400 uppercase font-black italic">
-                  {subscription.plan === 'elite' || subscription.plan === 'savage'
+                  {subscription?.plan === 'elite' || subscription?.plan === 'savage'
                     ? "Go forth and destroy egos. You earned it."
                     : ""}
                 </p>

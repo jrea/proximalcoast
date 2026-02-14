@@ -10,10 +10,11 @@ import { EMAIL_CONSTRAINTS } from "../../prompts/email";
 export const maxDuration = 60;
 
 import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 
 import { prisma } from "@/lib/db";
 import { moderateText } from "../../_lib/openai";
+import { generateJerkName } from "../../_lib/username-generator";
 
 export async function POST(req: Request) {
   const authHeader = req.headers.get("authorization");
@@ -56,66 +57,160 @@ export async function POST(req: Request) {
     });
   }
 
-  if (!session) {
+  const fullBody = await req.json();
+  const body = fullBody.object || fullBody;
+  const { language, topic: bodyTopic, prompt, isEmail, heatLevel: requestedHeatLevel, username: requestedUsername } = body;
+  const topic = bodyTopic || prompt;
+
+  let userId = session?.user.id;
+  let userPlan = "trial"; // Default to trial
+  let isGuest = false;
+  let newGuestId: string | null = null;
+  let finalUsername: string | null = null;
+
+  if (session) {
+    userId = session.user.id;
+    // Check for subscription
+    const subscription = await prisma.user_subscription.findUnique({
+      where: {
+        userId_siteSlug: {
+          userId: session.user.id,
+          siteSlug: "jerkstore",
+        },
+      },
+    });
+
+    const isActive = !!(subscription &&
+      (subscription.status === "active" || subscription.status === "trialing") &&
+      new Date(subscription.expiresAt) > new Date());
+
+    if (isActive) {
+      userPlan = subscription?.plan || "trial";
+    }
+  } else {
+    // Guest / Zero Sign-up Flow
+    const cookieStore = await cookies();
+    const guestIdCookie = cookieStore.get("x-jerkstore-guest-id");
+
+    if (guestIdCookie) {
+      // Allow for "claiming" a user by this cookie ID
+      const guestUser = await prisma.user.findUnique({
+        where: { id: guestIdCookie.value }
+      });
+
+      if (guestUser) {
+        userId = guestUser.id;
+        isGuest = true;
+        finalUsername = guestUser.username;
+      }
+    }
+
+    if (!userId) {
+      // Create new Guest User
+      const newUsername = requestedUsername || generateJerkName();
+
+      try {
+        const newUser = await prisma.user.create({
+          data: {
+            id: crypto.randomUUID(),
+            name: newUsername,
+            // email: null, // implied
+            username: newUsername,
+            isGuest: true,
+            emailVerified: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }
+        });
+
+        userId = newUser.id;
+        newGuestId = newUser.id;
+        isGuest = true;
+        finalUsername = newUsername;
+      } catch (e: any) {
+        if (e.code === 'P2002') {
+          return new Response("That handle is already taken. Be more original.", { status: 409 });
+        }
+        console.error("Failed to create guest user", e);
+        return new Response("Failed to initialize your pathetic existence.", { status: 500 });
+      }
+    }
+  }
+
+  // Double check we have a userId
+  if (!userId) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  // Check for subscription
-  const subscription = await prisma.user_subscription.findUnique({
-    where: {
-      userId_siteSlug: {
-        userId: session.user.id,
-        siteSlug: "jerkstore",
-      },
-    },
-  });
-
-  const isActive = !!(subscription &&
-    (subscription.status === "active" || subscription.status === "trialing") &&
-    new Date(subscription.expiresAt) > new Date());
-
-  if (!isActive) {
-    return new Response("Verification Required: Add a card to prove you're an adult and not a middle school bully.", { status: 403 });
+  // Enforce Heat Level for Trial Plan
+  // Trial users (authed or guest) are locked to 'mild'
+  let heatLevel = requestedHeatLevel;
+  if (userPlan === "trial") {
+    heatLevel = "mild";
   }
 
-  const plan = subscription?.plan || "trial";
-
-  const fullBody = await req.json();
-  const body = fullBody.object || fullBody;
-  const { language, topic: bodyTopic, prompt, isEmail, heatLevel } = body;
-  const topic = bodyTopic || prompt;
-
-  // Rate Limiting: Check usage
+  // Rate Limiting Logic
   let currentUsage = 0;
   let LIMIT = 0;
 
-  if (plan === "trial") {
-    // Trial is 3 TOTAL roasts ever
-    currentUsage = await prisma.jerkstore_insult.count({
-      where: { userId: session.user.id }
-    });
-    LIMIT = 3;
-  } else {
-    // Other plans are daily roasts
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    currentUsage = await prisma.jerkstore_insult.count({
-      where: {
-        userId: session.user.id,
-        createdAt: {
-          gte: twentyFourHoursAgo
+  if (session) {
+    if (userPlan === "trial") {
+      // Authenticated "Poopy Trial": 3 roasts PER DAY (no credit card)
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      currentUsage = await prisma.jerkstore_insult.count({
+        where: {
+          userId: userId,
+          createdAt: {
+            gte: twentyFourHoursAgo
+          }
         }
-      }
+      });
+      LIMIT = 3;
+    } else {
+      // Paid Plans: Daily roasts
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      currentUsage = await prisma.jerkstore_insult.count({
+        where: {
+          userId: userId,
+          createdAt: {
+            gte: twentyFourHoursAgo
+          }
+        }
+      });
+
+      if (userPlan === "savage") LIMIT = 1000;
+      else if (userPlan === "elite") LIMIT = 200;
+      else LIMIT = 3; // Should technically cover standard, but standard isn't 'trial'
+    }
+  } else {
+    // Guest / Anonymous: 3 roasts LIFETIME based on IP
+    // Trusted IP tracking to prevent cookie clearing cheats
+    const ip = (req.headers.get("x-forwarded-for") ?? "127.0.0.1").split(",")[0];
+
+    // Check IP record
+    const ipRecord = await prisma.jerkstore_ip_tracking.findUnique({
+      where: { ip }
     });
 
-    if (plan === "savage") LIMIT = 1000;
-    else if (plan === "elite") LIMIT = 200;
-    else LIMIT = 3; // standard
+    // Also check the user ID usage as a fallback/secondary check
+    const userUsage = await prisma.jerkstore_insult.count({
+      where: { userId: userId }
+    });
+
+    // Max(IP usage, User usage) to be safe
+    currentUsage = Math.max(ipRecord?.count ?? 0, userUsage);
+    LIMIT = 3;
+
+    // Increment IP count if not limited (will be done after successful generation)
+    // We defer the increment to the success block? 
+    // Actually, for safety, we should strictly check here.
+    // The increment happens on generation success.
   }
 
-  console.log(`[Jerkstore] Plan: ${plan}, Topic: ${topic}, Usage: ${currentUsage}/${LIMIT}, Email: ${isEmail}, Heat: ${heatLevel}`);
+  console.log(`[Jerkstore] Plan: ${userPlan}, User: ${userId} (${isGuest ? 'Guest' : 'User'}), Topic: ${topic}, Usage: ${currentUsage}/${LIMIT}, Email: ${isEmail}, Heat: ${heatLevel}`);
 
   if (currentUsage >= LIMIT) {
-    const errorMsg = plan === "trial"
+    const errorMsg = userPlan === "trial"
       ? "Trial limit reached (3 total). Time to pay up if you want to keep roasting."
       : `Daily roast limit reached (${LIMIT}). Go touch some grass.`;
     return new Response(errorMsg, { status: 429 });
@@ -130,7 +225,7 @@ export async function POST(req: Request) {
     return new Response("That topic is pathetic and we won't roast it. Also, it violates our 'actual lawyer' content policy, you coward.", { status: 400 });
   }
 
-  if (isEmail && plan !== "savage") {
+  if (isEmail && userPlan !== "savage") {
     return new Response("Maximum effort (Email Mode) requires Savage status. Upgrade to unlock deific-level vitriol.", { status: 403 });
   }
 
@@ -157,7 +252,7 @@ export async function POST(req: Request) {
     // Email mode always uses the email constraints structure
     // We append a note if Mild to ensure tone consistency despite the email constraint's default "profanity required"
     finalConstraints = EMAIL_CONSTRAINTS;
-  } else if (plan === "standard" || plan === "trial") {
+  } else if (userPlan === "standard" || userPlan === "trial") {
     // Force strict 240 char limit for standard/trial based on the active constraint set
     // We need to find the length constraint and replace it
     // Or just append the stricter limit
@@ -166,7 +261,7 @@ export async function POST(req: Request) {
 
   const recentRoasts = await prisma.jerkstore_insult.findMany({
     where: {
-      userId: session.user.id,
+      userId: userId,
       isEmail: isEmail || false
     },
     orderBy: { createdAt: 'desc' },
@@ -212,6 +307,17 @@ ${historyString}
   } : {};
 
 
+  // Prepare response headers for cookies
+  const responseHeaders = new Headers();
+
+  if (newGuestId) {
+    responseHeaders.append('Set-Cookie', `x-jerkstore-guest-id=${newGuestId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${60 * 60 * 24 * 365}`);
+  }
+
+  if (finalUsername) {
+    // Readable cookie for frontend
+    responseHeaders.append('Set-Cookie', `x-jerkstore-handle=${finalUsername}; Path=/; SameSite=Strict; Max-Age=${60 * 60 * 24 * 365}`);
+  }
 
   const { searchParams } = new URL(req.url);
   const shouldStream = searchParams.get('stream') !== 'false';
@@ -278,9 +384,11 @@ ${historyString}
   });
 
   // Handle saving to DB when stream finishes
+  // Note: userId is captured in closure
   (async () => {
     try {
-      const { roasts } = await result.output;
+      const output = await result.output; // await the promise
+      const roasts = output.roasts;
       const usage = await result.totalUsage;
 
       if (roasts && roasts.length > 0) {
@@ -296,17 +404,30 @@ ${historyString}
               language: language || 'English',
               promptTokens: perRoastInput,
               completionTokens: perRoastOutput,
-              userId: session.user.id,
+              userId: userId as string, // Safe cast as we checked it
               isEmail: isEmail || false,
               heatLevel: heatLevel || 'spicy'
             },
           })
         ));
+
+        // If Guest, increment IP count
+        if (isGuest) {
+          const ip = (req.headers.get("x-forwarded-for") ?? "127.0.0.1").split(",")[0];
+          await prisma.jerkstore_ip_tracking.upsert({
+            where: { ip },
+            update: { count: { increment: 1 } },
+            create: { ip, count: 1 }
+          });
+        }
       }
     } catch (error) {
       console.error("[Jerkstore DB Error]", error);
     }
   })();
 
-  return result.toTextStreamResponse();
+  return result.toTextStreamResponse({
+    headers: responseHeaders
+  });
 }
+

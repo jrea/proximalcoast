@@ -1,0 +1,20 @@
+{
+  "name": "jerkstore-reddit-bot",
+  "version": "1.0.0",
+  "description": "Reddit bot for Jerkstore insults",
+  "main": "bot.ts",
+  "scripts": {
+    "start": "ts-node bot.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "node-fetch": "^3.3.2",
+    "snoowrap": "^1.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "@types/snoowrap": "^1.23.6",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
+}

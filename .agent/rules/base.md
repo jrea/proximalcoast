@@ -26,5 +26,6 @@ trigger: always_on
 - Ensure **Aesthetics** are premium and modern.
 - Use **cn()** for conditional class names (avoid ternary operators for classes).
 - Use **pnpm** for building and package management.
+- Run *pnpm run build** after you have completed a task.
 
 use nextjs 16, which uses `proxy.ts` not `middlware.ts`

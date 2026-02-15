@@ -58,6 +58,13 @@ export default async function JerkstorePage({
         <Logo textClassName="text-lg sm:text-xl font-black uppercase italic tracking-tighter" />
         <div className="flex gap-2 sm:gap-4">
           <Link
+            href="/app/settings"
+            className="p-1.5 sm:p-2 hover:bg-yellow-300 border-2 border-transparent hover:border-black transition-all"
+            title="Settings & API Keys"
+          >
+            <Settings className="w-5 h-5 sm:w-6 sm:h-6" />
+          </Link>
+          <Link
             href="/billing"
             className="p-1.5 sm:p-2 hover:bg-yellow-300 border-2 border-transparent hover:border-black transition-all"
             title="Manage Subscription"

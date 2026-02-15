@@ -16,9 +16,45 @@ import { prisma } from "@/lib/db";
 import { moderateText } from "../../_lib/openai";
 
 export async function POST(req: Request) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const authHeader = req.headers.get("authorization");
+  const apiKeyRaw = authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
+
+  let session = null;
+  let diligentBot = false;
+
+  if (apiKeyRaw) {
+    // Hash the key to match DB storage
+    const crypto = await import('crypto');
+    const hashedKey = crypto.createHash('sha256').update(apiKeyRaw).digest('hex');
+
+    const keyRecord = await prisma.apiKey.findUnique({
+      where: { key: hashedKey },
+      include: { user: true }
+    });
+
+    if (keyRecord) {
+      session = {
+        user: {
+          id: keyRecord.userId,
+          name: keyRecord.user.name,
+          email: keyRecord.user.email,
+          image: keyRecord.user.image
+        }
+      };
+      // Update usage stats (fire and forget)
+      await prisma.apiKey.update({
+        where: { id: keyRecord.id },
+        data: { lastUsedAt: new Date() }
+      });
+      diligentBot = true;
+    }
+  }
+
+  if (!session) {
+    session = await auth.api.getSession({
+      headers: await headers(),
+    });
+  }
 
   if (!session) {
     return new Response("Unauthorized", { status: 401 });
@@ -177,6 +213,57 @@ ${historyString}
 
 
 
+  const { searchParams } = new URL(req.url);
+  const shouldStream = searchParams.get('stream') !== 'false';
+
+  if (!shouldStream) {
+    // Non-streaming mode for Bots
+    const { generateText } = await import('ai');
+
+    const result = await generateText({
+      model: selectedModel,
+      output: Output.object({
+        schema: z.object({
+          roasts: z.array(z.string()).length(ROAST_COUNT),
+        }),
+      }),
+      system: systemPrompt,
+      prompt: isEmail ? `Write 1 devastating email roasting this topic: ${topic}` : `Generate a pack of 5 roasts for this topic: ${topic}`,
+      maxOutputTokens: 2048,
+      ...v3Params,
+    });
+
+    // Save to DB synchronously since we have the full result
+    // Access the structured output. 
+    // Types in this version of AI SDK might put it in experimental_output or object (if using experimental_generateObject wrapper).
+    // result.experimental_output is the likely place for generateText + output param.
+    const { roasts } = (result as any).experimental_output || (result as any).object;
+    const usage = result.usage;
+
+    if (roasts && roasts.length > 0) {
+      const perRoastInput = Math.ceil((usage.inputTokens ?? 0) / ROAST_COUNT);
+      const perRoastOutput = Math.ceil((usage.outputTokens ?? 0) / ROAST_COUNT);
+
+      await Promise.all(roasts.map((text: string) =>
+        prisma.jerkstore_insult.create({
+          data: {
+            content: text,
+            topic: topic,
+            language: language || 'English',
+            promptTokens: perRoastInput,
+            completionTokens: perRoastOutput,
+            userId: session.user.id,
+            isEmail: isEmail || false,
+            heatLevel: heatLevel || 'spicy'
+          },
+        })
+      ));
+    }
+
+    return Response.json({ roasts });
+  }
+
+  // Streaming mode for UI
   const result = await streamText({
     model: selectedModel,
     output: Output.object({

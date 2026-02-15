@@ -103,6 +103,7 @@ model user {
   jerkstore_insult jerkstore_insult[]
   subscriptions    user_subscription[]
   overmake_estimate overmake_estimate[]
+  apiKeys          ApiKey[]
 
   @@schema("main")
 }
@@ -127,6 +128,7 @@ model user_subscription {
   @@schema("main")
 }
 
+
 model verification {
   id         String    @id
   identifier String
@@ -136,6 +138,18 @@ model verification {
   updatedAt  DateTime? @db.Timestamp(6)
 
   @@unique([identifier, value])
+  @@schema("main")
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  key       String   @unique // Store as a hashed value for security
+  name      String   // e.g., "Reddit Bot"
+  userId    String
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastUsedAt DateTime? @db.Timestamp(6)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
   @@schema("main")
 }
 

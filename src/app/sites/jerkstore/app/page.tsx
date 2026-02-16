@@ -12,6 +12,8 @@ import { Logo } from "../_components/logo";
 
 import { BUTTON_LABELS, TOPIC_LABELS } from "../constants";
 
+import { JerkstoreNav } from "../_components/nav";
+
 export default async function JerkstorePage({
   searchParams,
 }: {
@@ -54,26 +56,7 @@ export default async function JerkstorePage({
     <div className="min-h-screen bg-neutral-100 p-4 relative overflow-x-hidden">
 
       {/* App Header */}
-      <header className="max-w-2xl mx-auto mb-6 sm:mb-8 flex justify-between items-center bg-white border-4 border-black p-3 sm:p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-        <Logo textClassName="text-lg sm:text-xl font-black uppercase italic tracking-tighter" />
-        <div className="flex gap-2 sm:gap-4">
-          <Link
-            href="/app/settings"
-            className="p-1.5 sm:p-2 hover:bg-yellow-300 border-2 border-transparent hover:border-black transition-all"
-            title="Settings & API Keys"
-          >
-            <Settings className="w-5 h-5 sm:w-6 sm:h-6" />
-          </Link>
-          <Link
-            href="/billing"
-            className="p-1.5 sm:p-2 hover:bg-yellow-300 border-2 border-transparent hover:border-black transition-all"
-            title="Manage Subscription"
-          >
-            <CreditCard className="w-5 h-5 sm:w-6 sm:h-6" />
-          </Link>
-          <LogoutButton />
-        </div>
-      </header>
+      <JerkstoreNav />
 
       <main className="flex items-center justify-center w-full">
         <InsultGenerator

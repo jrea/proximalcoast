@@ -602,13 +602,18 @@ export function InsultGenerator({
 
         {error && (
           <div className="mt-8 p-4 sm:p-6 border-4 border-black bg-red-100 text-red-600 font-bold uppercase text-xs italic shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center justify-between gap-4 text-center sm:text-left">
-            {error.message?.includes("limit reached") && (
-              <LoginButton
-                text="PAY UP, CHUMP"
-                variant="login"
-                reason="limit"
-                className="w-full sm:w-auto text-center bg-black text-white px-6 py-3 font-black text-lg not-italic shadow-[2px_2px_0px_0px_rgba(255,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
-              />
+            {error.message?.includes("limit reached") ? (
+              <>
+                <p className="font-black uppercase mb-2">Eternal limit reached. Sign up for more.</p>
+                <LoginButton
+                  text="SIGN UP"
+                  variant="login"
+                  reason="limit"
+                  className="w-full sm:w-auto text-center bg-black text-white px-6 py-3 font-black text-lg not-italic shadow-[2px_2px_0px_0px_rgba(255,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
+                />
+              </>
+            ) : (
+              <p>{error.message}</p>
             )}
           </div>
         )}

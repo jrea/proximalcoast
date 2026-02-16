@@ -9,6 +9,8 @@ import { Logo } from "./logo";
 import { JerkstoreCheckoutForm } from "./checkout-form";
 import { cn } from "@/lib/utils";
 
+import { JerkstoreNav } from "./nav";
+
 interface BillingContentProps {
   initialSubscription: any;
 }
@@ -282,21 +284,10 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
           100% { background-position: 0% 50%; }
         }
       `}</style>
+
+
       <div className="max-w-2xl mx-auto">
-        <header className="mb-12 flex justify-between items-center">
-          <Link
-            href="/app"
-            className="flex items-center gap-2 text-lg font-black uppercase hover:text-red-600 transition-colors"
-          >
-            <ChevronLeft className="w-5 h-5" /> Back to App
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 text-lg font-black uppercase underline decoration-2 underline-offset-4 hover:text-red-600"
-          >
-            <LogOut className="w-5 h-5" /> Logout
-          </button>
-        </header>
+        <JerkstoreNav />
 
         <main className="bg-white border-4 border-black p-4 sm:p-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
           <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">

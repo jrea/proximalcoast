@@ -16,7 +16,7 @@ export function JerkstoreNav() {
   return (
     <header className="max-w-2xl mx-auto mb-6 sm:mb-8 flex flex-col sm:flex-row justify-between items-center bg-white border-4 border-black p-3 sm:p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] gap-4 sm:gap-0">
       <div className="flex items-center gap-4">
-        <Logo textClassName="text-lg sm:text-xl font-black uppercase italic tracking-tighter" />
+        <Logo />
       </div>
 
       <nav className="flex items-center gap-2 sm:gap-4">

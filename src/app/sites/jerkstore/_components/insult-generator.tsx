@@ -4,7 +4,7 @@ import { experimental_useObject as useObject } from "@ai-sdk/react";
 import { z } from "zod";
 import { useState, useEffect } from "react";
 import { useRef } from "react";
-import { Loader2, Zap, Copy, Check, Share2 } from "lucide-react";
+import { Loader2, Zap, Copy, Check, Share2, ThumbsUp, ThumbsDown, Trophy } from "lucide-react";
 // import { toBlob } from "html-to-image";
 import { AccessModal } from "./access-modal";
 import { Logo } from "./logo";
@@ -90,6 +90,28 @@ export function InsultGenerator({
   const [isSimulatingLoading, setIsSimulatingLoading] = useState(false);
   const lastPromptRef = useRef({ topic: "", isEmail: false, language: "", heatLevel: "spicy" });
 
+  const [ratings, setRatings] = useState<Record<string, number>>({});
+
+  const handleRate = async (content: string, weight: number) => {
+    // Optimistic update
+    setRatings(prev => ({ ...prev, [content]: weight }));
+
+    try {
+      await fetch("/api/rate-insult", {
+        method: "POST",
+        body: JSON.stringify({
+          content,
+          weight,
+          topic: lastPromptRef.current.topic // Pass topic for better matching
+        })
+      });
+      posthog?.capture('insult_rated', { weight, topic: lastPromptRef.current.topic });
+    } catch (e) {
+      console.error("Failed to rate", e);
+      // Revert if failed? Nah, it's fine.
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setInput(e.target.value);
   };
@@ -145,31 +167,7 @@ export function InsultGenerator({
     }
 
     const currentPrompt = { topic: input, isEmail, language, heatLevel }; // Include heatLevel
-    const isSamePrompt =
-      lastPromptRef.current.topic === currentPrompt.topic &&
-      lastPromptRef.current.isEmail === currentPrompt.isEmail &&
-      lastPromptRef.current.language === currentPrompt.language &&
-      lastPromptRef.current.heatLevel === currentPrompt.heatLevel;
 
-    // If same prompt and we have more buffered roasts to show, cycle instead of re-generating
-    if (isSamePrompt && !hasViewedAll && roasts.length > 0) {
-      posthog?.capture('insult_view_cached', { topic: input, heatLevel });
-      setIsSimulatingLoading(true);
-      // Realistic random delay to "feel" like generation
-      const delay = 600 + Math.random() * 800;
-
-      setTimeout(() => {
-        const nextIdx = currentIndex + 1;
-        setCurrentIndex(nextIdx);
-        setDisplayText(roasts[nextIdx]);
-        if (nextIdx >= roasts.length - 1) {
-          setHasViewedAll(true);
-        }
-        setIsSimulatingLoading(false);
-      }, delay);
-
-      return;
-    }
 
     // Otherwise, perform real generation
     setRoasts([]);
@@ -201,24 +199,7 @@ export function InsultGenerator({
     setCopied(false);
   };
 
-  const nextRoast = () => {
-    if (currentIndex < roasts.length - 1) {
-      const newIndex = currentIndex + 1;
-      setCurrentIndex(newIndex);
-      setDisplayText(roasts[newIndex]);
-      if (newIndex === roasts.length - 1) {
-        setHasViewedAll(true);
-      }
-    }
-  };
 
-  const prevRoast = () => {
-    if (currentIndex > 0) {
-      const newIndex = currentIndex - 1;
-      setCurrentIndex(newIndex);
-      setDisplayText(roasts[newIndex]);
-    }
-  };
 
   const copyImage = async () => {
     if (!shareCardRef.current) return;
@@ -444,6 +425,7 @@ export function InsultGenerator({
                 onLockedClick={() => setShowAccessModal(true)}
                 useReasoning={useReasoning}
                 setUseReasoning={setUseReasoning}
+                isSavage={isSavage}
               />
             </div>
           </div>
@@ -626,20 +608,15 @@ export function InsultGenerator({
           <div
             ref={resultRef}
             className={cn(
-              "mt-8 sm:mt-10 p-4 sm:p-8 font-mono text-lg sm:text-xl leading-relaxed relative overflow-hidden border-4 border-black transition-all duration-700",
+              "mt-8 sm:mt-10 p-4 sm:p-8 font-mono text-lg sm:text-xl leading-relaxed relative overflow-visible border-4 border-black transition-all duration-700",
               isSavage ? "bg-black/60 backdrop-blur-xl text-white border-white/20 shadow-[0_0_30px_rgba(0,0,0,0.5)] sm:shadow-[0_0_50px_rgba(0,0,0,0.5)]" :
                 isElite ? "bg-white text-black shadow-[4px_4px_0px_0px_rgba(34,197,94,0.2)] sm:shadow-[8px_8px_0px_0px_rgba(34,197,94,0.2)]" :
                   "bg-neutral-50 text-neutral-400 border-dashed shadow-none"
             )}
           >
-            {/* Watermark */}
-            <div className={cn(
-              "absolute bottom-0 right-4 text-[8px] sm:text-[10px] font-black uppercase opacity-20 pointer-events-none select-none tracking-widest flex items-center gap-1",
-              isSavage ? "text-white" : "text-black"
-            )}>
-              <Logo className="scale-50 origin-right" iconOnly={true} />
-              JERKSTORE.PROXIMALCOAST.COM
-            </div>
+
+
+
 
 
 
@@ -648,42 +625,130 @@ export function InsultGenerator({
             </p>
 
 
-            {displayText && !isLoading && (
-              <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row gap-3 justify-end items-stretch sm:items-center">
-                {!isEmail && (
+
+
+
+
+
+            {/* Result Switcher - Tabs Style Bottom Left */}
+            {roasts.length > 1 && !isSimulatingLoading && (
+              <div className="flex absolute -bottom-[34px] sm:-bottom-[42px] left-0 gap-1">
+                {roasts.map((_, idx) => (
                   <button
-                    onClick={copyImage}
-                    disabled={isCopying}
+                    key={idx}
+                    onClick={() => {
+                      setCurrentIndex(idx);
+                      setDisplayText(roasts[idx]);
+                    }}
                     className={cn(
-                      "px-4 sm:px-6 py-2 sm:py-3 font-black text-xs sm:text-sm uppercase transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 border-4 border-black",
-                      isSavage ? "bg-purple-600 text-white hover:bg-purple-500 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" :
-                        "bg-yellow-400 text-black hover:bg-yellow-300 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
-                      copied ? "bg-green-500 text-white" : ""
+                      "w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center font-black text-xs sm:text-sm border-2 transition-all duration-200 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none",
+                      currentIndex === idx
+                        ? (isSavage
+                          ? "bg-white text-black border-white"
+                          : "bg-black text-white border-black")
+                        : (isSavage
+                          ? "bg-neutral-900 text-white border-white/20 hover:bg-neutral-800"
+                          : "bg-white text-black border-black hover:bg-neutral-100")
                     )}
                   >
-                    {isCopying ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : copied ? (
-                      <>Copied! <Check className="w-4 h-4" /></>
-                    ) : (
-                      <>Copy Image <Copy className="w-4 h-4" /></>
-                    )}
+                    {idx + 1}
                   </button>
-                )}
-                <a
-                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(displayText)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => posthog?.capture('roast_shared_x', { topic: input })}
-                  className={cn(
-                    "px-4 sm:px-6 py-2 sm:py-3 font-black text-xs sm:text-sm uppercase transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 border-4 border-black",
-                    isSavage ? "bg-white text-black hover:bg-neutral-100 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" : "bg-black text-white hover:bg-neutral-800 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-                  )}
-                >
-                  Post to X <Share2 className="w-4 h-4" />
-                </a>
+                ))}
               </div>
             )}
+
+            {/* Rating Icons - Inside Bottom Right */}
+            {displayText && !isSimulatingLoading && (
+              <div className="flex absolute bottom-3 right-3 gap-3">
+                {/* Thumbs Down (-1) */}
+                <button
+                  disabled={ratings[displayText] !== undefined}
+                  onClick={() => handleRate(displayText, -1)}
+                  className={cn(
+                    "transition-all duration-200 p-1 rounded-full hover:bg-black/5 active:scale-95",
+                    ratings[displayText] === -1 ? "text-black opacity-100 scale-110" : "text-neutral-400 opacity-50 hover:opacity-100 hover:text-black"
+                  )}
+                  title="Weak sauce (-1)"
+                >
+                  {ratings[displayText] === -1 ? (
+                    <ThumbsDown className="w-5 h-5 sm:w-6 sm:h-6 fill-black" />
+                  ) : (
+                    <ThumbsDown className="w-5 h-5 sm:w-6 sm:h-6" />
+                  )}
+                </button>
+
+                {/* Thumbs Up (+1) */}
+                <button
+                  disabled={ratings[displayText] !== undefined}
+                  onClick={() => handleRate(displayText, ratings[displayText] === 1 ? 0 : 1)}
+                  className={cn(
+                    "transition-all duration-200 p-1 rounded-full hover:bg-black/5 active:scale-95",
+                    ratings[displayText] === 1 ? "text-black opacity-100 scale-110" : "text-neutral-400 opacity-50 hover:opacity-100 hover:text-black"
+                  )}
+                  title="Solid burn (+1)"
+                >
+                  {ratings[displayText] === 1 ? (
+                    <ThumbsUp className="w-5 h-5 sm:w-6 sm:h-6 stroke-black" />
+                  ) : (
+                    <ThumbsUp className="w-5 h-5 sm:w-6 sm:h-6" />
+                  )}
+                </button>
+
+                {/* God Tier (+2) */}
+                <button
+                  disabled={ratings[displayText] !== undefined}
+                  onClick={() => handleRate(displayText, ratings[displayText] === 2 ? 0 : 2)}
+                  className={cn(
+                    "transition-all duration-200 p-1 rounded-full hover:bg-yellow-500/10 active:scale-95 relative w-8 h-8 flex items-center justify-center",
+                    ratings[displayText] === 2 ? "text-yellow-500 opacity-100 scale-110" : "text-neutral-400 opacity-50 hover:opacity-100 hover:text-yellow-500"
+                  )}
+                  title="GOD TIER (+2)"
+                >
+                  {ratings[displayText] === 2 ? (
+                    <Trophy className="w-5 h-5 sm:w-6 sm:h-6 fill-yellow-500" />
+                  ) : (
+                    <Trophy className="w-5 h-5 sm:w-6 sm:h-6" />
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Action Bar - Outside the Card */}
+        {displayText && !isLoading && (
+          <div className="mt-6 flex flex-col sm:flex-row gap-4 justify-end items-center w-full">
+            {!isEmail && (
+              <button
+                onClick={copyImage}
+                disabled={isCopying}
+                className={cn(
+                  "px-4 py-2 font-black text-xs uppercase transition-all duration-300 flex items-center justify-center gap-2 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-0 active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
+                  isSavage ? "bg-purple-600 text-white" : "bg-yellow-400 text-black",
+                  copied ? "bg-green-500 text-white" : ""
+                )}
+              >
+                {isCopying ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : copied ? (
+                  <>Copied! <Check className="w-4 h-4" /></>
+                ) : (
+                  <>Copy Image <Copy className="w-4 h-4" /></>
+                )}
+              </button>
+            )}
+            <a
+              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(displayText)} #jerkstore`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => posthog?.capture('roast_shared_x', { topic: input })}
+              className={cn(
+                "px-4 py-2 font-black text-xs uppercase transition-all duration-300 flex items-center justify-center gap-2 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-0 active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
+                "bg-black text-white"
+              )}
+            >
+              Post to X <Share2 className="w-4 h-4" />
+            </a>
           </div>
         )}
       </div>

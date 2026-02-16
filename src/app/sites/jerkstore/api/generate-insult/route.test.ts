@@ -65,11 +65,34 @@ describe('POST /api/generate-insult', () => {
     headers: {
       get: (key: string) => headersMap[key.toLowerCase()] || null
     },
-    url: 'http://localhost/api/generate-insult?stream=false'
+    url: 'http://localhost/api/generate-insult?stream=true'
   } as unknown as Request);
 
   const mockHeaders = new Headers();
   const mockCookies = { get: vi.fn() };
+
+  // ... (unchanged lines)
+
+  it('Modes: Reasoning Mode should use R1 model', async () => {
+    (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
+    // Must be savage to use reasoning
+    (prisma.user_subscription.findUnique as any).mockResolvedValue({
+      plan: 'savage',
+      status: 'active',
+      expiresAt: new Date(Date.now() + 10000000)
+    });
+
+    const { streamText, generateText } = await import('ai');
+
+    const req = reqMock({ topic: 't', useReasoning: true });
+
+    await POST(req);
+
+    expect(streamText).toHaveBeenCalledWith(expect.objectContaining({
+      model: expect.objectContaining({ modelId: 'deepseek-r1' })
+    }));
+    expect(generateText).not.toHaveBeenCalled();
+  });
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -235,6 +258,28 @@ describe('POST /api/generate-insult', () => {
     expect(res.status).toBe(200);
   });
 
+  it('Constraint: Should block Reasoning Mode for non-Savage users', async () => {
+    (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
+    (prisma.user_subscription.findUnique as any).mockResolvedValue({ plan: 'elite' });
+
+    const req = reqMock({ topic: 'Thinking hard', useReasoning: true });
+    const res = await POST(req);
+
+    expect(res.status).toBe(403);
+    const text = await res.text();
+    expect(text).toContain("little brain");
+  });
+
+  it('Constraint: Should allow Reasoning Mode for Savage users', async () => {
+    (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
+    (prisma.user_subscription.findUnique as any).mockResolvedValue({ status: 'active', plan: 'savage', expiresAt: new Date(Date.now() + 10000) });
+
+    const req = reqMock({ topic: 'Thinking hard', useReasoning: true });
+    const res = await POST(req);
+
+    expect(res.status).toBe(200);
+  });
+
   // --- Modes & Models ---
 
   it('Modes: Streaming Mode should call streamText', async () => {
@@ -254,18 +299,23 @@ describe('POST /api/generate-insult', () => {
 
   it('Modes: Reasoning Mode should use R1 model', async () => {
     (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
-    const { streamText } = await import('ai');
+    // Must be savage to use reasoning
+    (prisma.user_subscription.findUnique as any).mockResolvedValue({
+      plan: 'savage',
+      status: 'active',
+      expiresAt: new Date(Date.now() + 10000000)
+    });
 
-    const req = reqMock({ topic: 't', useReasoning: true }); // stream=false by default in reqMock
-    // Wait, reqMock url says stream=false. So it calls generateText.
-    // Let's use stream=false path.
+    const { streamText, generateText } = await import('ai');
 
-    const { generateText } = await import('ai');
+    const req = reqMock({ topic: 't', useReasoning: true });
+
     await POST(req);
 
-    expect(generateText).toHaveBeenCalledWith(expect.objectContaining({
+    expect(streamText).toHaveBeenCalledWith(expect.objectContaining({
       model: expect.objectContaining({ modelId: 'deepseek-r1' })
     }));
+    expect(generateText).not.toHaveBeenCalled();
   });
 
 
@@ -274,28 +324,28 @@ describe('POST /api/generate-insult', () => {
   it('Rate Limit: Guest < 3 (Lifetime) -> OK', async () => {
     (auth.api.getSession as any).mockResolvedValue(null);
     (prisma.jerkstore_ip_tracking.findUnique as any).mockResolvedValue({ count: 2 });
-    const res = await POST(reqMock());
+    const res = await POST(reqMock({ topic: 'test' }));
     expect(res.status).toBe(200);
   });
 
   it('Rate Limit: Guest >= 3 (Lifetime) -> BLOCK', async () => {
     (auth.api.getSession as any).mockResolvedValue(null);
     (prisma.jerkstore_ip_tracking.findUnique as any).mockResolvedValue({ count: 3 });
-    const res = await POST(reqMock());
+    const res = await POST(reqMock({ topic: 'test' }));
     expect(res.status).toBe(429);
   });
 
   it('Rate Limit: Trial < 3 (Daily) -> OK', async () => {
     (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u' } });
     (prisma.jerkstore_insult.count as any).mockResolvedValue(2);
-    const res = await POST(reqMock());
+    const res = await POST(reqMock({ topic: 'test' }));
     expect(res.status).toBe(200);
   });
 
   it('Rate Limit: Trial >= 3 (Daily) -> BLOCK', async () => {
     (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u' } });
     (prisma.jerkstore_insult.count as any).mockResolvedValue(3);
-    const res = await POST(reqMock());
+    const res = await POST(reqMock({ topic: 'test' }));
     expect(res.status).toBe(429);
   });
 });

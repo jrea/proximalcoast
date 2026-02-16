@@ -168,6 +168,7 @@ model jerkstore_insult {
   isEmail          Boolean  @default(false)
   heatLevel        String   @default("spicy")
   createdAt        DateTime @default(now()) @db.Timestamp(6)
+  weight           Int      @default(0)
   safe_insult      jerkstore_insult_safe[]
 
   @@schema("main")

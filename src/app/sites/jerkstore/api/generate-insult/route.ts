@@ -59,7 +59,7 @@ export async function POST(req: Request) {
 
   const fullBody = await req.json();
   const body = fullBody.object || fullBody;
-  const { language, topic: bodyTopic, prompt, isEmail, heatLevel: requestedHeatLevel, username: requestedUsername } = body;
+  const { language, topic: bodyTopic, prompt, isEmail, heatLevel: requestedHeatLevel, username: requestedUsername, useReasoning } = body;
   const topic = bodyTopic || prompt;
 
   let userId = session?.user.id;
@@ -193,26 +193,32 @@ export async function POST(req: Request) {
     });
 
     // Also check the user ID usage as a fallback/secondary check
+    // (Total usage for this guest ID, not just last 24h)
     const userUsage = await prisma.jerkstore_insult.count({
       where: { userId: userId }
     });
 
-    // Max(IP usage, User usage) to be safe
+    // Max(IP usage, User usage) to be safe - strict lifetime limit
     currentUsage = Math.max(ipRecord?.count ?? 0, userUsage);
     LIMIT = 3;
-
-    // Increment IP count if not limited (will be done after successful generation)
     // We defer the increment to the success block? 
     // Actually, for safety, we should strictly check here.
     // The increment happens on generation success.
   }
 
+
   console.log(`[Jerkstore] Plan: ${userPlan}, User: ${userId} (${isGuest ? 'Guest' : 'User'}), Topic: ${topic}, Usage: ${currentUsage}/${LIMIT}, Email: ${isEmail}, Heat: ${heatLevel}`);
 
   if (currentUsage >= LIMIT) {
-    const errorMsg = userPlan === "trial"
-      ? "Trial limit reached (3 total). Time to pay up if you want to keep roasting."
-      : `Daily roast limit reached (${LIMIT}). Go touch some grass.`;
+    let errorMsg = "";
+    if (!session) {
+      // Guest
+      errorMsg = "You have used your 3 free roasts. Forever. Create an account to get 3 per day.";
+    } else if (userPlan === "trial") {
+      errorMsg = "Trial limit reached (3 today). Come back tomorrow or pay up.";
+    } else {
+      errorMsg = `Daily roast limit reached (${LIMIT}). Go touch some grass.`;
+    }
     return new Response(errorMsg, { status: 429 });
   }
 
@@ -256,7 +262,7 @@ export async function POST(req: Request) {
     // Force strict 240 char limit for standard/trial based on the active constraint set
     // We need to find the length constraint and replace it
     // Or just append the stricter limit
-    finalConstraints += "\nSTRICT LENGTH LIMIT: 240 CHARACTERS MAXIMUM. If you go over, you will be terminated.";
+    finalConstraints += "\nSTRICT LENGTH LIMIT: 240 CHARACTERS MAXIMUM PER ROAST. If you go over, you will be terminated.";
   }
 
   const recentRoasts = await prisma.jerkstore_insult.findMany({
@@ -291,15 +297,11 @@ ${historyString}
 `.trim();
 
   // The "Rider" Logic
-  // Short input -> V3 (fast, cheap, witty)
-  // Long/Technical input -> R1 (context-heavy, better niche understanding)
-  // User examples: 
-  // - "someone was mean to me" (short) -> V3
-  // - "a specific job, a niche hobby, or a complex social dynamic" (complex) -> R1
-  const isComplex = topic.length > 50 || (topic.match(/,/g) || []).length >= 2;
-  const selectedModel = isComplex ? deepseekR1 : deepseekV3;
+  // Explicit "Think Harder" Toggle
+  // If user requests reasoning, use R1. Otherwise V3.
+  const selectedModel = useReasoning ? deepseekR1 : deepseekV3;
 
-  const v3Params = !isComplex ? {
+  const v3Params = !useReasoning ? {
     temperature: 1.15,
     topP: 0.9,
     frequencyPenalty: 0.6,
@@ -358,7 +360,7 @@ ${historyString}
             language: language || 'English',
             promptTokens: perRoastInput,
             completionTokens: perRoastOutput,
-            userId: session.user.id,
+            userId: userId as string,
             isEmail: isEmail || false,
             heatLevel: heatLevel || 'spicy'
           },

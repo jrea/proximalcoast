@@ -701,7 +701,7 @@ export function BillingContent({ initialSubscription }: BillingContentProps) {
                       </h3>
                       <div className="text-3xl font-black mt-2">$0<span className="text-sm font-normal opacity-50">/evr</span></div>
                       <ul className="mt-4 space-y-1 font-mono text-[10px] uppercase font-bold text-[#8b7d13] opacity-80">
-                        <li>• Only 3 Burns. Ever.</li>
+                        <li>• 3 Roasts / Day</li>
                         <li>• Basic Verification Only</li>
                         <li>• No Pride remaining</li>
                       </ul>

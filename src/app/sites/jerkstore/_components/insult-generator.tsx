@@ -33,6 +33,7 @@ export function InsultGenerator({
   const [showAccessModal, setShowAccessModal] = useState(false);
   const [showSavageUpsell, setShowSavageUpsell] = useState(false);
   const [isBooming, setIsBooming] = useState(false);
+  const [useReasoning, setUseReasoning] = useState(false);
 
   const isTrial = plan === "trial";
   const [heatLevel, setHeatLevel] = useState<HeatLevel>(isTrial ? HeatLevel.MILD : HeatLevel.SPICY);
@@ -189,6 +190,7 @@ export function InsultGenerator({
       isEmail,
       topic: input,
       heatLevel, // Pass to API
+      useReasoning, // Pass reasoning flag
       username: !guestHandle ? handleInput : undefined, // Only send if we don't have one
     });
 
@@ -440,6 +442,8 @@ export function InsultGenerator({
                 className="absolute -bottom-[46px] right-[2px] z-20 border-t-0"
                 isTrial={isTrial}
                 onLockedClick={() => setShowAccessModal(true)}
+                useReasoning={useReasoning}
+                setUseReasoning={setUseReasoning}
               />
             </div>
           </div>

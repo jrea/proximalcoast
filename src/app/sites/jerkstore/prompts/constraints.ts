@@ -1,5 +1,5 @@
 export const NUCLEAR_CONSTRAINTS = `
-- **Length**: MAXIMUM 240 CHARACTERS. Must fit in a single tweet. Be punchy.
+- **Length**: MAXIMUM 240 CHARACTERS PER ROAST. Must fit in a single tweet. Be punchy.
 - **Content**: ABSOLUTELY NO moralizing or "just kidding" at the end. 
 - **Safety**: ABSOLUTELY NO hate speech, racism, sexism, homophobia, or slurs. Do not attack protected characteristics. Focus on intelligence, appearance (general), choices, and hygiene.
 - **Style**: Insults must be visceral, high-impact, and funny. Think "Roast Battle" not "Hate Group".
@@ -8,7 +8,7 @@ export const NUCLEAR_CONSTRAINTS = `
 `;
 
 export const SPICY_CONSTRAINTS = `
-- **Length**: MAXIMUM 200 CHARACTERS.
+- **Length**: MAXIMUM 200 CHARACTERS PER ROAST.
 - **Content**: No "just kidding". Just the insult.
 - **Safety**: ABSOLUTELY NO hate speech, racism, sexism, homophobia, or slurs.
 - **Style**: Standard mean insults. Direct attacks on competence or choices.
@@ -17,7 +17,7 @@ export const SPICY_CONSTRAINTS = `
 `;
 
 export const MILD_CONSTRAINTS = `
-- **Length**: MAXIMUM 150 CHARACTERS.
+- **Length**: MAXIMUM 150 CHARACTERS PER ROAST.
 - **Content**: Playful mocking. No deep psychological attacks.
 - **Safety**: ABSOLUTELY NO hate speech, racism, sexism, homophobia, slurs, or swearing. G-RATED ONLY.
 - **Style**: Funny, lighthearted, schoolyard insults.

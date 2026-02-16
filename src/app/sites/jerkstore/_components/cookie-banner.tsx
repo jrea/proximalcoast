@@ -40,10 +40,10 @@ export function CookieBanner() {
 
         <div className="p-5">
           <h4 className="font-black uppercase text-xl mb-2 leading-none">
-            WE USE 1 COOKIE.
+            WE USE COOKIES.
           </h4>
           <p className="font-mono text-sm font-bold mb-4 leading-tight">
-            Just one. It keeps you logged in so you don't have to type your password like a Neanderthal every time. We don't want your data, it's probably boring.
+            We use cookies to keep you logged in (even if you're a guest) and to process payments via Stripe so we can take your money. We don't want your data, it's boring. We just want to ensure you can be properly insulted and billed.
           </p>
 
           <button

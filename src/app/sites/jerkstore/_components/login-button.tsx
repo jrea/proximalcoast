@@ -57,12 +57,14 @@ export function LoginButton({
   text = "Login",
   className = "",
   icon = false,
-  variant = "default"
+  variant = "default",
+  reason
 }: {
   text?: string;
   className?: string;
   icon?: boolean;
   variant?: "default" | "login";
+  reason?: string;
 }) {
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
@@ -77,7 +79,8 @@ export function LoginButton({
     }
   }, [session]);
 
-  const handleAction = async () => {
+  const handleAction = async (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent any default form submission or link behavior
     if (session) {
       // Use sendBeacon to ensure event is sent even if navigation happens immediately
       posthog?.capture(
@@ -90,10 +93,11 @@ export function LoginButton({
       posthog?.capture(
         'login_clicked',
         {
-          provider: 'google',
+          provider: 'google', // We might change this if we knew the user intended email, but generic is fine
           location: 'landing_page_button',
           label: text,
-          original_text: text
+          original_text: text,
+          reason: reason
         },
         { transport: 'sendBeacon' }
       );
@@ -101,27 +105,33 @@ export function LoginButton({
       // This is a safety fallback for browsers where sendBeacon might hit race conditions
       await new Promise(resolve => setTimeout(resolve, 150));
 
-      await authClient.signIn.social({
-        provider: "google",
-        callbackURL: "/app", // Redirect to dashboard after login
-      });
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      // Redirect to the sign-in page instead of direct social login
+      const signInUrl = new URL("/sign-in", window.location.origin);
+      if (reason) {
+        signInUrl.searchParams.set("reason", reason);
+      }
+      router.push(signInUrl.toString());
     }
   };
 
-  if (isPending) {
-    return (
-      <button className={`${className} opacity-50 cursor-wait`} disabled>
-        <span className="flex items-center gap-2 justify-center">
-          <span>Loading...</span>
-        </span>
-      </button>
-    );
-  }
+  // Removed blocking isPending check to allow immediate interaction
+  // if (isPending) {
+  //   return (
+  //     <button className={`${className} opacity-50 cursor-wait`} disabled>
+  //       <span className="flex items-center gap-2 justify-center">
+  //         <span>Loading...</span>
+  //       </span>
+  //     </button>
+  //   );
+  // }
 
   const displayText = session ? (randomLabel || "Go to App") : text;
 
   return (
     <button
+      type="button"
       onClick={handleAction}
       className={className}
     >

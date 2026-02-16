@@ -6,12 +6,13 @@ import { Logo } from "./_components/logo";
 import { LoginButton } from "./_components/login-button";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { RandomBurn } from "./_components/random-burn";
 import { prisma } from "@/lib/db"; // Import prisma
 import { LiveTicker } from "./_components/live-ticker"; // Import Ticker
 import { cn } from "@/lib/utils";
 import { BlurredRoast } from "./_components/blurred-roast";
+import { InsultGenerator } from "./_components/insult-generator";
+import { BUTTON_LABELS, TOPIC_LABELS } from "./constants";
+import { InsultCarousel } from "./_components/insult-carousel";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://jerkstore.proximalcoast.com"),
@@ -79,7 +80,40 @@ export default async function MarketingPage() {
     include: { insult: true }
   });
 
+  const mildInsults = await prisma.jerkstore_insult.findMany({
+    where: { heatLevel: 'mild' },
+    select: { content: true, topic: true },
+    take: 50,
+    orderBy: { createdAt: 'desc' }
+  });
+
   const safeRoast = safeRoastRef?.insult;
+
+  // Determine Plan & Access for Home Page Generator
+  let plan = "trial";
+  let isActive = true; // Always allow roasting on home page (limits applied by API/Frontend logic)
+
+  if (session) {
+    const subscription = await prisma.user_subscription.findUnique({
+      where: {
+        userId_siteSlug: {
+          userId: session.user.id,
+          siteSlug: "jerkstore",
+        },
+      },
+    });
+
+    const isSubActive = !!(subscription &&
+      (subscription.status === "active" || subscription.status === "trialing") &&
+      new Date(subscription.expiresAt) > new Date());
+
+    if (isSubActive) {
+      plan = subscription?.plan || "trial";
+    }
+  }
+
+  const randomButtonLabel = BUTTON_LABELS[Math.floor(Math.random() * BUTTON_LABELS.length)];
+  const randomTopicLabel = TOPIC_LABELS[Math.floor(Math.random() * TOPIC_LABELS.length)];
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -103,6 +137,46 @@ export default async function MarketingPage() {
 
   return (
     <div className="min-h-screen bg-neutral-100 font-sans text-black selection:bg-red-600 selection:text-white pt-12">
+      <style>{`
+        @keyframes stink-drift {
+          0% { transform: translateY(0) translateX(0); opacity: 0; }
+          20% { opacity: 0.4; }
+          50% { transform: translateY(-40px) translateX(10px); }
+          80% { opacity: 0.1; }
+          100% { transform: translateY(-80px) translateX(-5px); opacity: 0; }
+        }
+        .stink-line {
+          position: absolute;
+          width: 2px;
+          height: 20px;
+          background: #8b4513;
+          border-radius: 50%;
+          filter: blur(2px);
+          animation: stink-drift 3s infinite linear;
+        }
+        .nasty-gradient {
+          background: linear-gradient(135deg, #3d2b1f 0%, #5c4033 50%, #2a1d15 100%);
+          background-size: 200% 200%;
+          animation: fluid-shift 12s ease infinite;
+          border-color: #2a1d15 !important;
+        }
+        @keyframes fluid-shift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes shimmer {
+          0% { transform: translateX(-100%) skewX(-12deg); }
+          100% { transform: translateX(200%) skewX(-12deg); }
+        }
+        @keyframes spin-slow {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+          animation: spin-slow 8s linear infinite;
+        }
+      `}</style>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -142,11 +216,14 @@ export default async function MarketingPage() {
           </p>
 
           <div className="flex flex-col md:flex-row justify-center gap-6 relative z-20">
-            <LoginButton
-              text="Let Me Roast!"
-              icon={true}
-              className="bg-black text-white text-2xl font-black uppercase px-10 py-5 border-4 border-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center gap-3 justify-center"
-            />
+            <div className="w-full max-w-2xl transform hover:scale-[1.01] transition-transform duration-500">
+              <InsultGenerator
+                isActive={isActive}
+                plan={plan}
+                initialButtonLabel={randomButtonLabel}
+                initialTopicLabel={randomTopicLabel}
+              />
+            </div>
           </div>
         </section>
 
@@ -180,25 +257,12 @@ export default async function MarketingPage() {
         </section>
 
 
-        <RandomBurn />
 
-        {/* Safe Roast Spotlight (Burn of the Day) */}
-        {safeRoast && (
-          <section className="py-12 bg-black text-white border-y-8 border-white overflow-hidden relative">
-            <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.4)_1px,transparent_1px)] [background-size:16px_16px] opacity-20 animate-pulse"></div>
-            <div className="max-w-4xl mx-auto text-center relative z-10 px-6">
-              <div className="inline-block bg-red-600 text-white font-black uppercase text-sm px-3 py-1 mb-4 rotate-2 border-2 border-white shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]">
-                Burn of the Day
-              </div>
-              <h3 className="text-3xl md:text-5xl font-black italic uppercase leading-none mb-6">
-                "{safeRoast.content}"
-              </h3>
-              <p className="font-mono text-sm text-neutral-400 uppercase tracking-widest">
-                Topic: {safeRoast.topic} • Verified Safe(ish)
-              </p>
-            </div>
-          </section>
-        )}
+        <section className="py-12 bg-black text-white border-y-8 border-white overflow-hidden relative">
+          <InsultCarousel insults={mildInsults} variant="dark" />
+        </section>
+
+
 
         {/* Viral Feed */}
         <section className="border-b-8 border-black bg-white p-12 overflow-hidden">
@@ -252,17 +316,36 @@ export default async function MarketingPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-stretch pt-8">
 
-              {/* Trial Tier - The Lame One */}
-              <div className="border-4 border-black bg-white p-6 relative flex flex-col hover:-translate-y-2 transition-transform shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)]">
-                <h4 className="text-3xl font-black uppercase italic text-neutral-400 mb-2">Trial</h4>
-                <div className="text-5xl font-black mb-6">$0</div>
-                <ul className="space-y-3 font-mono text-xs font-bold uppercase text-neutral-500 mb-8 flex-grow">
-                  <li className="flex gap-2"><Check className="w-4 h-4 text-black" /> 3 Roasts Total</li>
-                  <li className="flex gap-2"><Check className="w-4 h-4 text-black" /> Basic Insults</li>
-                  <li className="flex gap-2 opacity-50"><X className="w-4 h-4" /> No History</li>
-                  <li className="flex gap-2 opacity-50"><X className="w-4 h-4" /> Shame Included</li>
+              {/* Trial Tier - The Poopy One */}
+              <div className="border-4 border-black p-6 nasty-gradient text-[#8b7d13] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:rotate-1 transition-all cursor-pointer relative overflow-hidden border-dotted group">
+                <div className="absolute inset-x-0 bottom-0 h-0 pointer-events-none">
+                  {[...Array(6)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="stink-line"
+                      style={{
+                        left: `${(i * 20) % 100}%`,
+                        animationDelay: `${i * 0.7}s`,
+                        opacity: 0.2
+                      }}
+                    />
+                  ))}
+                </div>
+                <div className="absolute top-2 right-1 rotate-12 bg-yellow-900 text-yellow-100 px-2 text-[8px] font-mono uppercase">Lame</div>
+                <h3 className="text-xl font-bold uppercase font-mono italic flex items-center gap-2">
+                  Trial (Failure) 💩
+                </h3>
+                <div className="text-3xl font-black mt-2">$0<span className="text-sm font-normal opacity-50">/evr</span></div>
+                <ul className="mt-4 space-y-2 font-mono text-[10px] uppercase font-bold text-[#8b7d13] opacity-80 mb-8">
+                  <li className="flex gap-2"><Check className="w-3 h-3" /> 3 Roasts / Day</li>
+                  <li className="flex gap-2"><Check className="w-3 h-3" /> Basic Verification</li>
+                  <li className="flex gap-2"><Check className="w-3 h-3" /> No Pride Remaining</li>
                 </ul>
-                <LoginButton text="Start Failure" className="w-full py-4 border-4 border-black font-black uppercase hover:bg-neutral-100 transition-colors bg-white text-black" />
+                <LoginButton
+                  text="Claim Poop"
+                  reason="trial"
+                  className="w-full py-4 border-4 border-[#51361a] font-black uppercase bg-[#8b4513] text-[#e0c097] hover:bg-[#a05a2c] transition-colors text-sm"
+                />
               </div>
 
               {/* Standard Tier - SOLD OUT JOKE */}
@@ -299,20 +382,46 @@ export default async function MarketingPage() {
               </div>
 
               {/* Savage Tier - God Mode */}
-              <div className="border-4 border-black bg-black text-white p-6 relative flex flex-col shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-2 transition-transform overflow-hidden group">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-900 via-pink-900 to-blue-900 opacity-50 group-hover:opacity-70 transition-opacity"></div>
-                <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.4)_1px,transparent_1px)] [background-size:16px_16px] opacity-30 animate-pulse"></div>
+              <div className="relative border-4 border-black p-1 sm:p-2 bg-neutral-900 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden group transition-all duration-300 hover:scale-[1.01] hover:shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] ring-1 ring-white/20">
+                {/* Vibrant Gradient Background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600"></div>
+                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30 mix-blend-overlay animate-pulse"></div>
 
-                <div className="relative z-10">
-                  <h4 className="text-3xl font-black uppercase italic mb-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 drop-shadow-md">Savage</h4>
-                  <div className="text-5xl font-black mb-6">$99<span className="text-sm font-bold opacity-70">/mo</span></div>
-                  <ul className="space-y-3 font-mono text-xs font-bold uppercase mb-8 flex-grow text-white/90">
-                    <li className="flex gap-2"><Zap className="w-4 h-4 text-purple-400" /> 1000 Roasts / Day</li>
-                    <li className="flex gap-2"><Zap className="w-4 h-4 text-purple-400" /> Legendary Status</li>
-                    <li className="flex gap-2"><Zap className="w-4 h-4 text-purple-400" /> Max Length Mode</li>
-                    <li className="flex gap-2"><Zap className="w-4 h-4 text-purple-400" /> Your Mom Loves It</li>
+                <div className="relative z-10 flex flex-col h-full p-4 sm:p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-4xl font-black italic tracking-tighter text-white drop-shadow-[4px_4px_0px_rgba(0,0,0,0.8)] leading-none">
+                        SAVAGE
+                      </h3>
+                      <p className="font-mono text-[10px] text-white uppercase tracking-[0.2em] font-bold mt-1">The Ultimate Flex</p>
+                    </div>
+                  </div>
+
+                  <div className="mb-6 flex items-baseline gap-2">
+                    <span className="text-5xl font-black text-white tracking-tighter drop-shadow-[2px_2px_0px_rgba(0,0,0,0.5)]">$99</span>
+                    <span className="text-sm text-white font-bold uppercase">/ mo</span>
+                  </div>
+
+                  <ul className="space-y-3 mb-8 flex-grow">
+                    {[
+                      { text: "1000 Roasts / Day", icon: Zap },
+                      { text: "Phenomenal Cosmic Power", icon: Star },
+                      { text: "Bigger and Longer", icon: Zap },
+                      { text: "Your Mom Loves It", icon: Heart },
+                    ].map((feature, i) => (
+                      <li key={i} className="flex items-center gap-3 text-white">
+                        <div className="w-6 h-6 shrink-0 bg-white text-purple-600 flex items-center justify-center border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                          <feature.icon className="w-3 h-3 stroke-[3px]" />
+                        </div>
+                        <span className="font-black uppercase text-[10px] sm:text-xs leading-none drop-shadow-sm">{feature.text}</span>
+                      </li>
+                    ))}
                   </ul>
-                  <LoginButton text="Ascend Now" className="w-full py-4 border-4 border-white font-black uppercase hover:bg-white hover:text-black transition-colors bg-transparent text-white backdrop-blur-md" />
+
+                  <LoginButton
+                    text="Ascend Now"
+                    className="w-full relative overflow-hidden bg-black text-white font-black py-4 text-xl border-4 border-white/50 transition-all hover:-translate-y-1 hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] uppercase tracking-widest active:translate-y-0 active:shadow-none"
+                  />
                 </div>
               </div>
 

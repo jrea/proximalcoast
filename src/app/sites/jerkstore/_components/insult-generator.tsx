@@ -12,6 +12,7 @@ import { ShareCard, type ShareCardHandle } from "./share-card";
 import { HeatLevelSelector } from "./heat-level-selector";
 import { BUTTON_LABELS, TOPIC_LABELS, STANDARD_LANGUAGES, PREMIUM_LANGUAGES, RANDOM_TOPICS, HeatLevel, HEAT_LEVELS, LOADING_MESSAGES } from "../constants";
 import { cn } from "@/lib/utils";
+import { LoginButton } from "./login-button";
 
 import { usePostHog } from 'posthog-js/react';
 
@@ -32,8 +33,10 @@ export function InsultGenerator({
   const [showAccessModal, setShowAccessModal] = useState(false);
   const [showSavageUpsell, setShowSavageUpsell] = useState(false);
   const [isBooming, setIsBooming] = useState(false);
+  const [useReasoning, setUseReasoning] = useState(false);
 
-  const [heatLevel, setHeatLevel] = useState<HeatLevel>(HeatLevel.SPICY);
+  const isTrial = plan === "trial";
+  const [heatLevel, setHeatLevel] = useState<HeatLevel>(isTrial ? HeatLevel.MILD : HeatLevel.SPICY);
   const [isRandomizing, setIsRandomizing] = useState(false);
 
 
@@ -50,6 +53,17 @@ export function InsultGenerator({
       }
     }, 50);
   };
+
+  const [guestHandle, setGuestHandle] = useState<string | null>(null);
+  const [handleInput, setHandleInput] = useState("");
+
+  useEffect(() => {
+    // Check for guest handle cookie
+    const match = document.cookie.match(new RegExp('(^| )x-jerkstore-handle=([^;]+)'));
+    if (match) {
+      setGuestHandle(match[2]);
+    }
+  }, []);
 
 
 
@@ -91,6 +105,13 @@ export function InsultGenerator({
         setCurrentIndex(0);
         setHasViewedAll(false);
       }
+      // Check for new handle on finish
+      setTimeout(() => {
+        const match = document.cookie.match(new RegExp('(^| )x-jerkstore-handle=([^;]+)'));
+        if (match) {
+          setGuestHandle(match[2]);
+        }
+      }, 1000); // Small delay to ensure cookie is set by browser
     },
   });
 
@@ -169,6 +190,8 @@ export function InsultGenerator({
       isEmail,
       topic: input,
       heatLevel, // Pass to API
+      useReasoning, // Pass reasoning flag
+      username: !guestHandle ? handleInput : undefined, // Only send if we don't have one
     });
 
     lastPromptRef.current = currentPrompt;
@@ -251,7 +274,7 @@ export function InsultGenerator({
   const isSavage = plan === "savage";
   const isElite = plan === "elite";
   const isStandard = plan === "standard";
-  const isTrial = plan === "trial";
+  // isTrial is already declared above
 
   return (
     <div className="relative w-full max-w-2xl mx-auto">
@@ -348,7 +371,7 @@ export function InsultGenerator({
         isStandard && "bg-neutral-600 text-white rotate-0 shadow-none opacity-100",
         isTrial && "bg-neutral-200 text-neutral-500 rotate-0 shadow-none opacity-100"
       )}>
-        {isSavage ? "GOD MODE" : isElite ? "ELITE" : isStandard ? "STANDARD" : "FAILURE"}
+        {isSavage ? "GOD MODE" : isElite ? "ELITE" : isStandard ? "STANDARD" : "ONE PUMP CHUMP"}
       </div>
 
 
@@ -374,13 +397,7 @@ export function InsultGenerator({
           </div>
         )}
 
-        <Logo
-          className="mb-6 sm:mb-10 relative z-10 scale-90 sm:scale-100 origin-left"
-          textClassName={cn(
-            "text-2xl sm:text-4xl font-black uppercase tracking-tighter italic",
-            isSavage ? "text-white drop-shadow-[4px_4px_0px_rgba(0,0,0,0.8)]" : "text-black"
-          )}
-        />
+
 
         <form onSubmit={onGenerate} className="space-y-6 sm:space-y-8 relative z-10">
 
@@ -423,9 +440,47 @@ export function InsultGenerator({
                 heatLevel={heatLevel}
                 setHeatLevel={setHeatLevel}
                 className="absolute -bottom-[46px] right-[2px] z-20 border-t-0"
+                isTrial={isTrial}
+                onLockedClick={() => setShowAccessModal(true)}
+                useReasoning={useReasoning}
+                setUseReasoning={setUseReasoning}
               />
             </div>
           </div>
+
+          {!isActive && !guestHandle && (
+            <div className="relative">
+              <label className={cn(
+                "block font-black text-xs sm:text-sm uppercase tracking-tight mb-1",
+                isSavage ? "text-white" : "text-neutral-500"
+              )}>
+                Claim Handle (Optional)
+              </label>
+              <input
+                className={cn(
+                  "w-full p-3 border-4 border-black font-mono text-sm focus:outline-none transition-all duration-300",
+                  isSavage ? "bg-white text-black" : "bg-white text-black focus:ring-2 focus:ring-yellow-400"
+                )}
+                value={handleInput}
+                onChange={(e) => setHandleInput(e.target.value)}
+                placeholder="e.g. Failure_King_99 (Wrap in ' ' if spaces needed? No, standard string)"
+                maxLength={20}
+              />
+              <div className="text-[10px] text-neutral-400 mt-1 uppercase font-bold">
+                Leave blank for auto-generated shame.
+              </div>
+            </div>
+          )}
+
+          {guestHandle && !isActive && (
+            <div className={cn(
+              "text-center font-mono text-xs uppercase tracking-widest opacity-50",
+              isSavage ? "text-white" : "text-neutral-500"
+            )}>
+              Roasting as: <span className="font-bold border-b-2 border-black/20">{guestHandle}</span>
+            </div>
+          )}
+
 
           <div className="flex flex-col sm:flex-row gap-4 sm:items-end">
             <div className="flex-1 space-y-2 sm:space-y-3">
@@ -478,7 +533,10 @@ export function InsultGenerator({
                 id="email-mode"
                 checked={isEmail}
                 disabled={!isSavage}
-                onChange={(e) => setIsEmail(e.target.checked)}
+                onChange={(e) => {
+                  setIsEmail(e.target.checked);
+                  posthog?.capture('feature_toggled', { feature: 'max_effort', enabled: e.target.checked });
+                }}
                 className={cn(
                   "w-6 h-6 sm:w-8 sm:h-8 border-4 border-black appearance-none cursor-pointer relative transition-all duration-300 shrink-0",
                   "checked:after:content-['✓'] checked:after:absolute checked:after:font-black checked:after:text-center checked:after:w-full checked:after:leading-[1.1rem] sm:checked:after:leading-[1.4rem]",
@@ -509,7 +567,7 @@ export function InsultGenerator({
 
 
 
-          // ... rest of constraints ...
+
 
           <button
             type="submit"
@@ -548,13 +606,18 @@ export function InsultGenerator({
 
         {error && (
           <div className="mt-8 p-4 sm:p-6 border-4 border-black bg-red-100 text-red-600 font-bold uppercase text-xs italic shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center justify-between gap-4 text-center sm:text-left">
-            <span>Error: {error.message || "Failed to generate roast. Try again, coward."}</span>
-            {error.message?.includes("limit reached") && (
-              <a href="/billing"
-                className="w-full sm:w-auto text-center bg-black text-white px-6 py-3 font-black text-lg not-italic shadow-[2px_2px_0px_0px_rgba(255,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
-              >
-                PAY UP, CHUMP
-              </a>
+            {error.message?.includes("limit reached") ? (
+              <>
+                <p className="font-black uppercase mb-2">Eternal limit reached. Sign up for more.</p>
+                <LoginButton
+                  text="SIGN UP"
+                  variant="login"
+                  reason="limit"
+                  className="w-full sm:w-auto text-center bg-black text-white px-6 py-3 font-black text-lg not-italic shadow-[2px_2px_0px_0px_rgba(255,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
+                />
+              </>
+            ) : (
+              <p>{error.message}</p>
             )}
           </div>
         )}

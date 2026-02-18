@@ -193,7 +193,7 @@ export default async function MarketingPage() {
           text="Login"
           icon={true}
           variant="login"
-          className="px-6 py-2 bg-red-600 text-white font-black text-lg uppercase border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-red-500 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all"
+          className="px-4 py-2 sm:px-6 bg-red-600 text-white font-black text-sm sm:text-lg uppercase border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-red-500 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all"
         />
       </header>
 
@@ -222,6 +222,7 @@ export default async function MarketingPage() {
                 plan={plan}
                 initialButtonLabel={randomButtonLabel}
                 initialTopicLabel={randomTopicLabel}
+                isHomePage={true}
               />
             </div>
           </div>
@@ -434,7 +435,7 @@ export default async function MarketingPage() {
           <h3 className="text-white text-4xl font-black uppercase mb-8">Ready to ruin a friendship?</h3>
           <LoginButton
             text="Destroy "
-            className="bg-white text-black text-2xl font-black uppercase px-12 py-6 border-8 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[16px] active:translate-y-[16px] transition-all"
+            className="bg-white text-black text-lg sm:text-2xl font-black uppercase px-6 py-4 sm:px-12 sm:py-6 border-4 sm:border-8 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] sm:shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] sm:hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[8px] active:translate-y-[8px] sm:active:translate-x-[16px] sm:active:translate-y-[16px] transition-all"
           />
           <p className="mt-6 text-white font-mono font-bold text-sm opacity-75 uppercase">Warning: Emotional damage likely.</p>
         </section>

@@ -4,7 +4,7 @@ import { experimental_useObject as useObject } from "@ai-sdk/react";
 import { z } from "zod";
 import { useState, useEffect } from "react";
 import { useRef } from "react";
-import { Loader2, Zap, Copy, Check, Share2, ThumbsUp, ThumbsDown, Trophy } from "lucide-react";
+import { Loader2, Zap, Copy, Check, Share2, ThumbsUp, ThumbsDown, Trophy, X, Dices, Image as ImageIcon, Clipboard, Download } from "lucide-react";
 // import { toBlob } from "html-to-image";
 import { AccessModal } from "./access-modal";
 import { Logo } from "./logo";
@@ -20,12 +20,14 @@ export function InsultGenerator({
   isActive,
   plan,
   initialButtonLabel,
-  initialTopicLabel
+  initialTopicLabel,
+  isHomePage = false
 }: {
   isActive?: boolean;
   plan: string;
   initialButtonLabel: string;
   initialTopicLabel: string;
+  isHomePage?: boolean;
 }) {
   const posthog = usePostHog();
   const [language, setLanguage] = useState("English");
@@ -201,6 +203,55 @@ export function InsultGenerator({
 
 
 
+  const [textCopied, setTextCopied] = useState(false);
+
+  const copyText = async () => {
+    if (!displayText) return;
+    posthog?.capture('roast_copied_text', { topic: input });
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(displayText);
+        setTextCopied(true);
+        setTimeout(() => setTextCopied(false), 2000);
+      } else {
+        // Fallback for non-secure contexts or older browsers
+        const textArea = document.createElement("textarea");
+        textArea.value = displayText;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+        setTextCopied(true);
+        setTimeout(() => setTextCopied(false), 2000);
+      }
+    } catch (err) {
+      console.error("Failed to copy text:", err);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!displayText) return;
+    posthog?.capture('roast_shared_native', { topic: input });
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Jerkstore Roast',
+          text: displayText,
+          url: window.location.href,
+        });
+      } catch (err) {
+        // Ignore abort errors
+        if ((err as Error).name !== 'AbortError') {
+          console.error('Error sharing:', err);
+        }
+      }
+    } else {
+      // Fallback to copying text if web share not available
+      copyText();
+    }
+  };
+
   const copyImage = async () => {
     if (!shareCardRef.current) return;
     posthog?.capture('roast_copied_image', { topic: input });
@@ -249,6 +300,59 @@ export function InsultGenerator({
       console.error("[Jerkstore] Copy failed:", err);
     } finally {
       setIsCopying(false);
+    }
+  };
+
+  const [sliderValue, setSliderValue] = useState(0);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+
+  // Fake Random Topic Click Effect (Home Page Only)
+  // Fake Random Topic Click Effect (Home Page Only)
+  useEffect(() => {
+    // Only run on home page, when not focused, and NO results yet (Attract Mode)
+    // Stop if user has interacted enough to generate a roast or is currently generating
+    if (!isHomePage || isInputFocused || roasts.length > 0 || isLoading || isSimulatingLoading) return;
+
+    // Initial trigger shortly after mount
+    const initialTimeout = setTimeout(() => {
+      handleRandomTopic();
+    }, 800);
+
+    // Periodic trigger
+    const interval = setInterval(() => {
+      handleRandomTopic();
+    }, 3500); // Trigger every 3.5 seconds to keep it fresh
+
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(interval);
+    };
+  }, [isHomePage, isInputFocused, roasts.length, isLoading, isSimulatingLoading]);
+
+  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseInt(e.target.value);
+    setSliderValue(val);
+    if (val === 100) {
+      if (!isSavage) {
+        // Trigger generic upgrade/boom if not allowed
+        triggerBoom();
+        // Reset slider after boom
+        setTimeout(() => setSliderValue(0), 500);
+      } else {
+        setIsEmail(true);
+        posthog?.capture('feature_toggled', { feature: 'max_effort', enabled: true });
+      }
+    } else {
+      if (isEmail) {
+        setIsEmail(false);
+        posthog?.capture('feature_toggled', { feature: 'max_effort', enabled: false });
+      }
+    }
+  };
+
+  const handleSliderRelease = () => {
+    if (sliderValue < 100) {
+      setSliderValue(0);
     }
   };
 
@@ -380,11 +484,133 @@ export function InsultGenerator({
 
 
 
+
+
         <form onSubmit={onGenerate} className="space-y-6 sm:space-y-8 relative z-10">
 
+
+
+          {/* Top Controls: Language & Max Effort (50/50) */}
+          {/* HIDE ON HOMEPAGE (isActive check) */}
+          {isActive && (
+            <div className="flex flex-row gap-4 items-end">
+
+              {/* Language Selector */}
+              <div className="flex-1 space-y-1">
+                <label className={cn(
+                  "block font-bold text-xs uppercase tracking-tight ml-1 h-4",
+                  isSavage ? "text-white/80 drop-shadow-md" : isElite ? "text-black/70" : "text-neutral-400"
+                )}>
+                  Language
+                </label>
+                <div className="relative h-10 sm:h-12">
+                  <select
+                    className="w-full h-full py-2 px-3 border-2 border-black bg-white text-black font-mono text-sm transition-all duration-300 focus:outline-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus:ring-2 focus:ring-black cursor-pointer appearance-none"
+                    value={language}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const isPremiumLang = !STANDARD_LANGUAGES.some(l => l.value === val);
+                      if (isPremiumLang && !isElite && !isSavage) {
+                        triggerBoom();
+                      } else {
+                        setLanguage(val);
+                      }
+                    }}
+                  >
+                    <optgroup label="Standard Languages">
+                      {STANDARD_LANGUAGES.map((lang) => (
+                        <option key={lang.value} value={lang.value}>
+                          {lang.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Premium Languages (Elite/Savage)">
+                      {PREMIUM_LANGUAGES.filter(lp => !STANDARD_LANGUAGES.some(ls => ls.value === lp.value)).map((lang) => (
+                        <option key={lang.value} value={lang.value}>
+                          {lang.label} {!isElite && !isSavage && "🔒"}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-black">
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Max Effort Slider */}
+              <div className="flex-1 space-y-1">
+                <div className="flex justify-between items-end px-1 h-4">
+                  <label className={cn(
+                    "block font-bold text-xs uppercase tracking-tight truncate",
+                    isSavage ? "text-white" : "text-neutral-500"
+                  )}>
+                    Max Effort
+                  </label>
+                  {isEmail && (
+                    <span className={cn(
+                      "text-[10px] uppercase font-black tracking-widest animate-pulse ml-2",
+                      isSavage ? "text-white" : "text-red-600"
+                    )}>
+                      ON
+                    </span>
+                  )}
+                </div>
+
+                <div className={cn(
+                  "relative h-10 sm:h-12 border-2 border-black overflow-hidden select-none transition-all duration-300",
+                  isSavage ? "bg-black/40 backdrop-blur-md border-white/20" : "bg-neutral-100 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                )}>
+                  {/* Progress Bar background */}
+                  <div
+                    className={cn(
+                      "absolute inset-y-0 left-0 transition-all duration-75 ease-linear",
+                      isSavage ? "bg-purple-600/50" : "bg-red-600"
+                    )}
+                    style={{ width: `${sliderValue}%`, opacity: sliderValue > 0 ? 1 : 0 }}
+                  />
+
+                  {/* Text indication */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                    <span className={cn(
+                      "font-black uppercase text-[10px] sm:text-xs tracking-widest transition-opacity duration-300",
+                      sliderValue > 50 ? "opacity-100 text-white drop-shadow-md" : "opacity-40 text-neutral-400"
+                    )}>
+                      {isEmail ? "MAX EFFORT" : "SLIDE ME"}
+                    </span>
+                  </div>
+
+                  {/* Native slider input on top */}
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={isEmail ? 100 : sliderValue}
+                    onChange={handleSliderChange}
+                    onTouchEnd={handleSliderRelease}
+                    onMouseUp={handleSliderRelease}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-20"
+                    step="1"
+                  />
+
+                  {/* Visual Thumb Follower */}
+                  <div
+                    className={cn(
+                      "absolute top-0 bottom-0 w-8 sm:w-10 border-r-2 border-black flex items-center justify-center transition-all duration-75 pointer-events-none z-0",
+                      isSavage ? "bg-white text-black" : "bg-black text-white"
+                    )}
+                    style={{ left: `${sliderValue}%`, transform: `translateX(-${sliderValue}%)` }}
+                  >
+                    {isEmail ? <Check className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+
+
           {/* Heat Level Selector */}
-
-
           <div className="space-y-2 sm:space-y-3">
             <div className="flex justify-between items-end">
               <label className={cn(
@@ -398,174 +624,117 @@ export function InsultGenerator({
               </div>
             </div>
 
-            <div className="relative">
-              <input
-                className={cn(
-                  "w-full p-4 sm:p-5 pr-12 border-4 border-black font-mono text-lg sm:text-xl focus:outline-none transition-all duration-300 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
-                  isSavage ? "bg-white text-black placeholder:text-neutral-400 focus:ring-4 focus:ring-black" :
-                    "bg-white text-black focus:ring-4 focus:ring-yellow-400"
-                )}
-                value={input}
-                onChange={handleInputChange}
-                placeholder="e.g. My boss, or a resignation email..."
-              />
-              <button
-                type="button"
-                onClick={handleRandomTopic}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-2xl hover:scale-110 active:scale-95 transition-transform"
-                title="Random Topic"
-              >
-                🎲
-              </button>
-              <HeatLevelSelector
-                heatLevel={heatLevel}
-                setHeatLevel={setHeatLevel}
-                className="absolute -bottom-[46px] right-[2px] z-20 border-t-0"
-                isTrial={isTrial}
-                onLockedClick={() => setShowAccessModal(true)}
-                useReasoning={useReasoning}
-                setUseReasoning={setUseReasoning}
-                isSavage={isSavage}
-              />
-            </div>
-          </div>
-
-          {!isActive && !guestHandle && (
-            <div className="relative">
-              <label className={cn(
-                "block font-black text-xs sm:text-sm uppercase tracking-tight mb-1",
-                isSavage ? "text-white" : "text-neutral-500"
-              )}>
-                Claim Handle (Optional)
-              </label>
-              <input
-                className={cn(
-                  "w-full p-3 border-4 border-black font-mono text-sm focus:outline-none transition-all duration-300",
-                  isSavage ? "bg-white text-black" : "bg-white text-black focus:ring-2 focus:ring-yellow-400"
-                )}
-                value={handleInput}
-                onChange={(e) => setHandleInput(e.target.value)}
-                placeholder="e.g. Failure_King_99 (Wrap in ' ' if spaces needed? No, standard string)"
-                maxLength={20}
-              />
-              <div className="text-[10px] text-neutral-400 mt-1 uppercase font-bold">
-                Leave blank for auto-generated shame.
-              </div>
-            </div>
-          )}
-
-          {guestHandle && !isActive && (
-            <div className={cn(
-              "text-center font-mono text-xs uppercase tracking-widest opacity-50",
-              isSavage ? "text-white" : "text-neutral-500"
-            )}>
-              Roasting as: <span className="font-bold border-b-2 border-black/20">{guestHandle}</span>
-            </div>
-          )}
-
-
-          <div className="flex flex-col sm:flex-row gap-4 sm:items-end">
-            <div className="flex-1 space-y-2 sm:space-y-3">
-              <label className={cn(
-                "block font-black text-lg sm:text-xl uppercase tracking-tight",
-                isSavage ? "text-white drop-shadow-md" : isElite ? "text-black" : "text-neutral-400"
-              )}>
-                Language
-              </label>
-              <select
-                className="w-full p-4 sm:p-5 border-4 border-black bg-white text-black font-mono text-lg sm:text-xl transition-all duration-300 focus:outline-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus:ring-4 focus:ring-black cursor-pointer"
-                value={language}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  const isPremiumLang = !STANDARD_LANGUAGES.some(l => l.value === val);
-                  if (isPremiumLang && !isElite && !isSavage) {
-                    triggerBoom();
-                  } else {
-                    setLanguage(val);
-                  }
-                }}
-              >
-                <optgroup label="Standard Languages">
-                  {STANDARD_LANGUAGES.map((lang) => (
-                    <option key={lang.value} value={lang.value}>
-                      {lang.label}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="Premium Languages (Elite/Savage)">
-                  {PREMIUM_LANGUAGES.filter(lp => !STANDARD_LANGUAGES.some(ls => ls.value === lp.value)).map((lang) => (
-                    <option key={lang.value} value={lang.value}>
-                      {lang.label} {!isElite && !isSavage && "🔒"}
-                    </option>
-                  ))}
-                </optgroup>
-              </select>
-            </div>
-
-            <div
-              onClick={() => !isSavage && triggerBoom()}
-              className={cn(
-                "flex-1 flex items-center gap-3 sm:gap-4 p-4 sm:p-5 border-4 transition-all duration-500 relative group overflow-hidden h-[68px] sm:h-[84px]",
-                isSavage ? "bg-black/40 backdrop-blur-md border-white/20 cursor-default shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)]" :
-                  "bg-neutral-100 border-black cursor-pointer hover:bg-neutral-200"
-              )}
-            >
-              <input
-                type="checkbox"
-                id="email-mode"
-                checked={isEmail}
-                disabled={!isSavage}
-                onChange={(e) => {
-                  setIsEmail(e.target.checked);
-                  posthog?.capture('feature_toggled', { feature: 'max_effort', enabled: e.target.checked });
-                }}
-                className={cn(
-                  "w-6 h-6 sm:w-8 sm:h-8 border-4 border-black appearance-none cursor-pointer relative transition-all duration-300 shrink-0",
-                  "checked:after:content-['✓'] checked:after:absolute checked:after:font-black checked:after:text-center checked:after:w-full checked:after:leading-[1.1rem] sm:checked:after:leading-[1.4rem]",
-                  isSavage ? "bg-white border-white checked:after:text-purple-600" : "checked:bg-red-600",
-                  "disabled:cursor-not-allowed disabled:bg-neutral-400"
-                )}
-              />
-              <div className="flex flex-col flex-grow">
-                <label
-                  htmlFor={isSavage ? "email-mode" : undefined}
+            <div className="relative mb-14 sm:mb-16">
+              <div className="relative w-full">
+                <input
                   className={cn(
-                    "font-black uppercase text-xs sm:text-sm select-none cursor-pointer tracking-tight",
+                    "w-full p-4 sm:p-5 pr-12 text-lg sm:text-xl font-mono border-4 border-black focus:outline-none transition-all duration-300 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
+                    isSavage ? "bg-white text-black placeholder:text-neutral-400 focus:ring-4 focus:ring-black" :
+                      "bg-white text-black focus:ring-4 focus:ring-yellow-400"
+                  )}
+                  value={input}
+                  onFocus={() => {
+                    setIsInputFocused(true);
+                    posthog?.capture('input_focused');
+                  }}
+                  onBlur={() => setIsInputFocused(false)}
+                  onChange={handleInputChange}
+                  placeholder="e.g. My boss, or a resignation email..."
+                />
+
+                {input && (
+                  <button
+                    type="button"
+                    onClick={() => setInput("")}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-black transition-colors"
+                    title="Clear Input"
+                  >
+                    <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleRandomTopic}
+                  className={cn(
+                    "absolute -bottom-[46px] left-0 sm:left-auto px-1 py-1 flex items-center justify-center transition-colors hover:text-neutral-800",
+                    (!isInputFocused && !isRandomizing) && "animate-rotate-pulse origin-center",
+                    (isRandomizing && isHomePage) && "animate-bounce text-red-600 scale-125", // Pop effect
                     isSavage ? "text-white" : "text-neutral-500"
                   )}
+                  title="Random Topic"
                 >
-                  Maximum effort (300+ words)
-                </label>
-                {isSavage && <span className="text-[8px] sm:text-[10px] font-mono text-white/70 uppercase tracking-widest mt-0.5 font-bold line-clamp-1">Max Tokens Activated</span>}
-              </div>
+                  <Dices className="w-6 h-6 sm:w-8 sm:h-8" />
+                </button>
 
-              {!isSavage && (
-                <span className="bg-red-600 text-white text-[8px] sm:text-[10px] px-2 sm:px-3 py-1 sm:py-1.5 font-black animate-pulse whitespace-nowrap border-2 border-black">
-                  UPGRADE
-                </span>
-              )}
+                {/* Heat Level Selector - Bottom Right */}
+                <HeatLevelSelector
+                  heatLevel={heatLevel}
+                  setHeatLevel={setHeatLevel}
+                  className="absolute -bottom-[38px] lg:-bottom-[46px] right-[2px] z-20 border-t-0"
+                  isTrial={isTrial}
+                  onLockedClick={() => setShowAccessModal(true)}
+                  useReasoning={useReasoning}
+                  setUseReasoning={setUseReasoning}
+                  isSavage={isSavage}
+                />
+              </div>
             </div>
           </div>
 
+          {
+            !isActive && !guestHandle && (
+              <div className="relative">
+                <label className={cn(
+                  "block font-black text-xs sm:text-sm uppercase tracking-tight mb-1",
+                  isSavage ? "text-white" : "text-neutral-500"
+                )}>
+                  Claim Handle (Optional)
+                </label>
+                <input
+                  className={cn(
+                    "w-full p-3 border-4 border-black font-mono text-sm focus:outline-none transition-all duration-300",
+                    isSavage ? "bg-white text-black" : "bg-white text-black focus:ring-2 focus:ring-yellow-400"
+                  )}
+                  value={handleInput}
+                  onChange={(e) => setHandleInput(e.target.value)}
+                  placeholder="e.g. Failure_King_99 (Wrap in ' ' if spaces needed? No, standard string)"
+                  maxLength={20}
+                />
+                <div className="text-[10px] text-neutral-400 mt-1 uppercase font-bold">
+                  Leave blank for auto-generated shame.
+                </div>
+              </div>
+            )
+          }
 
-
-
+          {
+            guestHandle && !isActive && (
+              <div className={cn(
+                "text-center font-mono text-xs uppercase tracking-widest opacity-50",
+                isSavage ? "text-white" : "text-neutral-500"
+              )}>
+                Roasting as: <span className="font-bold border-b-2 border-black/20">{guestHandle}</span>
+              </div>
+            )
+          }
 
           <button
             type="submit"
             disabled={isLoading || isSimulatingLoading || !input.trim()}
             className={cn(
-              "w-full font-black text-xl sm:text-3xl py-4 sm:py-6 border-4 border-black transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed uppercase relative group overflow-hidden",
+              "w-full font-black text-xl sm:text-3xl py-4 sm:py-6 border-4 border-black transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed uppercase relative group",
               isSavage ? "bg-black text-white hover:-translate-y-1 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] sm:hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]" :
                 isElite ? "bg-red-600 text-white hover:bg-red-500 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]" :
-                  "bg-neutral-300 text-neutral-500 hover:bg-neutral-400"
+                  "bg-neutral-300 text-neutral-500 hover:bg-neutral-400 font-mono",
+              (isHomePage && input.trim() && roasts.length === 0 && !isLoading && !isSimulatingLoading) && "animate-irresistible-pulse shadow-xl"
             )}
           >
             <span className="relative z-10 flex items-center justify-center gap-2 sm:gap-3">
               {(isLoading || isSimulatingLoading) ? (
                 <>
                   <Loader2 className="animate-spin w-6 h-6 sm:w-8 sm:h-8" />
-                  <span className="min-w-[200px] text-left">{isSavage ? "SUMMONING THE ABYSS..." : loadingMessage}</span>
+                  <span className="w-full text-center sm:text-left sm:w-auto min-w-0 sm:min-w-[200px] text-xs sm:text-base truncate px-1">{isSavage ? "SUMMONING THE ABYSS..." : loadingMessage}</span>
                 </>
               ) : (
                 <>
@@ -574,7 +743,7 @@ export function InsultGenerator({
               )}
             </span>
           </button>
-        </form>
+        </form >
 
         <ShareCard
           ref={shareCardRef}
@@ -586,172 +755,193 @@ export function InsultGenerator({
           isEmail={isEmail}
         />
 
-        {error && (
-          <div className="mt-8 p-4 sm:p-6 border-4 border-black bg-red-100 text-red-600 font-bold uppercase text-xs italic shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center justify-between gap-4 text-center sm:text-left">
-            {error.message?.includes("limit reached") ? (
-              <>
-                <p className="font-black uppercase mb-2">Eternal limit reached. Sign up for more.</p>
-                <LoginButton
-                  text="SIGN UP"
-                  variant="login"
-                  reason="limit"
-                  className="w-full sm:w-auto text-center bg-black text-white px-6 py-3 font-black text-lg not-italic shadow-[2px_2px_0px_0px_rgba(255,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
-                />
-              </>
-            ) : (
-              <p>{error.message}</p>
-            )}
-          </div>
-        )}
+        {
+          error && (
+            <div className="mt-8 p-4 sm:p-6 border-4 border-black bg-red-100 text-red-600 font-bold uppercase text-xs italic shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center justify-between gap-4 text-center sm:text-left">
+              {error.message?.includes("limit reached") ? (
+                <>
+                  <p className="font-black uppercase mb-2">Eternal limit reached. Sign up for more.</p>
+                  <LoginButton
+                    text="SIGN UP"
+                    variant="login"
+                    reason="limit"
+                    className="w-full sm:w-auto text-center bg-black text-white px-6 py-3 font-black text-lg not-italic shadow-[2px_2px_0px_0px_rgba(255,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
+                  />
+                </>
+              ) : (
+                <p>{error.message}</p>
+              )}
+            </div>
+          )
+        }
 
-        {(displayText || isLoading) && (
-          <div
-            ref={resultRef}
-            className={cn(
-              "mt-8 sm:mt-10 p-4 sm:p-8 font-mono text-lg sm:text-xl leading-relaxed relative overflow-visible border-4 border-black transition-all duration-700",
-              isSavage ? "bg-black/60 backdrop-blur-xl text-white border-white/20 shadow-[0_0_30px_rgba(0,0,0,0.5)] sm:shadow-[0_0_50px_rgba(0,0,0,0.5)]" :
-                isElite ? "bg-white text-black shadow-[4px_4px_0px_0px_rgba(34,197,94,0.2)] sm:shadow-[8px_8px_0px_0px_rgba(34,197,94,0.2)]" :
-                  "bg-neutral-50 text-neutral-400 border-dashed shadow-none"
-            )}
-          >
-
-
-
-
-
-
-            <p className={cn("whitespace-pre-wrap text-sm sm:text-xl", isSavage && "drop-shadow-md")}>
-              {displayText}
-            </p>
-
-
-
-
-
-
-
-            {/* Result Switcher - Tabs Style Bottom Left */}
-            {roasts.length > 1 && !isSimulatingLoading && (
-              <div className="flex absolute -bottom-[34px] sm:-bottom-[42px] left-0 gap-1">
-                {roasts.map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      setCurrentIndex(idx);
-                      setDisplayText(roasts[idx]);
-                    }}
-                    className={cn(
-                      "w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center font-black text-xs sm:text-sm border-2 transition-all duration-200 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none",
-                      currentIndex === idx
-                        ? (isSavage
-                          ? "bg-white text-black border-white"
-                          : "bg-black text-white border-black")
-                        : (isSavage
-                          ? "bg-neutral-900 text-white border-white/20 hover:bg-neutral-800"
-                          : "bg-white text-black border-black hover:bg-neutral-100")
-                    )}
-                  >
-                    {idx + 1}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Rating Icons - Inside Bottom Right */}
-            {displayText && !isSimulatingLoading && (
-              <div className="flex absolute bottom-3 right-3 gap-3">
-                {/* Thumbs Down (-1) */}
-                <button
-                  disabled={ratings[displayText] !== undefined}
-                  onClick={() => handleRate(displayText, -1)}
-                  className={cn(
-                    "transition-all duration-200 p-1 rounded-full hover:bg-black/5 active:scale-95",
-                    ratings[displayText] === -1 ? "text-black opacity-100 scale-110" : "text-neutral-400 opacity-50 hover:opacity-100 hover:text-black"
-                  )}
-                  title="Weak sauce (-1)"
-                >
-                  {ratings[displayText] === -1 ? (
-                    <ThumbsDown className="w-5 h-5 sm:w-6 sm:h-6 fill-black" />
-                  ) : (
-                    <ThumbsDown className="w-5 h-5 sm:w-6 sm:h-6" />
-                  )}
-                </button>
-
-                {/* Thumbs Up (+1) */}
-                <button
-                  disabled={ratings[displayText] !== undefined}
-                  onClick={() => handleRate(displayText, ratings[displayText] === 1 ? 0 : 1)}
-                  className={cn(
-                    "transition-all duration-200 p-1 rounded-full hover:bg-black/5 active:scale-95",
-                    ratings[displayText] === 1 ? "text-black opacity-100 scale-110" : "text-neutral-400 opacity-50 hover:opacity-100 hover:text-black"
-                  )}
-                  title="Solid burn (+1)"
-                >
-                  {ratings[displayText] === 1 ? (
-                    <ThumbsUp className="w-5 h-5 sm:w-6 sm:h-6 stroke-black" />
-                  ) : (
-                    <ThumbsUp className="w-5 h-5 sm:w-6 sm:h-6" />
-                  )}
-                </button>
-
-                {/* God Tier (+2) */}
-                <button
-                  disabled={ratings[displayText] !== undefined}
-                  onClick={() => handleRate(displayText, ratings[displayText] === 2 ? 0 : 2)}
-                  className={cn(
-                    "transition-all duration-200 p-1 rounded-full hover:bg-yellow-500/10 active:scale-95 relative w-8 h-8 flex items-center justify-center",
-                    ratings[displayText] === 2 ? "text-yellow-500 opacity-100 scale-110" : "text-neutral-400 opacity-50 hover:opacity-100 hover:text-yellow-500"
-                  )}
-                  title="GOD TIER (+2)"
-                >
-                  {ratings[displayText] === 2 ? (
-                    <Trophy className="w-5 h-5 sm:w-6 sm:h-6 fill-yellow-500" />
-                  ) : (
-                    <Trophy className="w-5 h-5 sm:w-6 sm:h-6" />
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Action Bar - Outside the Card */}
-        {displayText && !isLoading && (
-          <div className="mt-6 flex flex-col sm:flex-row gap-4 justify-end items-center w-full">
-            {!isEmail && (
-              <button
-                onClick={copyImage}
-                disabled={isCopying}
-                className={cn(
-                  "px-4 py-2 font-black text-xs uppercase transition-all duration-300 flex items-center justify-center gap-2 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-0 active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
-                  isSavage ? "bg-purple-600 text-white" : "bg-yellow-400 text-black",
-                  copied ? "bg-green-500 text-white" : ""
-                )}
-              >
-                {isCopying ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : copied ? (
-                  <>Copied! <Check className="w-4 h-4" /></>
-                ) : (
-                  <>Copy Image <Copy className="w-4 h-4" /></>
-                )}
-              </button>
-            )}
-            <a
-              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(displayText)} #jerkstore`}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => posthog?.capture('roast_shared_x', { topic: input })}
+        {
+          (displayText || isLoading) && (
+            <div
+              ref={resultRef}
               className={cn(
-                "px-4 py-2 font-black text-xs uppercase transition-all duration-300 flex items-center justify-center gap-2 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-0 active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
-                "bg-black text-white"
+                "mt-8 sm:mt-10 p-4 sm:p-8 font-mono text-lg sm:text-xl leading-relaxed relative overflow-visible border-4 border-black transition-all duration-700",
+                isSavage ? "bg-black/60 backdrop-blur-xl text-white border-white/20 shadow-[0_0_30px_rgba(0,0,0,0.5)] sm:shadow-[0_0_50px_rgba(0,0,0,0.5)]" :
+                  isElite ? "bg-white text-black shadow-[4px_4px_0px_0px_rgba(34,197,94,0.2)] sm:shadow-[8px_8px_0px_0px_rgba(34,197,94,0.2)]" :
+                    "bg-neutral-50 text-neutral-400 border-dashed shadow-none"
               )}
             >
-              Post to X <Share2 className="w-4 h-4" />
-            </a>
-          </div>
-        )}
-      </div>
-    </div>
+
+
+
+
+
+
+              <p className={cn("whitespace-pre-wrap text-sm sm:text-xl", isSavage && "drop-shadow-md")}>
+                {displayText}
+              </p>
+
+
+
+
+
+
+
+              {/* Result Switcher - Tabs Style Bottom Left */}
+              {roasts.length > 1 && !isSimulatingLoading && (
+                <div className="flex absolute -bottom-[34px] sm:-bottom-[42px] left-0 gap-1">
+                  {roasts.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setCurrentIndex(idx);
+                        setDisplayText(roasts[idx]);
+                      }}
+                      className={cn(
+                        "w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center font-black text-xs sm:text-sm border-2 transition-all duration-200 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none",
+                        currentIndex === idx
+                          ? (isSavage
+                            ? "bg-white text-black border-white"
+                            : "bg-black text-white border-black")
+                          : (isSavage
+                            ? "bg-neutral-900 text-white border-white/20 hover:bg-neutral-800"
+                            : "bg-white text-black border-black hover:bg-neutral-100")
+                      )}
+                    >
+                      {idx + 1}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Rating Icons - Inside Bottom Right */}
+              {displayText && !isSimulatingLoading && (
+                <div className="flex absolute bottom-3 right-3 gap-3">
+                  {/* Thumbs Down (-1) */}
+                  <button
+                    disabled={ratings[displayText] !== undefined}
+                    onClick={() => handleRate(displayText, -1)}
+                    className={cn(
+                      "transition-all duration-200 p-1 rounded-full hover:bg-black/5 active:scale-95",
+                      ratings[displayText] === -1 ? "text-black opacity-100 scale-110" : "text-neutral-400 opacity-50 hover:opacity-100 hover:text-black"
+                    )}
+                    title="Weak sauce (-1)"
+                  >
+                    {ratings[displayText] === -1 ? (
+                      <ThumbsDown className="w-5 h-5 sm:w-6 sm:h-6 fill-black" />
+                    ) : (
+                      <ThumbsDown className="w-5 h-5 sm:w-6 sm:h-6" />
+                    )}
+                  </button>
+
+                  {/* Thumbs Up (+1) */}
+                  <button
+                    disabled={ratings[displayText] !== undefined}
+                    onClick={() => handleRate(displayText, ratings[displayText] === 1 ? 0 : 1)}
+                    className={cn(
+                      "transition-all duration-200 p-1 rounded-full hover:bg-black/5 active:scale-95",
+                      ratings[displayText] === 1 ? "text-black opacity-100 scale-110" : "text-neutral-400 opacity-50 hover:opacity-100 hover:text-black"
+                    )}
+                    title="Solid burn (+1)"
+                  >
+                    {ratings[displayText] === 1 ? (
+                      <ThumbsUp className="w-5 h-5 sm:w-6 sm:h-6 stroke-black" />
+                    ) : (
+                      <ThumbsUp className="w-5 h-5 sm:w-6 sm:h-6" />
+                    )}
+                  </button>
+
+                  {/* God Tier (+2) */}
+                  <button
+                    disabled={ratings[displayText] !== undefined}
+                    onClick={() => handleRate(displayText, ratings[displayText] === 2 ? 0 : 2)}
+                    className={cn(
+                      "transition-all duration-200 p-1 rounded-full hover:bg-yellow-500/10 active:scale-95 relative w-8 h-8 flex items-center justify-center",
+                      ratings[displayText] === 2 ? "text-yellow-500 opacity-100 scale-110" : "text-neutral-400 opacity-50 hover:opacity-100 hover:text-yellow-500"
+                    )}
+                    title="GOD TIER (+2)"
+                  >
+                    {ratings[displayText] === 2 ? (
+                      <Trophy className="w-5 h-5 sm:w-6 sm:h-6 fill-yellow-500" />
+                    ) : (
+                      <Trophy className="w-5 h-5 sm:w-6 sm:h-6" />
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+          )
+        }
+
+        {/* Action Bar - Outside the Card */}
+        {
+          displayText && !isLoading && (
+            <div className="mt-6 flex flex-wrap gap-3 justify-end items-center w-full">
+              {/* Copy Text */}
+              <button
+                onClick={copyText}
+                disabled={textCopied}
+                className={cn(
+                  "w-12 h-12 sm:w-14 sm:h-14 font-black flex items-center justify-center border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-0 active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
+                  textCopied ? "bg-green-500 text-white" : "bg-white text-black"
+                )}
+                title="Copy Text"
+              >
+                {textCopied ? <Check className="w-5 h-5 sm:w-6 sm:h-6" /> : <Clipboard className="w-5 h-5 sm:w-6 sm:h-6" />}
+              </button>
+
+              {/* Copy Image */}
+              {!isEmail && (
+                <button
+                  onClick={copyImage}
+                  disabled={isCopying}
+                  className={cn(
+                    "w-12 h-12 sm:w-14 sm:h-14 font-black flex items-center justify-center border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-0 active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
+                    isSavage ? "bg-purple-600 text-white" : "bg-yellow-400 text-black",
+                    copied ? "bg-green-500 text-white" : ""
+                  )}
+                  title="Copy Image"
+                >
+                  {isCopying ? (
+                    <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
+                  ) : copied ? (
+                    <Check className="w-5 h-5 sm:w-6 sm:h-6" />
+                  ) : (
+                    <ImageIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+                  )}
+                </button>
+              )}
+
+              {/* Share / Post to X */}
+              <button
+                onClick={handleShare}
+                className={cn(
+                  "px-4 py-2 h-12 sm:h-14 font-black text-xs sm:text-sm uppercase transition-all duration-300 flex items-center justify-center gap-2 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-0 active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
+                  "bg-black text-white"
+                )}
+                title="Share"
+              >
+                Share <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </div>
+          )
+        }
+      </div >
+    </div >
   );
 }

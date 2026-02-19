@@ -15,18 +15,15 @@ export default async function BillingManagementPage() {
     redirect("/");
   }
 
-  const subscription = await prisma.user_subscription.findUnique({
-    where: {
-      userId_siteSlug: {
-        userId: sessionUser.user.id,
-        siteSlug: "jerkstore",
-      },
-    },
+  // Fetch user credit balance
+  const user = await prisma.user.findUnique({
+    where: { id: sessionUser.user.id },
+    select: { credits: true }
   });
 
   return (
     <Suspense fallback={<div className="min-h-screen bg-neutral-100 flex items-center justify-center"><Loader2 className="animate-spin w-8 h-8" /></div>}>
-      <BillingContent initialSubscription={subscription} />
+      <BillingContent creditBalance={user?.credits ?? 0} />
     </Suspense>
   );
 }

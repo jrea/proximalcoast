@@ -35,7 +35,25 @@ export async function POST(req: Request) {
   switch (event.type) {
     case "checkout.session.completed":
       // Initial subscription setup
-      if (session.mode === "subscription") {
+      if (session.mode === "payment" && session.payment_status === "paid") {
+        // One-time payment (Credits)
+        const userId = session.metadata?.userId;
+        if (userId) {
+          // Verify it's the credits pack (optional but good practice)
+          // For now, we assume any one-time payment is for credits
+          // Or check line_items if needed.
+
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              credits: {
+                increment: 50
+              }
+            }
+          });
+          console.log(`[Credits] Added 50 credits to user ${userId}`);
+        }
+      } else if (session.mode === "subscription") {
         const subscriptionId = session.subscription as string;
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         const priceId = subscription.items.data[0].price.id;

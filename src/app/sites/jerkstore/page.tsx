@@ -303,127 +303,68 @@ export default async function MarketingPage() {
           </div>
         </section>
 
-        {/* Pricing Section */}
+        {/* Pricing/Usage Section */}
         <section className="py-24 px-6 md:px-12 bg-neutral-100 border-b-8 border-black">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-16">
               <h3 className="text-5xl md:text-7xl font-black uppercase italic tracking-tighter mb-4">
-                Choose Your <span className="text-red-600 bg-black px-2 inline-block transform -skew-x-12 pr-6">Pain</span>
+                Pay As You <span className="text-red-600 bg-black px-2 inline-block transform -skew-x-12 pr-6">Hate</span>
               </h3>
               <p className="text-xl font-mono font-bold text-neutral-500 max-w-2xl mx-auto">
-                We accept all major credit cards and bits of your soul.
+                No subscriptions. No contracts. Just raw, unadulterated vitriol.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-stretch pt-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-4xl mx-auto items-stretch pt-8">
 
-              {/* Trial Tier - The Poopy One */}
-              <div className="border-4 border-black p-6 nasty-gradient text-[#8b7d13] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:rotate-1 transition-all cursor-pointer relative overflow-hidden border-dotted group">
-                <div className="absolute inset-x-0 bottom-0 h-0 pointer-events-none">
-                  {[...Array(6)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="stink-line"
-                      style={{
-                        left: `${(i * 20) % 100}%`,
-                        animationDelay: `${i * 0.7}s`,
-                        opacity: 0.2
-                      }}
-                    />
-                  ))}
+              {/* Free Tier */}
+              <div className="border-4 border-black p-8 bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative group hover:-translate-y-1 transition-transform">
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-neutral-200 text-black px-4 py-1 font-black uppercase text-sm rotate-2 border-4 border-black">Free Forever</div>
+
+                <h3 className="text-4xl font-black uppercase italic mb-2 text-center">The Taste</h3>
+                <div className="text-center mb-8">
+                  <div className="text-6xl font-black mb-2">FREE</div>
+                  <div className="font-mono font-bold text-neutral-500 uppercase">Per Day</div>
                 </div>
-                <div className="absolute top-2 right-1 rotate-12 bg-yellow-900 text-yellow-100 px-2 text-[8px] font-mono uppercase">Lame</div>
-                <h3 className="text-xl font-bold uppercase font-mono italic flex items-center gap-2">
-                  Trial (Failure) 💩
-                </h3>
-                <div className="text-3xl font-black mt-2">$0<span className="text-sm font-normal opacity-50">/evr</span></div>
-                <ul className="mt-4 space-y-2 font-mono text-[10px] uppercase font-bold text-[#8b7d13] opacity-80 mb-8">
-                  <li className="flex gap-2"><Check className="w-3 h-3" /> 3 Roasts / Day</li>
-                  <li className="flex gap-2"><Check className="w-3 h-3" /> Basic Verification</li>
-                  <li className="flex gap-2"><Check className="w-3 h-3" /> No Pride Remaining</li>
+
+                <ul className="space-y-4 font-mono text-sm font-bold uppercase mb-8 border-t-4 border-black pt-6">
+                  <li className="flex gap-3 items-center"><Check className="w-6 h-6 shrink-0 text-green-600" /> 3 Roasts Every 24 Hours</li>
+                  <li className="flex gap-3 items-center"><Check className="w-6 h-6 shrink-0 text-green-600" /> Access to All Models</li>
+                  <li className="flex gap-3 items-center"><Check className="w-6 h-6 shrink-0 text-green-600" /> Standard Speed</li>
+                  <li className="flex gap-3 items-center opacity-50"><X className="w-6 h-6 shrink-0 text-red-600" /> Cannot hoard credits</li>
                 </ul>
+
                 <LoginButton
-                  text="Claim Poop"
-                  reason="trial"
-                  className="w-full py-4 border-4 border-[#51361a] font-black uppercase bg-[#8b4513] text-[#e0c097] hover:bg-[#a05a2c] transition-colors text-sm"
+                  text="Start Roasting"
+                  variant="login"
+                  className="w-full py-4 border-4 border-black font-black uppercase bg-neutral-100 hover:bg-neutral-200 transition-colors text-black text-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]"
                 />
               </div>
 
-              {/* Standard Tier - SOLD OUT JOKE */}
-              <div className="border-4 border-black bg-neutral-200 p-6 relative flex flex-col opacity-60 grayscale cursor-not-allowed select-none transform scale-95 origin-bottom">
-                <div className="absolute -top-4 -right-4 bg-red-600 text-white font-black uppercase px-4 py-1 rotate-12 border-4 border-white shadow-md z-10">SOLD OUT</div>
-                <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,#000000_0,#000000_1px,transparent_0,transparent_50%)] [background-size:10px_10px] opacity-10 pointer-events-none"></div>
+              {/* Paid Tier - Refill */}
+              <div className="border-4 border-black p-8 bg-yellow-300 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] relative group hover:-translate-y-2 transition-transform">
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-red-600 text-white px-4 py-1 font-black uppercase text-sm -rotate-2 border-4 border-black animate-pulse">Best Value</div>
 
-                <h4 className="text-3xl font-black uppercase italic text-neutral-500 mb-2 decoration-red-600/50 decoration-4">Standard</h4>
-                <div className="text-5xl font-black mb-6 text-neutral-400">$1<span className="text-sm">/mo</span></div>
-                <ul className="space-y-3 font-mono text-xs font-bold uppercase text-neutral-400 mb-8 flex-grow">
-                  <li className="flex gap-2"><Check className="w-4 h-4" /> 3 Roasts / Day</li>
-                  <li className="flex gap-2"><Check className="w-4 h-4" /> Probably has Ads</li>
-                  <li className="flex gap-2"><Check className="w-4 h-4" /> Dishonors your ancestors</li>
-                </ul>
-                <button disabled className="w-full py-4 border-4 border-neutral-400 font-black uppercase bg-neutral-300 text-neutral-500 cursor-not-allowed">
-                  Out of Stock
-                </button>
-                <p className="mt-2 text-center text-[10px] font-mono font-bold text-red-600 uppercase">Due to supply chain issues</p>
-              </div>
-
-              {/* Elite Tier - Most Popular */}
-              <div className="border-4 border-black bg-yellow-300 p-6 relative flex flex-col shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] transform scale-105 z-10 hover:-translate-y-2 transition-transform">
-                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-black text-white px-4 py-1 font-black uppercase text-sm -rotate-2 whitespace-nowrap border-2 border-white shadow-lg">Most Popular</div>
-
-                <h4 className="text-3xl font-black uppercase italic mb-2">Elite</h4>
-                <div className="text-6xl font-black mb-6">$5<span className="text-xl font-bold">/mo</span></div>
-                <ul className="space-y-3 font-mono text-sm font-bold uppercase mb-8 flex-grow">
-                  <li className="flex gap-2"><Check className="w-5 h-5" /> 200 Roasts / Day</li>
-                  <li className="flex gap-2"><Check className="w-5 h-5" /> No Ads</li>
-                  <li className="flex gap-2"><Check className="w-5 h-5" /> Looks golden</li>
-                  <li className="flex gap-2 flex-row"><Check className="w-5 h-5" /> <span>Priority Queue <span className="text-[9px]">(does nothing)</span></span></li>
-                </ul>
-                <LoginButton text="Get Elite" className="w-full py-4 border-4 border-black font-black uppercase hover:bg-neutral-800 transition-colors bg-black text-white text-xl shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)]" />
-              </div>
-
-              {/* Savage Tier - God Mode */}
-              <div className="relative border-4 border-black p-1 sm:p-2 bg-neutral-900 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden group transition-all duration-300 hover:scale-[1.01] hover:shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] ring-1 ring-white/20">
-                {/* Vibrant Gradient Background */}
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600"></div>
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30 mix-blend-overlay animate-pulse"></div>
-
-                <div className="relative z-10 flex flex-col h-full p-4 sm:p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-4xl font-black italic tracking-tighter text-white drop-shadow-[4px_4px_0px_rgba(0,0,0,0.8)] leading-none">
-                        SAVAGE
-                      </h3>
-                      <p className="font-mono text-[10px] text-white uppercase tracking-[0.2em] font-bold mt-1">The Ultimate Flex</p>
-                    </div>
-                  </div>
-
-                  <div className="mb-6 flex items-baseline gap-2">
-                    <span className="text-5xl font-black text-white tracking-tighter drop-shadow-[2px_2px_0px_rgba(0,0,0,0.5)]">$99</span>
-                    <span className="text-sm text-white font-bold uppercase">/ mo</span>
-                  </div>
-
-                  <ul className="space-y-3 mb-8 flex-grow">
-                    {[
-                      { text: "1000 Roasts / Day", icon: Zap },
-                      { text: "Phenomenal Cosmic Power", icon: Star },
-                      { text: "Bigger and Longer", icon: Zap },
-                      { text: "Your Mom Loves It", icon: Heart },
-                    ].map((feature, i) => (
-                      <li key={i} className="flex items-center gap-3 text-white">
-                        <div className="w-6 h-6 shrink-0 bg-white text-purple-600 flex items-center justify-center border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                          <feature.icon className="w-3 h-3 stroke-[3px]" />
-                        </div>
-                        <span className="font-black uppercase text-[10px] sm:text-xs leading-none drop-shadow-sm">{feature.text}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <LoginButton
-                    text="Ascend Now"
-                    className="w-full relative overflow-hidden bg-black text-white font-black py-4 text-xl border-4 border-white/50 transition-all hover:-translate-y-1 hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] uppercase tracking-widest active:translate-y-0 active:shadow-none"
-                  />
+                <h3 className="text-4xl font-black uppercase italic mb-2 text-center">Refill Tank</h3>
+                <div className="text-center mb-8">
+                  <div className="text-6xl font-black mb-2">$1</div>
+                  <div className="font-mono font-bold text-black uppercase">For 50 Credits</div>
                 </div>
+
+                <ul className="space-y-4 font-mono text-sm font-bold uppercase mb-8 border-t-4 border-black pt-6">
+                  <li className="flex gap-3 items-center"><Check className="w-6 h-6 shrink-0" /> 50 Extra Roasts</li>
+                  <li className="flex gap-3 items-center"><Check className="w-6 h-6 shrink-0" /> Never Expire</li>
+                  <li className="flex gap-3 items-center"><Check className="w-6 h-6 shrink-0" /> Support the Devs</li>
+                  <li className="flex gap-3 items-center"><Check className="w-6 h-6 shrink-0" /> 1 Credit = 1 Roast</li>
+                </ul>
+
+                <LoginButton
+                  text="Buy Credits"
+                  // We'll rely on the dashboard to handle the actual purchase link once logged in
+                  variant="login"
+                  className="w-full py-4 border-4 border-black font-black uppercase bg-black text-white hover:bg-neutral-800 transition-colors text-xl shadow-[4px_4px_0px_0px_rgba(255,255,255,0.3)]"
+                />
+                <p className="text-center mt-3 font-mono text-[10px] font-bold uppercase opacity-70">Secure payment via Stripe</p>
               </div>
 
             </div>

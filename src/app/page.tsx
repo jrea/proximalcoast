@@ -31,10 +31,10 @@ export default function Home() {
       <main className="w-full max-w-2xl">
         <header className="mb-16">
           <h1 className="text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-4 bg-clip-text text-transparent bg-gradient-to-r from-zinc-900 via-zinc-700 to-zinc-500 dark:from-white dark:via-zinc-300 dark:to-zinc-500">
-            Proximal Coast
+            Proximal Coast Product Lab
           </h1>
           <p className="text-xl text-zinc-600 dark:text-zinc-400 font-medium">
-            Next-generation products, built on the edge.
+            Building unhinged and useful software on the edge.
           </p>
         </header>
 

@@ -1,5 +1,6 @@
 import { Fraunces, Syne, Bebas_Neue, Comic_Neue } from "next/font/google";
 import { CookieBanner } from "./_components/cookie-banner";
+import { Toaster } from "sonner";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
@@ -35,6 +36,17 @@ export default function JerkstoreLayout({
   return (
     <div className={`${fraunces.variable} ${syne.variable} ${bebas.variable} ${comic.variable} font-sans`}>
       {children}
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          className: "border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-sans font-bold uppercase rounded-none",
+          style: {
+            borderRadius: "0px",
+            background: "white",
+            color: "black",
+          }
+        }}
+      />
       <CookieBanner />
     </div>
   );

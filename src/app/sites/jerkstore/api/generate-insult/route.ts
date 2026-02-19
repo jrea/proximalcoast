@@ -15,6 +15,7 @@ import { headers, cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { moderateText } from "../../_lib/openai";
 import { generateJerkName } from "../../_lib/username-generator";
+// import { reportUsage } from "@/lib/billing/usage"; // Removed legacy usage reporting
 
 export async function POST(req: Request) {
   const authHeader = req.headers.get("authorization");
@@ -70,23 +71,7 @@ export async function POST(req: Request) {
 
   if (session) {
     userId = session.user.id;
-    // Check for subscription
-    const subscription = await prisma.user_subscription.findUnique({
-      where: {
-        userId_siteSlug: {
-          userId: session.user.id,
-          siteSlug: "jerkstore",
-        },
-      },
-    });
-
-    const isActive = !!(subscription &&
-      (subscription.status === "active" || subscription.status === "trialing") &&
-      new Date(subscription.expiresAt) > new Date());
-
-    if (isActive) {
-      userPlan = subscription?.plan || "trial";
-    }
+    // Subscription checks removed. All users are "standard" (free + credits).
   } else {
     // Guest / Zero Sign-up Flow
     const cookieStore = await cookies();
@@ -142,49 +127,28 @@ export async function POST(req: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  // Enforce Heat Level for Trial Plan
-  // Trial users (authed or guest) are locked to 'mild'
+  // Heat Level Lock removed. Everyone can use all heat levels.
   let heatLevel = requestedHeatLevel;
-  if (userPlan === "trial") {
-    heatLevel = "mild";
-  }
 
   // Rate Limiting Logic
   let currentUsage = 0;
   let LIMIT = 0;
 
   if (session) {
-    if (userPlan === "trial") {
-      // Authenticated "Poopy Trial": 3 roasts PER DAY (no credit card)
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      currentUsage = await prisma.jerkstore_insult.count({
-        where: {
-          userId: userId,
-          createdAt: {
-            gte: twentyFourHoursAgo
-          }
+    // Authenticated Users: 3 roasts PER DAY (free)
+    // Credits used if > 3
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    currentUsage = await prisma.jerkstore_insult.count({
+      where: {
+        userId: userId,
+        createdAt: {
+          gte: twentyFourHoursAgo
         }
-      });
-      LIMIT = 3;
-    } else {
-      // Paid Plans: Daily roasts
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      currentUsage = await prisma.jerkstore_insult.count({
-        where: {
-          userId: userId,
-          createdAt: {
-            gte: twentyFourHoursAgo
-          }
-        }
-      });
-
-      if (userPlan === "savage") LIMIT = 1000;
-      else if (userPlan === "elite") LIMIT = 200;
-      else LIMIT = 3; // Should technically cover standard, but standard isn't 'trial'
-    }
+      }
+    });
+    LIMIT = 3;
   } else {
-    // Guest / Anonymous: 3 roasts LIFETIME based on IP
-    // Trusted IP tracking to prevent cookie clearing cheats
+    // Guest / Anonymous: 3 roasts per 24h Rolling Window based on IP & Cookie
     const ip = (req.headers.get("x-forwarded-for") ?? "127.0.0.1").split(",")[0];
 
     // Check IP record
@@ -192,39 +156,69 @@ export async function POST(req: Request) {
       where: { ip }
     });
 
-    // Also check the user ID usage as a fallback/secondary check
-    // (Total usage for this guest ID, not just last 24h)
+    let ipCount = ipRecord?.count ?? 0;
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    // If record is older than 24h, usage is practically 0 (will be reset on write)
+    if (ipRecord && ipRecord.updatedAt < twentyFourHoursAgo) {
+      ipCount = 0;
+    }
+
+    // Check cookie usage (User usage) in last 24h
     const userUsage = await prisma.jerkstore_insult.count({
-      where: { userId: userId }
+      where: {
+        userId: userId,
+        createdAt: { gte: twentyFourHoursAgo }
+      }
     });
 
-    // Max(IP usage, User usage) to be safe - strict lifetime limit
-    currentUsage = Math.max(ipRecord?.count ?? 0, userUsage);
+    // Max(IP usage, User usage) 
+    currentUsage = Math.max(ipCount, userUsage);
     LIMIT = 3;
-    // We defer the increment to the success block? 
-    // Actually, for safety, we should strictly check here.
-    // The increment happens on generation success.
   }
 
-
-  console.log(`[Jerkstore] Plan: ${userPlan}, User: ${userId} (${isGuest ? 'Guest' : 'User'}), Topic: ${topic}, Usage: ${currentUsage}/${LIMIT}, Email: ${isEmail}, Heat: ${heatLevel}`);
-
-  if (currentUsage >= LIMIT) {
-    let errorMsg = "";
-    if (!session) {
-      // Guest
-      errorMsg = "You have used your 3 free roasts. Forever. Create an account to get 3 per day.";
-    } else if (userPlan === "trial") {
-      errorMsg = "Trial limit reached (3 today). Come back tomorrow or pay up.";
-    } else {
-      errorMsg = `Daily roast limit reached (${LIMIT}). Go touch some grass.`;
-    }
-    return new Response(errorMsg, { status: 429 });
-  }
-
-  // We are generating a pack of roasts/emails.
   // Dynamic Count: 1 for Email Mode, 5 for standard roasts
   const ROAST_COUNT = isEmail ? 1 : 5;
+
+  // Credit Deduction Pre-Check for Authenticated Users
+  let paidSlots = 0;
+  if (session) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { credits: true }
+    });
+    const userCredits = user?.credits ?? 0;
+
+    const freeSlots = Math.max(0, LIMIT - currentUsage);
+    paidSlots = Math.max(0, ROAST_COUNT - freeSlots);
+
+    if (paidSlots > 0) {
+      if (userCredits < paidSlots) {
+        return new Response(
+          `You have ${freeSlots} free roasts left, but this pack generates ${ROAST_COUNT}. You need ${paidSlots} credits. Buy more at /billing.`,
+          { status: 429 } // 402 would be more appropriate but staying with blocking mechanism as requested
+        );
+      }
+    }
+  } else if (!session && currentUsage >= LIMIT) {
+    // Guest Strict Limit
+    const ip = (req.headers.get("x-forwarded-for") ?? "127.0.0.1").split(",")[0];
+    const ipRecord = await prisma.jerkstore_ip_tracking.findUnique({ where: { ip } });
+
+    let resetTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    if (ipRecord) {
+      resetTime = new Date(ipRecord.updatedAt.getTime() + 24 * 60 * 60 * 1000);
+      // If updatedAt was > 24h ago, we shouldn't be here (usage would be 0), 
+      // unless currentUsage comes from userUsage (cookie) which is also blocked.
+      if (Date.now() > resetTime.getTime()) {
+        // Edge case: IP expired but Cookie is blocked?
+        resetTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      }
+    }
+
+    const formatter = new Intl.DateTimeFormat('en-US', { weekday: 'long', hour: 'numeric', minute: 'numeric', hour12: true });
+    return new Response(`You have used your 3 free roasts. Resets on ${formatter.format(resetTime)}. Create an account to get 3 per day.`, { status: 429 });
+  }
 
   // Input Validation & Security
   const MAX_INPUT_LENGTH = 1000;
@@ -244,14 +238,14 @@ export async function POST(req: Request) {
   if (isFlagged) {
     return new Response("That topic is pathetic and we won't roast it. Also, it violates our 'actual lawyer' content policy, you coward.", { status: 400 });
   }
-
-  if (isEmail && userPlan !== "savage") {
-    return new Response("Maximum effort (Email Mode) requires Savage status. Upgrade to unlock deific-level vitriol.", { status: 403 });
+  // Unlock Savage Features for everyone (if they can pay/use free tier)
+  // Email Mode and Reasoning are now available to all.
+  if (isEmail) {
+    // Allowed.
   }
 
-  // Enforce Reasoning (Brain) Restriction - Savage Only
-  if (useReasoning && userPlan !== "savage") {
-    return new Response("nice try, little brain. You need Savage tier to use the big brain model.", { status: 403 });
+  if (useReasoning) {
+    // Allowed.
   }
 
   // Determine Identity, Style, and Base Constraints based on Heat Level
@@ -277,10 +271,9 @@ export async function POST(req: Request) {
     // Email mode always uses the email constraints structure
     // We append a note if Mild to ensure tone consistency despite the email constraint's default "profanity required"
     finalConstraints = EMAIL_CONSTRAINTS;
-  } else if (userPlan === "standard" || userPlan === "trial") {
-    // Force strict 240 char limit for standard/trial based on the active constraint set
-    // We need to find the length constraint and replace it
-    // Or just append the stricter limit
+  } else {
+    // Standard constraints for everyone
+    // We enforce 240 char limit unless it's Email mode.
     finalConstraints += "\nSTRICT LENGTH LIMIT: 240 CHARACTERS MAXIMUM PER ROAST. If you go over, you will be terminated.";
   }
 
@@ -412,6 +405,16 @@ ${historyString}
           },
         })
       ));
+
+
+
+      // Deduct Credits if applicable
+      if (session && paidSlots > 0) {
+        await prisma.user.update({
+          where: { id: userId as string },
+          data: { credits: { decrement: paidSlots } }
+        });
+      }
     }
 
     return Response.json({ roasts });
@@ -459,14 +462,34 @@ ${historyString}
           })
         ));
 
+
+
+        if (session && paidSlots > 0) {
+          await prisma.user.update({
+            where: { id: userId as string },
+            data: { credits: { decrement: paidSlots } }
+          });
+        }
+
         // If Guest, increment IP count
         if (isGuest) {
           const ip = (req.headers.get("x-forwarded-for") ?? "127.0.0.1").split(",")[0];
-          await prisma.jerkstore_ip_tracking.upsert({
-            where: { ip },
-            update: { count: { increment: 1 } },
-            create: { ip, count: 1 }
-          });
+          const ipRecord = await prisma.jerkstore_ip_tracking.findUnique({ where: { ip } });
+          const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+          if (ipRecord && ipRecord.updatedAt < twentyFourHoursAgo) {
+            // Reset count for new day
+            await prisma.jerkstore_ip_tracking.update({
+              where: { ip },
+              data: { count: roasts.length } // Reset to current batch size
+            });
+          } else {
+            await prisma.jerkstore_ip_tracking.upsert({
+              where: { ip },
+              update: { count: { increment: roasts.length } },
+              create: { ip, count: roasts.length }
+            });
+          }
         }
       }
     } catch (error) {

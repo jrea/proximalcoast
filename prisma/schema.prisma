@@ -106,6 +106,8 @@ model user {
   subscriptions    user_subscription[]
   overmake_estimate overmake_estimate[]
   apiKeys          ApiKey[]
+  preferences      Json?
+  credits          Int      @default(3)
 
   @@schema("main")
 }

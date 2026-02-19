@@ -20,6 +20,11 @@ export default async function proxy(req: NextRequest) {
   // Remove port if present
   hostname = hostname.split(":")[0];
 
+  // Remove www. if present
+  if (hostname.startsWith("www.")) {
+    hostname = hostname.replace("www.", "");
+  }
+
   const rootDomain = process.env.ROOT_DOMAIN?.split(":")[0];
 
   // If it's the root domain (e.g. proximalcoast.com or lvh.me) or www, show the main site

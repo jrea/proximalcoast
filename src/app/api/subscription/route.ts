@@ -38,7 +38,9 @@ export async function GET(req: Request) {
         // We use the same status strings mostly.
         const stripeStatus = stripeSub.status;
         const cancelAtPeriodEnd = stripeSub.cancel_at_period_end;
-        const currentPeriodEnd = new Date(stripeSub.current_period_end * 1000);
+        const currentPeriodEnd = stripeSub.current_period_end
+          ? new Date(stripeSub.current_period_end * 1000)
+          : new Date(Date.now() + 86400000); // Default to +1 day if missing
 
         // Check for mismatch
         if (

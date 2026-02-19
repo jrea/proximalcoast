@@ -46,6 +46,13 @@ export async function createCheckoutSession({
     return_url: returnUrl,
   };
 
+  // Add Metered Price if configured
+  if (process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_METERED) {
+    checkoutOptions.line_items?.push({
+      price: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_METERED,
+    });
+  }
+
   if (sessionUser?.id) {
     checkoutOptions.metadata!.userId = sessionUser.id;
   }

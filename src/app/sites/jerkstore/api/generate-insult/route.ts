@@ -6,6 +6,7 @@ import { NUCLEAR_IDENTITY, SPICY_IDENTITY, MILD_IDENTITY } from "../../prompts/i
 import { NUCLEAR_STYLE, SPICY_STYLE, MILD_STYLE } from "../../prompts/style";
 import { NUCLEAR_CONSTRAINTS, SPICY_CONSTRAINTS, MILD_CONSTRAINTS } from "../../prompts/constraints";
 import { EMAIL_CONSTRAINTS } from "../../prompts/email";
+import { CREDIT_COSTS, FREE_ROAST_LIMIT } from "../../constants";
 
 export const maxDuration = 60;
 
@@ -135,8 +136,8 @@ export async function POST(req: Request) {
   let LIMIT = 0;
 
   if (session) {
-    // Authenticated Users: 3 roasts PER DAY (free)
-    // Credits used if > 3
+    // Authenticated Users: FREE_ROAST_LIMIT roasts PER DAY (free)
+    // Credits used if > FREE_ROAST_LIMIT
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     currentUsage = await prisma.jerkstore_insult.count({
       where: {
@@ -146,9 +147,9 @@ export async function POST(req: Request) {
         }
       }
     });
-    LIMIT = 3;
+    LIMIT = FREE_ROAST_LIMIT;
   } else {
-    // Guest / Anonymous: 3 roasts per 24h Rolling Window based on IP & Cookie
+    // Guest / Anonymous: FREE_ROAST_LIMIT roasts per 24h Rolling Window based on IP & Cookie
     const ip = (req.headers.get("x-forwarded-for") ?? "127.0.0.1").split(",")[0];
 
     // Check IP record
@@ -174,7 +175,7 @@ export async function POST(req: Request) {
 
     // Max(IP usage, User usage) 
     currentUsage = Math.max(ipCount, userUsage);
-    LIMIT = 3;
+    LIMIT = FREE_ROAST_LIMIT;
   }
 
   // Dynamic Count: 1 for Email Mode, 5 for standard roasts
@@ -190,13 +191,19 @@ export async function POST(req: Request) {
     const userCredits = user?.credits ?? 0;
 
     const freeSlots = Math.max(0, LIMIT - currentUsage);
-    paidSlots = Math.max(0, ROAST_COUNT - freeSlots);
+
+    if (isEmail) {
+      // Long Roast always costs credit cost from constants, regardless of free slots
+      paidSlots = CREDIT_COSTS.LONG_ROAST;
+    } else {
+      paidSlots = Math.max(0, ROAST_COUNT - freeSlots);
+    }
 
     if (paidSlots > 0) {
       if (userCredits < paidSlots) {
         return new Response(
-          `You have ${freeSlots} free roasts left, but this pack generates ${ROAST_COUNT}. You need ${paidSlots} credits. Buy more at /billing.`,
-          { status: 429 } // 402 would be more appropriate but staying with blocking mechanism as requested
+          `You have ${freeSlots} free roasts left, but this requires ${paidSlots} credits. Buy more at /billing.`,
+          { status: 429 }
         );
       }
     }
@@ -217,7 +224,7 @@ export async function POST(req: Request) {
     }
 
     const formatter = new Intl.DateTimeFormat('en-US', { weekday: 'long', hour: 'numeric', minute: 'numeric', hour12: true });
-    return new Response(`You have used your 3 free roasts. Resets on ${formatter.format(resetTime)}. Create an account to get 3 per day.`, { status: 429 });
+    return new Response(`You have used your ${FREE_ROAST_LIMIT} free roasts. Resets on ${formatter.format(resetTime)}. Create an account to get ${FREE_ROAST_LIMIT} per day.`, { status: 429 });
   }
 
   // Input Validation & Security
@@ -375,7 +382,7 @@ ${historyString}
         }),
       }),
       system: systemPrompt,
-      prompt: isEmail ? `Write 1 devastating email roasting this topic: ${topic}` : `Generate a pack of 5 roasts for this topic: ${topic}`,
+      prompt: isEmail ? `Write 1 long, devastating roast about this topic: ${topic}` : `Generate a pack of 5 roasts for this topic: ${topic}`,
       maxOutputTokens: 2048,
       ...v3Params,
     });
@@ -429,7 +436,7 @@ ${historyString}
       }),
     }),
     system: systemPrompt,
-    prompt: isEmail ? `Write 1 devastating email roasting this topic: ${topic}` : `Generate a pack of 5 roasts for this topic: ${topic}`,
+    prompt: isEmail ? `Write 1 long, devastating roast about this topic: ${topic}` : `Generate a pack of 5 roasts for this topic: ${topic}`,
     maxOutputTokens: 2048,
     ...v3Params,
   });

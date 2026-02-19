@@ -46,8 +46,14 @@ export default async function JerkstorePage({
     (subscription.status === "active" || subscription.status === "trialing") &&
     new Date(subscription.expiresAt) > new Date());
 
-  const canRoast = isActive; // Must have a card/sub to even try
+  const canRoast = true; // Logged in users can always try to roast (credits checked on backend)
   const plan = isActive ? (subscription?.plan || "standard") : "trial";
+
+  const userCredits = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { credits: true }
+  });
+  const credits = userCredits?.credits || 0;
 
   const randomButtonLabel = BUTTON_LABELS[Math.floor(Math.random() * BUTTON_LABELS.length)];
   const randomTopicLabel = TOPIC_LABELS[Math.floor(Math.random() * TOPIC_LABELS.length)];
@@ -64,11 +70,12 @@ export default async function JerkstorePage({
           plan={plan}
           initialButtonLabel={randomButtonLabel}
           initialTopicLabel={randomTopicLabel}
+          credits={credits}
         />
       </main>
 
       <footer className="max-w-xl mx-auto mt-12 mb-8 text-center font-mono text-[9px] sm:text-[10px] text-neutral-400 uppercase tracking-widest flex flex-col gap-2">
-        <div>Logged in as {session.user.email}</div>
+        <div>Logged in as {session.user.name} ({session.user.email})</div>
         <a
           href="https://x.com/chieftrashofcr"
           target="_blank"

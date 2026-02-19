@@ -33,6 +33,26 @@ export async function POST(req: Request) {
   console.log(`🔔 Webhook received! Type: ${event.type}, Mode: ${session.mode}`);
 
   switch (event.type) {
+    case "payment_intent.succeeded":
+      const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      if (paymentIntent.metadata?.type === "credits_purchase" && paymentIntent.metadata?.source !== "immediate") {
+        const userId = paymentIntent.metadata.userId;
+        if (userId) {
+          const creditsToAdd = paymentIntent.metadata.creditsAmount ? parseInt(paymentIntent.metadata.creditsAmount) : 50;
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              credits: {
+                increment: creditsToAdd
+              }
+            }
+          });
+          console.log(`[Credits] Added ${creditsToAdd} credits to user ${userId} via PaymentIntent webhook`);
+        }
+      }
+      break;
+
+
     case "checkout.session.completed":
       // Initial subscription setup
       if (session.mode === "payment" && session.payment_status === "paid") {

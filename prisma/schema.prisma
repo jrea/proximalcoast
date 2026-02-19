@@ -206,3 +206,15 @@ model jerkstore_ip_tracking {
 
   @@schema("main")
 }
+
+model bkd_document {
+  id        String   @id @default(uuid())
+  filename  String
+  s3Key     String
+  status    String   // PENDING, SIGNED
+  config    Json     // { x, y, width, height, page }
+  createdAt DateTime @default(now())
+  signedAt  DateTime?
+
+  @@schema("main")
+}

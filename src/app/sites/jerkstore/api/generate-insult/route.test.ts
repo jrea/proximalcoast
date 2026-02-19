@@ -10,7 +10,7 @@ vi.mock('@/lib/db', () => ({
   prisma: {
     apiKey: { findUnique: vi.fn(), update: vi.fn() },
     user_subscription: { findUnique: vi.fn() },
-    user: { findUnique: vi.fn(), create: vi.fn() },
+    user: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     jerkstore_insult: { count: vi.fn(), findMany: vi.fn(), create: vi.fn() },
     jerkstore_ip_tracking: { findUnique: vi.fn(), upsert: vi.fn() },
   },
@@ -53,6 +53,8 @@ vi.mock('../../_lib/ai', () => ({
   deepseekV3: { modelId: 'deepseek-v3' },
   deepseekR1: { modelId: 'deepseek-r1' }
 }));
+
+import { FREE_ROAST_LIMIT, CREDIT_COSTS } from '../../constants';
 
 // Mock OpenAI moderation
 vi.mock('../../_lib/openai', () => ({
@@ -109,6 +111,9 @@ describe('POST /api/generate-insult', () => {
     (prisma.jerkstore_insult.count as any).mockResolvedValue(0);
     (prisma.jerkstore_ip_tracking.findUnique as any).mockResolvedValue(null);
     (prisma.user_subscription.findUnique as any).mockResolvedValue(null);
+
+    // Default to plenty of credits to pass rate limits for logic tests
+    (prisma.user.findUnique as any).mockResolvedValue({ credits: 100 });
   });
 
   // --- Authentication Tests ---
@@ -238,52 +243,101 @@ describe('POST /api/generate-insult', () => {
     expect(await res.text()).toContain("pathetic");
   });
 
-  it('Email: Should Block Non-Savage Users', async () => {
+  // --- Credit & Feature Logic Tests ---
+
+  it('Long Roast: Should FAIL if user has insufficient credits (< 2)', async () => {
     (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
-    (prisma.user_subscription.findUnique as any).mockResolvedValue({ plan: 'standard' });
+    (prisma.user.findUnique as any).mockResolvedValue({ credits: 1 }); // Less than 2
 
     const req = reqMock({ topic: 'test', isEmail: true });
     const res = await POST(req);
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(429);
+    expect(await res.text()).toContain("requires 2 credits");
   });
 
-  it('Email: Should Allow Savage Users', async () => {
+  it('Long Roast: Should SUCCEED if user has sufficient credits (>= 2)', async () => {
     (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
-    (prisma.user_subscription.findUnique as any).mockResolvedValue({ status: 'active', plan: 'savage', expiresAt: new Date(Date.now() + 10000) });
+    (prisma.user.findUnique as any).mockResolvedValue({ credits: 2 }); // Exactly 2
 
     const req = reqMock({ topic: 'test', isEmail: true });
     const res = await POST(req);
 
     expect(res.status).toBe(200);
+    // Wait for async operations (fire-and-forget DB update)
+    await new Promise(resolve => setTimeout(resolve, 10));
+    expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'u1' },
+      data: { credits: { decrement: 2 } }
+    }));
   });
 
-  it('Constraint: Should block Reasoning Mode for non-Savage users', async () => {
+  it('Standard Roast: Should FAIL if usage < FREE_ROAST_LIMIT but user has 0 credits', async () => {
     (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
-    (prisma.user_subscription.findUnique as any).mockResolvedValue({ plan: 'elite' });
+    const usage = FREE_ROAST_LIMIT - 1;
+    (prisma.jerkstore_insult.count as any).mockResolvedValue(usage); // 1 free slot left
+    (prisma.user.findUnique as any).mockResolvedValue({ credits: 0 });
 
-    const req = reqMock({ topic: 'Thinking hard', useReasoning: true });
+    const req = reqMock({ topic: 'test', isEmail: false });
     const res = await POST(req);
 
-    expect(res.status).toBe(403);
-    const text = await res.text();
-    expect(text).toContain("little brain");
+    expect(res.status).toBe(429);
+    const expectedPaid = 5 - (FREE_ROAST_LIMIT - usage);
+    expect(await res.text()).toContain(`requires ${expectedPaid} credits`);
   });
 
-  it('Constraint: Should allow Reasoning Mode for Savage users', async () => {
+  it('Standard Roast: Should SUCCEED if usage < FREE_ROAST_LIMIT and user has sufficient credits', async () => {
     (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
-    (prisma.user_subscription.findUnique as any).mockResolvedValue({ status: 'active', plan: 'savage', expiresAt: new Date(Date.now() + 10000) });
+    (prisma.jerkstore_insult.count as any).mockResolvedValue(0); // Usage 0
+    const expectedPaid = 5 - FREE_ROAST_LIMIT;
+    (prisma.user.findUnique as any).mockResolvedValue({ credits: expectedPaid });
 
-    const req = reqMock({ topic: 'Thinking hard', useReasoning: true });
+    const req = reqMock({ topic: 'test', isEmail: false });
     const res = await POST(req);
 
     expect(res.status).toBe(200);
+    // Paid = 5 - FREE_ROAST_LIMIT
+    await new Promise(resolve => setTimeout(resolve, 10));
+    expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'u1' },
+      data: { credits: { decrement: expectedPaid } }
+    }));
+  });
+
+  it(`Standard Roast: Should FAIL if usage >= FREE_ROAST_LIMIT and insufficient credits (< 5)`, async () => {
+    (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
+    (prisma.jerkstore_insult.count as any).mockResolvedValue(FREE_ROAST_LIMIT); // Free limit reached
+    (prisma.user.findUnique as any).mockResolvedValue({ credits: 4 }); // Need 5, have 4
+
+    const req = reqMock({ topic: 'test', isEmail: false });
+    const res = await POST(req);
+
+    expect(res.status).toBe(429);
+    expect(await res.text()).toContain("requires 5 credits");
+  });
+
+  it(`Standard Roast: Should SUCCEED if usage >= FREE_ROAST_LIMIT and sufficient credits (>= 5)`, async () => {
+    (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
+    (prisma.jerkstore_insult.count as any).mockResolvedValue(FREE_ROAST_LIMIT); // Free limit reached
+    (prisma.user.findUnique as any).mockResolvedValue({ credits: 10 }); // Have enough
+
+    const req = reqMock({ topic: 'test', isEmail: false });
+    const res = await POST(req);
+
+    expect(res.status).toBe(200);
+    // Usage FREE_ROAST_LIMIT (0 free slots). Pack 5. Paid = 5.
+    await new Promise(resolve => setTimeout(resolve, 10));
+    expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'u1' },
+      data: { credits: { decrement: 5 } }
+    }));
   });
 
   // --- Modes & Models ---
 
   it('Modes: Streaming Mode should call streamText', async () => {
     (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
+    (prisma.user.findUnique as any).mockResolvedValue({ credits: 100 });
     const { streamText, generateText } = await import('ai');
 
     const req = {
@@ -297,15 +351,11 @@ describe('POST /api/generate-insult', () => {
     expect(generateText).not.toHaveBeenCalled();
   });
 
-  it('Modes: Reasoning Mode should use R1 model', async () => {
+  it('Modes: Reasoning Mode should use R1 model (Allowed for everyone)', async () => {
     (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
-    // Must be savage to use reasoning
-    (prisma.user_subscription.findUnique as any).mockResolvedValue({
-      plan: 'savage',
-      status: 'active',
-      expiresAt: new Date(Date.now() + 10000000)
-    });
+    (prisma.user.findUnique as any).mockResolvedValue({ credits: 100 });
 
+    // Reasoning allowed for everyone now
     const { streamText, generateText } = await import('ai');
 
     const req = reqMock({ topic: 't', useReasoning: true });
@@ -315,36 +365,24 @@ describe('POST /api/generate-insult', () => {
     expect(streamText).toHaveBeenCalledWith(expect.objectContaining({
       model: expect.objectContaining({ modelId: 'deepseek-r1' })
     }));
-    expect(generateText).not.toHaveBeenCalled();
   });
 
-
-  // --- Rate Limits (Preserved) ---
-
-  it('Rate Limit: Guest < 3 (Lifetime) -> OK', async () => {
+  it(`Rate Limit: Guest < FREE_ROAST_LIMIT (Lifetime) -> OK`, async () => {
     (auth.api.getSession as any).mockResolvedValue(null);
-    (prisma.jerkstore_ip_tracking.findUnique as any).mockResolvedValue({ count: 2 });
+    (prisma.jerkstore_ip_tracking.findUnique as any).mockResolvedValue({ count: FREE_ROAST_LIMIT - 1, updatedAt: new Date() });
     const res = await POST(reqMock({ topic: 'test' }));
     expect(res.status).toBe(200);
+
+    // Guest usage should be incremented
+    await new Promise(resolve => setTimeout(resolve, 10));
+    expect(prisma.jerkstore_ip_tracking.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      update: { count: { increment: 5 } }
+    }));
   });
 
-  it('Rate Limit: Guest >= 3 (Lifetime) -> BLOCK', async () => {
+  it(`Rate Limit: Guest >= FREE_ROAST_LIMIT (Lifetime) -> BLOCK`, async () => {
     (auth.api.getSession as any).mockResolvedValue(null);
-    (prisma.jerkstore_ip_tracking.findUnique as any).mockResolvedValue({ count: 3 });
-    const res = await POST(reqMock({ topic: 'test' }));
-    expect(res.status).toBe(429);
-  });
-
-  it('Rate Limit: Trial < 3 (Daily) -> OK', async () => {
-    (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u' } });
-    (prisma.jerkstore_insult.count as any).mockResolvedValue(2);
-    const res = await POST(reqMock({ topic: 'test' }));
-    expect(res.status).toBe(200);
-  });
-
-  it('Rate Limit: Trial >= 3 (Daily) -> BLOCK', async () => {
-    (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u' } });
-    (prisma.jerkstore_insult.count as any).mockResolvedValue(3);
+    (prisma.jerkstore_ip_tracking.findUnique as any).mockResolvedValue({ count: FREE_ROAST_LIMIT, updatedAt: new Date() });
     const res = await POST(reqMock({ topic: 'test' }));
     expect(res.status).toBe(429);
   });

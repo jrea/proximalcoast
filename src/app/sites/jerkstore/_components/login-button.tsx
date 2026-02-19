@@ -68,12 +68,12 @@ export function LoginButton({
 }) {
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
-  const [randomLabel, setRandomLabel] = useState("");
+  const [randomLabel, setRandomLabel] = useState(text);
   const posthog = usePostHog();
 
   useEffect(() => {
     // Pick a random label only once on mount or when session changes
-    if (session) {
+    if (session && !text) {
       const randomIndex = Math.floor(Math.random() * ALTERNATIVE_LABELS.length);
       setRandomLabel(ALTERNATIVE_LABELS[randomIndex]);
     }

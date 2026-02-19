@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CreditCard, Loader2, Zap, Check, Coins } from "lucide-react";
+import { CreditCard, Loader2, Coins } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { loadStripe } from "@stripe/stripe-js";
@@ -16,12 +16,14 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 import { Logo } from "./logo";
 import { JerkstoreNav } from "./nav";
 import { cn } from "@/lib/utils";
+import { Trash2, Infinity, Heart, Flame, Car, Zap, Skull, Crown, Check } from "lucide-react";
+import { CREDIT_PACKAGES as BASE_PACKAGES } from "../constants";
 
 interface BillingContentProps {
   creditBalance: number;
 }
 
-function CheckoutForm({ clientSecret, onCancel, onSuccess }: { clientSecret: string, onCancel: () => void, onSuccess: () => void }) {
+function CheckoutForm({ clientSecret, amount, onCancel, onSuccess }: { clientSecret: string, amount: number, onCancel: () => void, onSuccess: () => void }) {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
@@ -52,7 +54,7 @@ function CheckoutForm({ clientSecret, onCancel, onSuccess }: { clientSecret: str
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white border-4 border-black p-4 mt-6 animate-in slide-in-from-top-4 fade-in duration-300">
+    <form onSubmit={handleSubmit} className="bg-white mt-6 animate-in slide-in-from-top-4 fade-in duration-300">
       <PaymentElement
         options={{
           layout: "tabs",
@@ -70,7 +72,7 @@ function CheckoutForm({ clientSecret, onCancel, onSuccess }: { clientSecret: str
         disabled={!stripe || loading}
         className="w-full mt-6 py-3 border-4 border-black font-black uppercase bg-black text-white hover:bg-neutral-800 transition-colors text-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {loading ? <Loader2 className="animate-spin" /> : "Pay $1.00"}
+        {loading ? <Loader2 className="animate-spin" /> : `Pay $${(amount / 100).toFixed(2)}`}
       </button>
 
       <button
@@ -84,11 +86,47 @@ function CheckoutForm({ clientSecret, onCancel, onSuccess }: { clientSecret: str
   );
 }
 
+const UI_EXTENSIONS: Record<string, any> = {
+  pkg_basic: {
+    features: [
+      { icon: Trash2, text: "50 Roasts in the Bag" },
+      { icon: Infinity, text: "Never Expire" },
+      { icon: Heart, text: "Pity Support Us", color: "text-red-400 fill-red-400" },
+    ],
+    className: "bg-[#5c4033] text-white",
+    buttonClassName: "bg-black text-white hover:bg-neutral-900 shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)]"
+  },
+  pkg_pro: {
+    features: [
+      { icon: Flame, text: "275 Rounds of Ammo" },
+      { icon: Car, text: "$199,995 cheaper than a Lambo" },
+      { icon: Zap, text: "<strong>+25 Bonus</strong> (Math is hard)", iconColor: "fill-yellow-300 text-black" },
+    ],
+    className: "bg-orange-400",
+    buttonClassName: "bg-black text-white hover:bg-neutral-800 shadow-[4px_4px_0px_0px_rgba(255,255,255,0.3)]"
+  },
+  pkg_elite: {
+    features: [
+      { icon: Skull, text: "600 Roasts" },
+      { icon: Heart, text: "Your Mom Loves It", color: "text-red-500 fill-red-500" },
+      { icon: Crown, text: "Cheaper Than Therapy", iconColor: "fill-yellow-400 text-yellow-400" },
+    ],
+    className: "savage-gradient text-white shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]",
+    buttonClassName: "bg-white text-black hover:bg-neutral-200 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+  },
+};
+
+const CREDIT_PACKAGES = BASE_PACKAGES.map(pkg => ({
+  ...pkg,
+  ...UI_EXTENSIONS[pkg.id]
+}));
+
 export function BillingContent({ creditBalance }: BillingContentProps) {
   const [loading, setLoading] = useState(false);
   const [balance, setBalance] = useState(creditBalance);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [selectedPackageId, setSelectedPackageId] = useState("pkg_pro");
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -101,15 +139,25 @@ export function BillingContent({ creditBalance }: BillingContentProps) {
     }
   }, [isSuccess, router]);
 
+  // Sync balance with prop changes
+  useEffect(() => {
+    setBalance(creditBalance);
+  }, [creditBalance]);
+
+  const selectedPackage = CREDIT_PACKAGES.find(p => p.id === selectedPackageId) || CREDIT_PACKAGES[1];
+
   const handlePurchase = async () => {
     setCheckoutLoading(true);
     try {
       const res = await fetch("/api/checkout/credits", {
-        method: "POST"
+        method: "POST",
+        body: JSON.stringify({ packageId: selectedPackageId }),
+        headers: { "Content-Type": "application/json" }
       });
       const data = await res.json();
 
       if (data.success) {
+        setBalance((b) => b + (data.creditsAdded || selectedPackage.credits));
         toast.success(data.message || "PAYMENT RECEIVED. TANK REFILLED.");
         router.refresh();
       } else if (data.clientSecret) {
@@ -127,6 +175,45 @@ export function BillingContent({ creditBalance }: BillingContentProps) {
 
   return (
     <div className="min-h-screen bg-neutral-100 p-4 sm:p-8 font-sans selection:bg-red-600 selection:text-white relative overflow-x-hidden">
+      <style>{`
+        @keyframes stink-drift {
+          0% { transform: translateY(0) translateX(0); opacity: 0; }
+          20% { opacity: 0.4; }
+          50% { transform: translateY(-40px) translateX(10px); }
+          80% { opacity: 0.1; }
+          100% { transform: translateY(-80px) translateX(-5px); opacity: 0; }
+        }
+        .stink-line {
+          position: absolute;
+          width: 2px;
+          height: 20px;
+          background: #8b4513;
+          border-radius: 50%;
+          filter: blur(2px);
+          animation: stink-drift 3s infinite linear;
+        }
+        .nasty-gradient {
+          background: linear-gradient(135deg, #3d2b1f 0%, #5c4033 50%, #2a1d15 100%);
+          background-size: 200% 200%;
+          animation: fluid-shift 12s ease infinite;
+          border-color: #2a1d15 !important;
+        }
+        .savage-gradient {
+          background: linear-gradient(135deg, #9333ea, #db2777, #2563eb);
+          background-size: 200% 200%;
+          animation: gradient-shift 5s ease infinite;
+        }
+        @keyframes gradient-shift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes fluid-shift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+      `}</style>
       <div className="max-w-2xl mx-auto">
         <JerkstoreNav />
 
@@ -156,21 +243,52 @@ export function BillingContent({ creditBalance }: BillingContentProps) {
               </p>
             </div>
 
-            {/* Purchase Options */}
-            <div className="border-4 border-black p-6 bg-yellow-300 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative group hover:-translate-y-1 transition-transform">
-              <div className="absolute -top-4 -right-4 bg-red-600 text-white px-4 py-1 font-black uppercase text-xs rotate-12 border-2 border-black">Best Value</div>
+            {/* Package Selection */}
+            {!clientSecret && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {CREDIT_PACKAGES.map((pkg) => (
+                  <button
+                    key={pkg.id}
+                    onClick={() => setSelectedPackageId(pkg.id)}
+                    className={cn(
+                      "relative border-4 border-black p-4 transition-all text-left group hover:-translate-y-1",
+                      pkg.className,
+                      selectedPackageId === pkg.id
+                        ? pkg.id === "pkg_pro" ? "shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] scale-[1.02] z-10" : "shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] scale-[1.02] z-10"
+                        : ""
+                    )}
+                  >
+                    {pkg.popular && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-2 py-0.5 text-[10px] font-black uppercase border-2 border-black rotate-1 z-20">
+                        Popular
+                      </div>
+                    )}
+                    {pkg.id === "pkg_elite" && (
+                      <div className="absolute -top-4 inset-x-0 mx-auto w-max bg-red-600 text-white px-3 py-0.5 font-black uppercase text-[10px] -rotate-2 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] z-20">
+                        Best Value
+                      </div>
+                    )}
+                    <div className="font-black uppercase italic text-lg leading-none mb-1 drop-shadow-sm">{pkg.name}</div>
+                    <div className="text-2xl font-black mb-1 drop-shadow-sm">${pkg.amount / 100}</div>
+                    <div className="font-mono text-xs font-bold uppercase opacity-80">{pkg.credits} Credits</div>
+                  </button>
+                ))}
+              </div>
+            )}
 
-              <h3 className="text-2xl font-black uppercase italic mb-2">Refill Tank</h3>
+            {/* Purchase Options */}
+            <div className="border-4 border-black p-6 bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative transition-transform">
+              <h3 className="text-xl font-black uppercase italic mb-2">Checkout</h3>
               <div className="flex justify-between items-end mb-4 border-b-4 border-black pb-4">
                 <div>
-                  <div className="text-4xl font-black">$1.00</div>
-                  <div className="font-mono font-bold text-black uppercase">50 Credits</div>
+                  <div className="text-4xl font-black">${selectedPackage.amount / 100}.00</div>
+                  <div className="font-mono font-bold text-black uppercase">{selectedPackage.credits} Credits</div>
                 </div>
                 <Zap className="w-12 h-12 text-black" />
               </div>
 
               {clientSecret ? (
-                <div className="bg-white border-4 border-black p-4 mt-6 animate-in slide-in-from-top-4 fade-in duration-300">
+                <div className="bg-white mt-6 animate-in slide-in-from-top-4 fade-in duration-300">
                   <Elements
                     stripe={stripePromise}
                     options={{
@@ -203,9 +321,11 @@ export function BillingContent({ creditBalance }: BillingContentProps) {
                   >
                     <CheckoutForm
                       clientSecret={clientSecret}
+                      amount={selectedPackage.amount}
                       onCancel={() => setClientSecret(null)}
                       onSuccess={() => {
                         toast.success("PAYMENT RECEIVED. TANK REFILLED.");
+                        setBalance((b) => b + selectedPackage.credits);
                         setClientSecret(null);
                         router.refresh();
                       }}
@@ -214,18 +334,24 @@ export function BillingContent({ creditBalance }: BillingContentProps) {
                 </div>
               ) : (
                 <>
-                  <ul className="space-y-2 font-mono text-xs font-bold uppercase mb-6">
-                    <li className="flex gap-2 items-center"><Check className="w-4 h-4" /> Instant Delivery</li>
-                    <li className="flex gap-2 items-center"><Check className="w-4 h-4" /> Never Expire</li>
-                    <li className="flex gap-2 items-center"><Check className="w-4 h-4" /> Support the Roast</li>
+                  <ul className="space-y-3 font-mono text-[10px] sm:text-xs font-bold uppercase mb-8 border-t-4 border-black/10 pt-6">
+                    {selectedPackage.features.map((feature: any, i: number) => (
+                      <li key={i} className="flex gap-2 items-center">
+                        <feature.icon className={cn("w-5 h-5 shrink-0", feature.color || feature.iconColor || "text-black")} />
+                        <span dangerouslySetInnerHTML={{ __html: feature.text }} />
+                      </li>
+                    ))}
                   </ul>
 
                   <button
                     onClick={handlePurchase}
                     disabled={checkoutLoading}
-                    className="w-full py-4 border-4 border-black font-black uppercase bg-black text-white hover:bg-neutral-800 transition-colors text-xl shadow-[4px_4px_0px_0px_rgba(255,255,255,0.3)] flex items-center justify-center gap-2"
+                    className={cn(
+                      "w-full py-4 border-4 border-black font-black uppercase transition-all text-xl flex items-center justify-center gap-2",
+                      selectedPackage.buttonClassName
+                    )}
                   >
-                    {checkoutLoading ? <Loader2 className="animate-spin" /> : "Buy Now"}
+                    {checkoutLoading ? <Loader2 className="animate-spin" /> : "Purchase Credits"}
                   </button>
                 </>
               )}

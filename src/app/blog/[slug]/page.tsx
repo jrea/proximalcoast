@@ -1,15 +1,38 @@
 import { getPostData, getAllPostIds } from "@/lib/posts";
 import Link from "next/link";
 import { Metadata } from 'next';
+import { headers } from "next/headers";
 
 type Params = Promise<{ slug: string }>;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
   const postData = await getPostData(slug);
+  const title = `${postData.title} | Proximal Coast`;
+  const description = postData.description;
+
+  const headerList = await headers();
+  const host = headerList.get("host") || "proximalcoast.com";
+  const protocol = host.includes("localhost") || host.includes("lvh.me") ? "http" : "https";
+
   return {
-    title: `${postData.title} | Proximal Coast`,
-    description: `Read about ${postData.title} on Proximal Coast.`,
+    title,
+    description,
+    alternates: {
+      canonical: `${protocol}://${host}/blog/${slug}`,
+    },
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      publishedTime: postData.date,
+      url: `${protocol}://${host}/blog/${slug}`,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+    },
   };
 }
 
@@ -25,7 +48,7 @@ export default async function Post({ params }: { params: Params }) {
   const postData = await getPostData(slug);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-start py-24 px-4 sm:px-8 bg-zinc-50 dark:bg-black font-sans">
+    <div className="flex flex-col items-center justify-start py-24 px-4 sm:px-8">
       <main className="w-full max-w-2xl">
         <div className="mb-8">
           <Link

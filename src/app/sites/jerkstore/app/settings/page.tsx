@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, CreditCard } from "lucide-react";
 import { ApiKeys } from "../../_components/dashboard/api-keys";
+import { UserProfile } from "../../_components/user-profile";
 import { getApiKeys } from "../../actions/api-keys";
 import { LogoutButton } from "../../_components/logout-button";
 import { Logo } from "../../_components/logo";
@@ -28,6 +29,8 @@ export default async function SettingsPage() {
       <main className="max-w-2xl mx-auto space-y-8">
         <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
           <h1 className="text-3xl font-black uppercase italic mb-6 tracking-tighter">Account Settings</h1>
+
+          <UserProfile initialName={session.user.name || ""} email={session.user.email} />
 
           <div className="mb-8">
             <h2 className="text-xl font-bold uppercase mb-4 border-b-2 border-black pb-2">Developer Access</h2>

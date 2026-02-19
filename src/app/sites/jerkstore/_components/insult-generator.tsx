@@ -4,13 +4,13 @@ import { experimental_useObject as useObject } from "@ai-sdk/react";
 import { z } from "zod";
 import { useState, useEffect } from "react";
 import { useRef } from "react";
-import { Loader2, Zap, Copy, Check, Share2, ThumbsUp, ThumbsDown, Trophy, X, Dices, Image as ImageIcon, Clipboard, Download } from "lucide-react";
+import { Loader2, Zap, Copy, Check, Share2, ThumbsUp, ThumbsDown, Trophy, X, Dices, Image as ImageIcon, Clipboard, Download, Lock } from "lucide-react";
 // import { toBlob } from "html-to-image";
 import { AccessModal } from "./access-modal";
 import { Logo } from "./logo";
 import { ShareCard, type ShareCardHandle } from "./share-card";
 import { HeatLevelSelector } from "./heat-level-selector";
-import { BUTTON_LABELS, TOPIC_LABELS, STANDARD_LANGUAGES, PREMIUM_LANGUAGES, RANDOM_TOPICS, HeatLevel, HEAT_LEVELS, LOADING_MESSAGES } from "../constants";
+import { BUTTON_LABELS, TOPIC_LABELS, STANDARD_LANGUAGES, PREMIUM_LANGUAGES, RANDOM_TOPICS, HeatLevel, HEAT_LEVELS, LOADING_MESSAGES, CREDIT_COSTS } from "../constants";
 import { cn } from "@/lib/utils";
 import { LoginButton } from "./login-button";
 
@@ -21,23 +21,44 @@ export function InsultGenerator({
   plan,
   initialButtonLabel,
   initialTopicLabel,
-  isHomePage = false
+  isHomePage = false,
+  areFeaturesLocked = false,
+  credits
 }: {
   isActive?: boolean;
   plan: string;
   initialButtonLabel: string;
   initialTopicLabel: string;
   isHomePage?: boolean;
+  areFeaturesLocked?: boolean;
+  credits?: number;
 }) {
   const posthog = usePostHog();
   const [language, setLanguage] = useState("English");
   const [isEmail, setIsEmail] = useState(false);
   const [showAccessModal, setShowAccessModal] = useState(false);
+  const [accessModalContent, setAccessModalContent] = useState({ title: "Sign In Required", description: "You need a free account to unlock this feature. We need to know who to blame for the damage." });
+
+  const openAccessModal = (feature: string) => {
+    let title = "Sign In Required";
+    let desc = "You need a free account to unlock this feature. We need to know who to blame for the damage.";
+
+    if (feature === 'nuclear') {
+      title = "WARNING: NUCLEAR OPTION";
+      desc = "This is a profanity-laden master class for spewing unimaginable liquid fire-ass at your enemies. You have been warned. We can't give this away because it's illegal. Probably.";
+    } else if (feature === 'language_premium') {
+      title = "Speak in Tongues";
+      desc = "Unlock access to premium languages and roast people in ways they won't even understand until they use Google Translate.";
+    }
+
+    setAccessModalContent({ title, description: desc });
+    setShowAccessModal(true);
+  };
   const [showSavageUpsell, setShowSavageUpsell] = useState(false);
   const [isBooming, setIsBooming] = useState(false);
   const [useReasoning, setUseReasoning] = useState(false);
 
-  const isTrial = plan === "trial";
+  const isTrial = credits !== undefined ? credits < 50 : plan === "trial";
   const [heatLevel, setHeatLevel] = useState<HeatLevel>(isTrial ? HeatLevel.MILD : HeatLevel.SPICY);
   const [isRandomizing, setIsRandomizing] = useState(false);
 
@@ -56,16 +77,7 @@ export function InsultGenerator({
     }, 50);
   };
 
-  const [guestHandle, setGuestHandle] = useState<string | null>(null);
-  const [handleInput, setHandleInput] = useState("");
-
-  useEffect(() => {
-    // Check for guest handle cookie
-    const match = document.cookie.match(new RegExp('(^| )x-jerkstore-handle=([^;]+)'));
-    if (match) {
-      setGuestHandle(match[2]);
-    }
-  }, []);
+  /* Guest handle logic removed per user request */
 
 
 
@@ -129,13 +141,6 @@ export function InsultGenerator({
         setCurrentIndex(0);
         setHasViewedAll(false);
       }
-      // Check for new handle on finish
-      setTimeout(() => {
-        const match = document.cookie.match(new RegExp('(^| )x-jerkstore-handle=([^;]+)'));
-        if (match) {
-          setGuestHandle(match[2]);
-        }
-      }, 1000); // Small delay to ensure cookie is set by browser
     },
   });
 
@@ -191,7 +196,6 @@ export function InsultGenerator({
       topic: input,
       heatLevel, // Pass to API
       useReasoning, // Pass reasoning flag
-      username: !guestHandle ? handleInput : undefined, // Only send if we don't have one
     });
 
     lastPromptRef.current = currentPrompt;
@@ -333,15 +337,8 @@ export function InsultGenerator({
     const val = parseInt(e.target.value);
     setSliderValue(val);
     if (val === 100) {
-      if (!isSavage) {
-        // Trigger generic upgrade/boom if not allowed
-        triggerBoom();
-        // Reset slider after boom
-        setTimeout(() => setSliderValue(0), 500);
-      } else {
-        setIsEmail(true);
-        posthog?.capture('feature_toggled', { feature: 'max_effort', enabled: true });
-      }
+      setIsEmail(true);
+      posthog?.capture('feature_toggled', { feature: 'max_effort', enabled: true });
     } else {
       if (isEmail) {
         setIsEmail(false);
@@ -356,9 +353,9 @@ export function InsultGenerator({
     }
   };
 
-  const isSavage = plan === "savage";
-  const isElite = plan === "elite";
-  const isStandard = plan === "standard";
+  const isSavage = credits !== undefined ? credits >= 600 : plan === "savage";
+  const isElite = credits !== undefined ? (credits >= 275 && credits < 600) : plan === "elite";
+  const isStandard = credits !== undefined ? (credits >= 50 && credits < 275) : plan === "standard";
   // isTrial is already declared above
 
   return (
@@ -438,10 +435,16 @@ export function InsultGenerator({
         <div className="fixed inset-0 z-[200] pointer-events-none animate-[savage-flash_0.8s_ease-out]" />
       )}
 
-      {showAccessModal && <AccessModal isActive={isActive} onClose={() => setShowAccessModal(false)} />}
+      {showAccessModal &&
+        <AccessModal
+          isActive={isActive}
+          onClose={() => setShowAccessModal(false)}
+          title={accessModalContent.title}
+          description={accessModalContent.description}
+        />
+      }
       {showSavageUpsell && (
         <AccessModal
-          tier="savage"
           isActive={isActive}
           onClose={() => setShowSavageUpsell(false)}
           onSuccess={() => window.location.assign("/app?success=true")}
@@ -491,122 +494,142 @@ export function InsultGenerator({
 
 
           {/* Top Controls: Language & Max Effort (50/50) */}
-          {/* HIDE ON HOMEPAGE (isActive check) */}
-          {isActive && (
-            <div className="flex flex-row gap-4 items-end">
+          <div className="flex flex-row gap-4 items-end">
 
-              {/* Language Selector */}
-              <div className="flex-1 space-y-1">
-                <label className={cn(
-                  "block font-bold text-xs uppercase tracking-tight ml-1 h-4",
-                  isSavage ? "text-white/80 drop-shadow-md" : isElite ? "text-black/70" : "text-neutral-400"
-                )}>
-                  Language
-                </label>
-                <div className="relative h-10 sm:h-12">
-                  <select
-                    className="w-full h-full py-2 px-3 border-2 border-black bg-white text-black font-mono text-sm transition-all duration-300 focus:outline-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus:ring-2 focus:ring-black cursor-pointer appearance-none"
-                    value={language}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      const isPremiumLang = !STANDARD_LANGUAGES.some(l => l.value === val);
-                      if (isPremiumLang && !isElite && !isSavage) {
-                        triggerBoom();
-                      } else {
-                        setLanguage(val);
-                      }
-                    }}
-                  >
-                    <optgroup label="Standard Languages">
-                      {STANDARD_LANGUAGES.map((lang) => (
-                        <option key={lang.value} value={lang.value}>
-                          {lang.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Premium Languages (Elite/Savage)">
-                      {PREMIUM_LANGUAGES.filter(lp => !STANDARD_LANGUAGES.some(ls => ls.value === lp.value)).map((lang) => (
-                        <option key={lang.value} value={lang.value}>
-                          {lang.label} {!isElite && !isSavage && "🔒"}
-                        </option>
-                      ))}
-                    </optgroup>
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-black">
-                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
-                  </div>
-                </div>
-              </div>
-
-              {/* Max Effort Slider */}
-              <div className="flex-1 space-y-1">
-                <div className="flex justify-between items-end px-1 h-4">
-                  <label className={cn(
-                    "block font-bold text-xs uppercase tracking-tight truncate",
-                    isSavage ? "text-white" : "text-neutral-500"
-                  )}>
-                    Max Effort
-                  </label>
-                  {isEmail && (
-                    <span className={cn(
-                      "text-[10px] uppercase font-black tracking-widest animate-pulse ml-2",
-                      isSavage ? "text-white" : "text-red-600"
-                    )}>
-                      ON
-                    </span>
+            {/* Language Selector */}
+            <div className="flex-1 space-y-1 relative">
+              <label className={cn(
+                "block font-bold text-xs uppercase tracking-tight ml-1 h-4",
+                isSavage ? "text-white/80 drop-shadow-md" : isElite ? "text-black/70" : "text-neutral-400"
+              )}>
+                Language
+              </label>
+              <div className="relative h-10 sm:h-12">
+                <select
+                  className={cn(
+                    "w-full h-full py-2 px-3 border-2 border-black bg-white text-black font-mono text-sm transition-all duration-300 focus:outline-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus:ring-2 focus:ring-black cursor-pointer appearance-none",
+                    // Formerly locked style removed to allow standard languages
                   )}
-                </div>
+                  value={language}
+                  onChange={(e) => {
+                    const selectedValue = e.target.value;
+                    const isPremium = PREMIUM_LANGUAGES.some(l => l.value === selectedValue) && !STANDARD_LANGUAGES.some(l => l.value === selectedValue);
 
-                <div className={cn(
-                  "relative h-10 sm:h-12 border-2 border-black overflow-hidden select-none transition-all duration-300",
-                  isSavage ? "bg-black/40 backdrop-blur-md border-white/20" : "bg-neutral-100 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-                )}>
-                  {/* Progress Bar background */}
-                  <div
-                    className={cn(
-                      "absolute inset-y-0 left-0 transition-all duration-75 ease-linear",
-                      isSavage ? "bg-purple-600/50" : "bg-red-600"
-                    )}
-                    style={{ width: `${sliderValue}%`, opacity: sliderValue > 0 ? 1 : 0 }}
-                  />
-
-                  {/* Text indication */}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                    <span className={cn(
-                      "font-black uppercase text-[10px] sm:text-xs tracking-widest transition-opacity duration-300",
-                      sliderValue > 50 ? "opacity-100 text-white drop-shadow-md" : "opacity-40 text-neutral-400"
-                    )}>
-                      {isEmail ? "MAX EFFORT" : "SLIDE ME"}
-                    </span>
-                  </div>
-
-                  {/* Native slider input on top */}
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={isEmail ? 100 : sliderValue}
-                    onChange={handleSliderChange}
-                    onTouchEnd={handleSliderRelease}
-                    onMouseUp={handleSliderRelease}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-20"
-                    step="1"
-                  />
-
-                  {/* Visual Thumb Follower */}
-                  <div
-                    className={cn(
-                      "absolute top-0 bottom-0 w-8 sm:w-10 border-r-2 border-black flex items-center justify-center transition-all duration-75 pointer-events-none z-0",
-                      isSavage ? "bg-white text-black" : "bg-black text-white"
-                    )}
-                    style={{ left: `${sliderValue}%`, transform: `translateX(-${sliderValue}%)` }}
-                  >
-                    {isEmail ? <Check className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
-                  </div>
+                    if (areFeaturesLocked && isPremium) {
+                      posthog?.capture('feature_locked', { feature: 'language_premium' });
+                      openAccessModal('language_premium');
+                      // Reset to English or keep current safe value if needed, but since we didn't set state, it should stay. 
+                      // However, native select might visually update. React usually handles this if value prop is constant.
+                      return;
+                    }
+                    setLanguage(selectedValue);
+                  }}
+                >
+                  <optgroup label="Standard Languages">
+                    {STANDARD_LANGUAGES.map((lang) => (
+                      <option key={lang.value} value={lang.value}>
+                        {lang.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Premium Languages">
+                    {PREMIUM_LANGUAGES.filter(lp => !STANDARD_LANGUAGES.some(ls => ls.value === lp.value)).map((lang) => (
+                      <option key={lang.value} value={lang.value}>
+                        {lang.label} {areFeaturesLocked ? "🔒" : ""}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-black">
+                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
                 </div>
               </div>
             </div>
-          )}
+
+            {/* Max Effort Slider */}
+            <div className="flex-1 space-y-1">
+              <div className="flex justify-between items-end px-1 h-4">
+                <label className={cn(
+                  "block font-bold text-xs uppercase tracking-tight truncate",
+                  isSavage ? "text-white" : "text-neutral-500"
+                )}>
+                  Max Effort
+                </label>
+                {isEmail && (
+                  <span className={cn(
+                    "text-[10px] uppercase font-black tracking-widest animate-pulse ml-2",
+                    isSavage ? "text-white" : "text-red-600"
+                  )}>
+                    ON
+                  </span>
+                )}
+              </div>
+
+              <div
+                className={cn(
+                  "relative h-10 sm:h-12 border-2 border-black overflow-hidden select-none transition-all duration-300",
+                  isSavage ? "bg-black/40 backdrop-blur-md border-white/20" : "bg-neutral-100 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
+                  areFeaturesLocked && "opacity-50 cursor-pointer"
+                )}
+                onClick={() => {
+                  if (areFeaturesLocked) {
+                    posthog?.capture('feature_locked', { feature: 'max_effort' });
+                    setShowAccessModal(true);
+                  }
+                }}
+              >
+                {/* Progress Bar background */}
+                <div
+                  className={cn(
+                    "absolute inset-y-0 left-0 transition-all duration-75 ease-linear",
+                    isSavage ? "bg-purple-600/50" : "bg-red-600"
+                  )}
+                  style={{ width: `${sliderValue}%`, opacity: sliderValue > 0 ? 1 : 0 }}
+                />
+
+                {/* Text indication */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                  <span className={cn(
+                    "font-black uppercase text-[10px] sm:text-xs tracking-widest transition-opacity duration-300",
+                    sliderValue > 50 ? "opacity-100 text-white drop-shadow-md" : "opacity-40 text-neutral-400"
+                  )}>
+                    {isEmail ? "MAX EFFORT" : areFeaturesLocked ? "LOCKED" : "SLIDE ME"}
+                  </span>
+                </div>
+
+                {/* Native slider input on top */}
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={isEmail ? 100 : sliderValue}
+                  onChange={(e) => {
+                    if (areFeaturesLocked) return; // Handled by onClick container click for better UX or just prevent change
+                    handleSliderChange(e);
+                  }}
+                  onTouchEnd={handleSliderRelease}
+                  onMouseUp={handleSliderRelease}
+                  className={cn(
+                    "absolute inset-0 w-full h-full opacity-0 z-20",
+                    areFeaturesLocked ? "cursor-pointer" : "cursor-ew-resize"
+                  )}
+                  step="1"
+                  disabled={areFeaturesLocked}
+                />
+
+                {/* Visual Thumb Follower */}
+                <div
+                  className={cn(
+                    "absolute top-0 bottom-0 w-8 sm:w-10 border-r-2 border-black flex items-center justify-center transition-all duration-75 pointer-events-none z-0",
+                    "bg-white text-black"
+                  )}
+                  style={{ left: `${sliderValue}%`, transform: `translateX(-${sliderValue}%)` }}
+                >
+                  {areFeaturesLocked ? <Lock className="w-3 h-3 text-neutral-400" /> : (isEmail ? <Check className="w-4 h-4" /> : <Zap className="w-4 h-4" />)}
+                </div>
+              </div>
+            </div>
+          </div>
 
 
 
@@ -673,51 +696,17 @@ export function InsultGenerator({
                   setHeatLevel={setHeatLevel}
                   className="absolute -bottom-[38px] lg:-bottom-[46px] right-[2px] z-20 border-t-0"
                   isTrial={isTrial}
-                  onLockedClick={() => setShowAccessModal(true)}
+                  onLockedClick={() => openAccessModal('nuclear')}
                   useReasoning={useReasoning}
                   setUseReasoning={setUseReasoning}
                   isSavage={isSavage}
+                  areFeaturesLocked={areFeaturesLocked}
                 />
               </div>
             </div>
           </div>
 
-          {
-            !isActive && !guestHandle && (
-              <div className="relative">
-                <label className={cn(
-                  "block font-black text-xs sm:text-sm uppercase tracking-tight mb-1",
-                  isSavage ? "text-white" : "text-neutral-500"
-                )}>
-                  Claim Handle (Optional)
-                </label>
-                <input
-                  className={cn(
-                    "w-full p-3 border-4 border-black font-mono text-sm focus:outline-none transition-all duration-300",
-                    isSavage ? "bg-white text-black" : "bg-white text-black focus:ring-2 focus:ring-yellow-400"
-                  )}
-                  value={handleInput}
-                  onChange={(e) => setHandleInput(e.target.value)}
-                  placeholder="e.g. Failure_King_99 (Wrap in ' ' if spaces needed? No, standard string)"
-                  maxLength={20}
-                />
-                <div className="text-[10px] text-neutral-400 mt-1 uppercase font-bold">
-                  Leave blank for auto-generated shame.
-                </div>
-              </div>
-            )
-          }
 
-          {
-            guestHandle && !isActive && (
-              <div className={cn(
-                "text-center font-mono text-xs uppercase tracking-widest opacity-50",
-                isSavage ? "text-white" : "text-neutral-500"
-              )}>
-                Roasting as: <span className="font-bold border-b-2 border-black/20">{guestHandle}</span>
-              </div>
-            )
-          }
 
           <button
             type="submit"
@@ -730,19 +719,31 @@ export function InsultGenerator({
               (isHomePage && input.trim() && roasts.length === 0 && !isLoading && !isSimulatingLoading) && "animate-irresistible-pulse shadow-xl"
             )}
           >
-            <span className="relative z-10 flex items-center justify-center gap-2 sm:gap-3">
-              {(isLoading || isSimulatingLoading) ? (
-                <>
-                  <Loader2 className="animate-spin w-6 h-6 sm:w-8 sm:h-8" />
-                  <span className="w-full text-center sm:text-left sm:w-auto min-w-0 sm:min-w-[200px] text-xs sm:text-base truncate px-1">{isSavage ? "SUMMONING THE ABYSS..." : loadingMessage}</span>
-                </>
-              ) : (
-                <>
-                  {buttonLabel} {isSavage && <Zap className="w-6 h-6 sm:w-8 sm:h-8 fill-purple-600" />}
-                </>
+            <span className="relative z-10 flex flex-col items-center justify-center -space-y-1">
+              <span className="flex items-center gap-2 sm:gap-3">
+                {(isLoading || isSimulatingLoading) ? (
+                  <>
+                    <Loader2 className="animate-spin w-6 h-6 sm:w-8 sm:h-8" />
+                    <span className="w-full text-center sm:text-left sm:w-auto min-w-0 sm:min-w-[200px] text-xs sm:text-base truncate px-1">{isSavage ? "SUMMONING THE ABYSS..." : loadingMessage}</span>
+                  </>
+                ) : (
+                  <>
+                    {buttonLabel} {isSavage && <Zap className="w-6 h-6 sm:w-8 sm:h-8 fill-purple-600" />}
+                  </>
+                )}
+              </span>
+              {!(isLoading || isSimulatingLoading) && (
+                <span className="text-[10px] sm:text-xs font-mono font-bold opacity-60 tracking-wider">
+                  ({isEmail ? CREDIT_COSTS.LONG_ROAST : CREDIT_COSTS.STANDARD_PACK} CREDITS)
+                </span>
               )}
             </span>
           </button>
+          {!isActive && (
+            <p className="text-center text-[10px] text-neutral-400 font-mono uppercase mt-2">
+              Generates 5 unique variations per burn
+            </p>
+          )}
         </form >
 
         <ShareCard

@@ -1,17 +1,10 @@
 ---
 title: 'SLICE//: High-Performance Video Editing on the Edge'
+description: 'SLICE// is a browser-native video editor designed for high-precision Pan and Zoom dynamics using HTML5 Canvas and the Web MediaRecorder API.'
 date: '2026-02-12'
+site: 'slice'
 ---
 
-We've just launched **SLICE//**, a browser-native video editor designed for one specific, high-impact task: perfect **Pan and Zoom** dynamics. 
-
-In a world of bloated video suites and "AI-powered" tools that require a credit card just to see a preview, SLICE// is a return to utility. No login. No watermarks. No server-side processing. Just raw, client-side performance.
-
-## The Motivation: Why Another Editor?
-
-The motivation for SLICE// started with a simple observation of modern content consumption. High-fidelity motion—specifically the "Ken Burns" effect—is the bridge between a static shot and a professional story. Yet, most tools make this surprisingly difficult.
-
-As [I noted on X](https://x.com/chieftrashofcr/status/2021981629611487343), there's a growing need for tools that are "dumb but fast." We don't need an AI to guess where we want to zoom; we need a high-precision keyframe engine that respects the creator's intent and doesn't get in the way. SLICE// is built on this "Zero Friction" philosophy.
 
 ## Technical breakdown: The Power of HTML5
 

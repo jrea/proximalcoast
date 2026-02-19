@@ -129,7 +129,7 @@ export function InsultCarousel({ insults, variant = "default", title, subtitle }
           </div>
 
           <Link
-            href="/billing"
+            href="/sign-in"
             className={cn(
               "flex items-center gap-3 px-6 py-3 font-black uppercase text-lg border-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all group",
               variant === "dark"
@@ -138,7 +138,7 @@ export function InsultCarousel({ insults, variant = "default", title, subtitle }
             )}
           >
             <Lock className="w-5 h-5 group-hover:animate-pulse" />
-            <span>Unlock True Hate ($5)</span>
+            <span>Feel the Burn</span>
           </Link>
         </div>
 

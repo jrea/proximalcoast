@@ -233,3 +233,40 @@ export const LOADING_MESSAGES = [
   "Consulting the dark web...", "Preparing emotional damage...", "Reviewing search history...",
   "Scanning for weakness...", "Loading insults...", "Calculating cringe levels..."
 ];
+
+export const CREDIT_COSTS = {
+  LONG_ROAST: 2,
+  STANDARD_PACK: 5,
+};
+
+export const FREE_ROAST_LIMIT = 3;
+export const CREDIT_PACKAGES = [
+  {
+    id: "pkg_basic",
+    credits: 50,
+    amount: 100,
+    name: "The Turd",
+    description: "Pity Support Us",
+  },
+  {
+    id: "pkg_pro",
+    credits: 275,
+    amount: 500,
+    name: "Loaded",
+    description: "$199,995 cheaper than a Lambo",
+    popular: true,
+  },
+  {
+    id: "pkg_elite",
+    credits: 600,
+    amount: 1000,
+    name: "Doomsday",
+    description: "Your Mom Loves It",
+  },
+] as const;
+
+export type CreditPackageId = typeof CREDIT_PACKAGES[number]["id"];
+
+export const CREDIT_PACKAGES_MAP = Object.fromEntries(
+  CREDIT_PACKAGES.map(pkg => [pkg.id, pkg])
+) as Record<CreditPackageId, typeof CREDIT_PACKAGES[number]>;

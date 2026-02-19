@@ -1,7 +1,7 @@
 
 import Link from "next/link";
 import { Metadata } from "next";
-import { Star, Zap, Skull, Share2, MessageCircle, Heart, Check, X } from "lucide-react";
+import { Star, Zap, Skull, Share2, MessageCircle, Heart, Check, X, Baby, Clock, Ban, Trash2, Flame, Infinity, Bomb, Crown, Car, RefreshCcw } from "lucide-react";
 import { Logo } from "./_components/logo";
 import { LoginButton } from "./_components/login-button";
 import { auth } from "@/lib/auth";
@@ -11,7 +11,7 @@ import { LiveTicker } from "./_components/live-ticker"; // Import Ticker
 import { cn } from "@/lib/utils";
 import { BlurredRoast } from "./_components/blurred-roast";
 import { InsultGenerator } from "./_components/insult-generator";
-import { BUTTON_LABELS, TOPIC_LABELS } from "./constants";
+import { BUTTON_LABELS, TOPIC_LABELS, FREE_ROAST_LIMIT } from "./constants";
 import { InsultCarousel } from "./_components/insult-carousel";
 
 export const metadata: Metadata = {
@@ -112,6 +112,17 @@ export default async function MarketingPage() {
     }
   }
 
+  let credits = 0;
+  if (session) {
+    const user = await prisma.user.findUnique({
+      where: {
+        id: session.user.id,
+      },
+      select: { credits: true }
+    });
+    credits = user?.credits || 0;
+  }
+
   const randomButtonLabel = BUTTON_LABELS[Math.floor(Math.random() * BUTTON_LABELS.length)];
   const randomTopicLabel = TOPIC_LABELS[Math.floor(Math.random() * TOPIC_LABELS.length)];
 
@@ -159,6 +170,16 @@ export default async function MarketingPage() {
           background-size: 200% 200%;
           animation: fluid-shift 12s ease infinite;
           border-color: #2a1d15 !important;
+        }
+        .savage-gradient {
+          background: linear-gradient(135deg, #9333ea, #db2777, #2563eb);
+          background-size: 200% 200%;
+          animation: gradient-shift 5s ease infinite;
+        }
+        @keyframes gradient-shift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
         }
         @keyframes fluid-shift {
           0% { background-position: 0% 50%; }
@@ -223,6 +244,8 @@ export default async function MarketingPage() {
                 initialButtonLabel={randomButtonLabel}
                 initialTopicLabel={randomTopicLabel}
                 isHomePage={true}
+                areFeaturesLocked={!session}
+                credits={credits}
               />
             </div>
           </div>
@@ -308,63 +331,102 @@ export default async function MarketingPage() {
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-16">
               <h3 className="text-5xl md:text-7xl font-black uppercase italic tracking-tighter mb-4">
-                Pay As You <span className="text-red-600 bg-black px-2 inline-block transform -skew-x-12 pr-6">Hate</span>
+                Pay As You <span className="text-red-600 bg-black px-2 inline-block transform -skew-x-12 pr-6">Burn</span>
               </h3>
               <p className="text-xl font-mono font-bold text-neutral-500 max-w-2xl mx-auto">
-                No subscriptions. No contracts. Just raw, unadulterated vitriol.
+                No subscriptions. No contracts. Just raw, unadulterated roasting power.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-4xl mx-auto items-stretch pt-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto items-stretch pt-8">
 
               {/* Free Tier */}
-              <div className="border-4 border-black p-8 bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative group hover:-translate-y-1 transition-transform">
-                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-neutral-200 text-black px-4 py-1 font-black uppercase text-sm rotate-2 border-4 border-black">Free Forever</div>
+              <div className="border-4 border-black p-6 bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative group hover:-translate-y-1 transition-transform flex flex-col">
+                <div className="absolute -top-4 inset-x-0 mx-auto w-max bg-neutral-200 text-black px-3 py-1 font-black uppercase text-xs border-4 border-black">Refills Daily</div>
 
-                <h3 className="text-4xl font-black uppercase italic mb-2 text-center">The Taste</h3>
-                <div className="text-center mb-8">
-                  <div className="text-6xl font-black mb-2">FREE</div>
-                  <div className="font-mono font-bold text-neutral-500 uppercase">Per Day</div>
+                <h3 className="text-2xl font-black uppercase italic mb-2 text-center mt-4">The Tease</h3>
+                <div className="text-center mb-6">
+                  <div className="text-4xl font-black mb-1">FREE</div>
+                  <div className="font-mono font-bold text-neutral-500 text-xs uppercase">Forever</div>
                 </div>
 
-                <ul className="space-y-4 font-mono text-sm font-bold uppercase mb-8 border-t-4 border-black pt-6">
-                  <li className="flex gap-3 items-center"><Check className="w-6 h-6 shrink-0 text-green-600" /> 3 Roasts Every 24 Hours</li>
-                  <li className="flex gap-3 items-center"><Check className="w-6 h-6 shrink-0 text-green-600" /> Access to All Models</li>
-                  <li className="flex gap-3 items-center"><Check className="w-6 h-6 shrink-0 text-green-600" /> Standard Speed</li>
-                  <li className="flex gap-3 items-center opacity-50"><X className="w-6 h-6 shrink-0 text-red-600" /> Cannot hoard credits</li>
+                <ul className="space-y-4 font-mono text-xs font-bold uppercase mb-8 border-t-4 border-black pt-6 flex-1">
+                  <li className="flex gap-2 items-center"><Baby className="w-5 h-5 shrink-0 text-black" /> Make {FREE_ROAST_LIMIT} Babies Cry / Day</li>
+                  <li className="flex gap-2 items-center"><RefreshCcw className="w-5 h-5 shrink-0 text-neutral-500" /> Shame Refills Daily</li>
+                  <li className="flex gap-2 items-center opacity-50"><Ban className="w-5 h-5 shrink-0 text-red-600" /> No hoarding (You monster)</li>
                 </ul>
 
                 <LoginButton
-                  text="Start Roasting"
+                  text="Claim Free"
                   variant="login"
-                  className="w-full py-4 border-4 border-black font-black uppercase bg-neutral-100 hover:bg-neutral-200 transition-colors text-black text-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]"
+                  className="w-full py-3 border-4 border-black font-black uppercase bg-neutral-100 hover:bg-neutral-200 transition-colors text-black text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]"
                 />
               </div>
 
-              {/* Paid Tier - Refill */}
-              <div className="border-4 border-black p-8 bg-yellow-300 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] relative group hover:-translate-y-2 transition-transform">
-                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-red-600 text-white px-4 py-1 font-black uppercase text-sm -rotate-2 border-4 border-black animate-pulse">Best Value</div>
-
-                <h3 className="text-4xl font-black uppercase italic mb-2 text-center">Refill Tank</h3>
-                <div className="text-center mb-8">
-                  <div className="text-6xl font-black mb-2">$1</div>
-                  <div className="font-mono font-bold text-black uppercase">For 50 Credits</div>
+              {/* $1 Starter - The Turd */}
+              <div className="border-4 border-black p-6 bg-[#5c4033] text-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative group hover:-translate-y-1 transition-transform flex flex-col">
+                <h3 className="text-2xl font-black uppercase italic mb-2 text-center mt-8">The Turd</h3>
+                <div className="text-center mb-6">
+                  <div className="text-4xl font-black mb-1">$1</div>
+                  <div className="font-mono font-bold text-white/50 text-xs uppercase">50 Credits</div>
                 </div>
 
-                <ul className="space-y-4 font-mono text-sm font-bold uppercase mb-8 border-t-4 border-black pt-6">
-                  <li className="flex gap-3 items-center"><Check className="w-6 h-6 shrink-0" /> 50 Extra Roasts</li>
-                  <li className="flex gap-3 items-center"><Check className="w-6 h-6 shrink-0" /> Never Expire</li>
-                  <li className="flex gap-3 items-center"><Check className="w-6 h-6 shrink-0" /> Support the Devs</li>
-                  <li className="flex gap-3 items-center"><Check className="w-6 h-6 shrink-0" /> 1 Credit = 1 Roast</li>
+                <ul className="space-y-4 font-mono text-xs font-bold uppercase mb-8 border-t-4 border-black/30 pt-6 flex-1">
+                  <li className="flex gap-2 items-center"><Trash2 className="w-5 h-5 shrink-0 text-white" /> 50 Roasts in the Bag</li>
+                  <li className="flex gap-2 items-center"><Infinity className="w-5 h-5 shrink-0 text-white/70" /> Never Expire</li>
+                  <li className="flex gap-2 items-center"><Heart className="w-5 h-5 shrink-0 text-red-400 fill-red-400" /> Pity Support Us</li>
                 </ul>
 
                 <LoginButton
-                  text="Buy Credits"
-                  // We'll rely on the dashboard to handle the actual purchase link once logged in
+                  text="Buy, Turd"
                   variant="login"
-                  className="w-full py-4 border-4 border-black font-black uppercase bg-black text-white hover:bg-neutral-800 transition-colors text-xl shadow-[4px_4px_0px_0px_rgba(255,255,255,0.3)]"
+                  className="w-full py-3 border-4 border-black font-black uppercase bg-black text-white hover:bg-neutral-900 transition-colors text-lg shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)]"
                 />
-                <p className="text-center mt-3 font-mono text-[10px] font-bold uppercase opacity-70">Secure payment via Stripe</p>
+              </div>
+
+              {/* $5 Value */}
+              <div className="border-4 border-black p-6 bg-orange-400 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative group hover:-translate-y-1 transition-transform flex flex-col">
+                <div className="absolute -top-4 inset-x-0 mx-auto w-max bg-blue-600 text-white px-3 py-1 font-black uppercase text-xs border-4 border-black rotate-1">Popular</div>
+                <h3 className="text-2xl font-black uppercase italic mb-2 text-center mt-4">Loaded</h3>
+                <div className="text-center mb-6">
+                  <div className="text-4xl font-black mb-1">$5</div>
+                  <div className="font-mono font-bold text-black text-xs uppercase">275 Credits</div>
+                </div>
+
+                <ul className="space-y-4 font-mono text-xs font-bold uppercase mb-8 border-t-4 border-black pt-6 flex-1">
+                  <li className="flex gap-2 items-center"><Flame className="w-5 h-5 shrink-0" /> 275 Rounds of Ammo</li>
+                  <li className="flex gap-2 items-center"><Car className="w-5 h-5 shrink-0 text-black" /> $199,995 cheaper than a Lambo</li>
+                  <li className="flex gap-2 items-center"><Zap className="w-5 h-5 shrink-0 fill-yellow-300 text-black" /> <strong>+25 Bonus</strong> (Math is hard)</li>
+                </ul>
+
+                <LoginButton
+                  text="Get Loaded"
+                  variant="login"
+                  className="w-full py-3 border-4 border-black font-black uppercase bg-black text-white hover:bg-neutral-800 transition-colors text-lg shadow-[4px_4px_0px_0px_rgba(255,255,255,0.3)]"
+                />
+              </div>
+
+              {/* $10 Savage */}
+              <div className="border-4 border-black p-6 savage-gradient text-white shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] relative group hover:-translate-y-2 transition-transform flex flex-col">
+                <div className="absolute -top-6 inset-x-0 mx-auto w-max bg-red-600 text-white px-4 py-1 font-black uppercase text-sm -rotate-2 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] z-10">Best Value</div>
+
+                <h3 className="text-2xl font-black uppercase italic mb-2 text-center mt-4 drop-shadow-md">Doomsday</h3>
+                <div className="text-center mb-6">
+                  <div className="text-4xl font-black mb-1 drop-shadow-md">$10</div>
+                  <div className="font-mono font-bold text-white/90 text-xs uppercase">600 Credits</div>
+                </div>
+
+                <ul className="space-y-4 font-mono text-xs font-bold uppercase mb-8 border-t-4 border-white/20 pt-6 flex-1">
+                  <li className="flex gap-2 items-center"><Skull className="w-5 h-5 shrink-0" /> 600 Roasts <span className="text-[9px]">(Phenominal Cosmic Power)</span></li>
+                  <li className="flex gap-2 items-center"><Heart className="w-5 h-5 shrink-0 fill-red-500 text-red-500" /> Your Mom Loves It</li>
+                  <li className="flex gap-2 items-center"><Crown className="w-5 h-5 shrink-0 fill-yellow-400 text-yellow-400" /> Cheaper Than Therapy</li>
+                </ul>
+
+                <LoginButton
+                  text="Go Savage"
+                  variant="login"
+                  className="w-full py-3 border-4 border-black font-black uppercase bg-white text-black hover:bg-neutral-200 transition-colors text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                />
               </div>
 
             </div>

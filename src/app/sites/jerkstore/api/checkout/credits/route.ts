@@ -4,6 +4,9 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/db";
+import { CREDIT_PACKAGES_MAP } from "../../../constants";
+
+const CREDIT_PACKAGES = CREDIT_PACKAGES_MAP;
 
 export async function POST(req: Request) {
   const session = await auth.api.getSession({
@@ -13,6 +16,9 @@ export async function POST(req: Request) {
   if (!session) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
+
+  const { packageId } = await req.json().catch(() => ({ packageId: "pkg_basic" }));
+  const selectedPackage = CREDIT_PACKAGES[packageId as keyof typeof CREDIT_PACKAGES] || CREDIT_PACKAGES["pkg_basic"];
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
@@ -39,8 +45,6 @@ export async function POST(req: Request) {
     });
   }
 
-  const origin = (await headers()).get("origin") || "https://jerkstore.proximalcoast.com";
-
   // 1. Check for Default Payment Method
   if (customerId) {
     const customer = await stripe.customers.retrieve(customerId) as any;
@@ -50,7 +54,7 @@ export async function POST(req: Request) {
       try {
         // Attempt immediate charge
         const paymentIntent = await stripe.paymentIntents.create({
-          amount: 100, // $1.00
+          amount: selectedPackage.amount,
           currency: 'usd',
           customer: customerId,
           payment_method: defaultPaymentMethod as string,
@@ -59,18 +63,20 @@ export async function POST(req: Request) {
           metadata: {
             userId: user.id,
             siteSlug: "jerkstore",
-            type: "credits_purchase"
+            type: "credits_purchase",
+            source: "immediate",
+            creditsAmount: selectedPackage.credits.toString()
           },
-          description: "50 Roast Credits Refill"
+          description: selectedPackage.name
         });
 
         if (paymentIntent.status === 'succeeded') {
           // Credit the user immediately
           await prisma.user.update({
             where: { id: user.id },
-            data: { credits: { increment: 50 } }
+            data: { credits: { increment: selectedPackage.credits } }
           });
-          return NextResponse.json({ success: true, message: "Tank refilled instantly." });
+          return NextResponse.json({ success: true, message: "Tank refilled instantly.", creditsAdded: selectedPackage.credits });
         }
       } catch (err) {
         console.warn("Auto-charge failed, falling back to checkout UI:", err);
@@ -80,22 +86,25 @@ export async function POST(req: Request) {
 
   // 2. Fallback: Create PaymentIntent (for Custom Elements UI)
   const paymentIntent = await stripe.paymentIntents.create({
-    amount: 100, // $1.00
+    amount: selectedPackage.amount,
     currency: 'usd',
     customer: customerId,
     setup_future_usage: 'off_session',
     metadata: {
       userId: user.id,
       siteSlug: "jerkstore",
-      type: "credits_purchase"
+      type: "credits_purchase",
+      creditsAmount: selectedPackage.credits.toString()
     },
-    description: "50 Roast Credits Refill",
+    description: selectedPackage.name,
     automatic_payment_methods: {
       enabled: true,
     },
   });
 
   return NextResponse.json({
-    clientSecret: paymentIntent.client_secret
+    clientSecret: paymentIntent.client_secret,
+    amount: selectedPackage.amount,
+    credits: selectedPackage.credits
   });
 }

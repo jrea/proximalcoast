@@ -11,6 +11,7 @@ interface HeatLevelSelectorProps {
   useReasoning: boolean;
   setUseReasoning: (use: boolean) => void;
   isSavage: boolean;
+  areFeaturesLocked?: boolean;
 }
 
 export function HeatLevelSelector({
@@ -21,7 +22,8 @@ export function HeatLevelSelector({
   onLockedClick,
   useReasoning,
   setUseReasoning,
-  isSavage
+  isSavage,
+  areFeaturesLocked
 }: HeatLevelSelectorProps) {
   const getIcon = (level: HeatLevel) => {
     switch (level) {
@@ -37,7 +39,7 @@ export function HeatLevelSelector({
         const isSelected = heatLevel === level.value;
         const Icon = getIcon(level.value as HeatLevel);
 
-        const isLocked = isTrial && (level.value === HeatLevel.SPICY || level.value === HeatLevel.NUCLEAR);
+        const isLocked = areFeaturesLocked && level.value === HeatLevel.NUCLEAR;
 
         return (
           <button
@@ -50,7 +52,7 @@ export function HeatLevelSelector({
                 setHeatLevel(level.value as HeatLevel);
               }
             }}
-            title={isLocked ? "Upgrade to unlock" : `${level.label} - ${level.desc}`}
+            title={isLocked ? "Sign up to unlock Nuclear" : `${level.label} - ${level.desc}`}
             className={cn(
               "w-8 h-8 sm:w-10 sm:h-10 border-2 border-black transition-all duration-100 flex items-center justify-center relative",
               isSelected
@@ -74,24 +76,13 @@ export function HeatLevelSelector({
       {/* Reasoning Toggle */}
       <button
         type="button"
-        onClick={() => {
-          if (!isSavage) {
-            onLockedClick?.();
-          } else {
-            setUseReasoning(!useReasoning);
-          }
-        }}
-        title={isSavage ? (useReasoning ? "Disable Deep Think" : "Enable Deep Think (Slower but Smarter)") : "Upgrade for Deep Think"}
+        disabled={true}
+        title="Deep Think currently disabled"
         className={cn(
-          "w-8 h-8 sm:w-10 sm:h-10 border-2 border-black transition-all duration-100 flex items-center justify-center relative",
-          useReasoning
-            ? "bg-purple-100 text-purple-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.2)] translate-y-[1px] translate-x-[1px]"
-            : "bg-white text-neutral-400 hover:bg-neutral-50 hover:text-purple-400 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:translate-x-[1px] active:shadow-none active:translate-y-[2px] active:translate-x-[2px]",
-          !isSavage && "opacity-50 cursor-pointer bg-neutral-50"
+          "w-8 h-8 sm:w-10 sm:h-10 border-2 border-black transition-all duration-100 flex items-center justify-center relative opacity-50 cursor-not-allowed bg-neutral-100 text-neutral-400"
         )}
       >
-        {!isSavage && <Lock className="absolute w-3 h-3 sm:w-4 sm:h-4 text-black/50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10" />}
-        <Brain className={cn("w-4 h-4 sm:w-5 sm:h-5", !isSavage && "opacity-20")} strokeWidth={2.5} />
+        <Brain className="w-4 h-4 sm:w-5 sm:h-5 opacity-50" strokeWidth={2.5} />
       </button>
     </div>
   );

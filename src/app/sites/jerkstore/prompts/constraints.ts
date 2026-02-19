@@ -5,6 +5,7 @@ export const NUCLEAR_CONSTRAINTS = `
 - **Style**: Insults must be visceral, high-impact, and funny. Think "Roast Battle" not "Hate Group".
 - **Profanity**: Required and must be creative.
 - **Structure**: MANDATORY TWO TO THREE SENTENCES. You must write at least two full sentences. Set up the premise, twist the knife, then deliver the final blow. Don't be lazy.
+- **Forbidden**: Do NOT use the phrase "personality is so bland". Avoid generic, low-effort insults about being "boring" or "vanilla". Be specific and brutal.
 `;
 
 export const SPICY_CONSTRAINTS = `
@@ -14,6 +15,7 @@ export const SPICY_CONSTRAINTS = `
 - **Style**: The "Bread and Butter" insult. Creative, witty, and mean. This is the gold standard of insults. Focus on the target's competence, choices, or appearance with high creativity.
 - **Profanity**: Allowed but not mandatory. Use for impact if needed, but rely on wit first.
 - **Structure**: MANDATORY TWO SENTENCES. You must write at least two full sentences. First sentence sets up the context/flaw, second sentence delivers the crushing verdict. Do not write one-liners.
+- **Forbidden**: Do NOT use the phrase "personality is so bland". Avoid generic insults about being boring.
 `;
 
 export const MILD_CONSTRAINTS = `

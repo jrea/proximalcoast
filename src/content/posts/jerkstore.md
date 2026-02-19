@@ -1,19 +1,10 @@
 ---
 title: 'Building Jerkstore: The World’s Most Aggressive Insult Generator'
+description: 'Go behind the scenes of Jerkstore, an AI engine built on DeepSeek V3 and Next.js 16 designed for high-fidelity psychological warfare.'
 date: '2026-02-08'
+site: 'jerkstore'
 ---
 
-We've been hard at work building **Jerkstore**, a project that graduated from a "what if" experiment into the world’s most sophisticated engine for psychological warfare. It’s an AI-powered roaster designed for one simple purpose: generating creative, biting, and soul-crushing insults that make a regular "yo mama" joke look like a Hallmark card.
-
-## The Soul of a Savage: Prompting for Pain
-
-At the heart of Jerkstore is a carefully crafted AI persona. We moved away from generic "funny roasts" and leaned into what we call the **Oxford Professor having a breakdown**.
-
-The identity is built on visceral, high-impact metaphors and bizarrely specific imagery. Instead of template humor, our model uses a "Mad-Lib" approach to create jagged connections—think "syphilis-ridden monument to incompetence" or "genetic cul-de-sac." 
-
-We use **DeepSeek V3** as the primary brain. It offers a unique balance of creativity and edge that feels less sanitized than other mainstream models. For those who need their emotional damage formatted professionally, our **Savage Tier** unlocks **Email Mode**, turning these burns into devastatingly articulate "circle back" messages.
-
-## The Stack: Scalable Chaos
 
 Jerkstore isn't just a fun side project; it's a showcase of a robust, modern web architecture:
 

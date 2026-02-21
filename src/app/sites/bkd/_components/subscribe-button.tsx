@@ -37,38 +37,45 @@ export function SubscribeButton({ user }: { user?: { email: string } | null }) {
 
   if (checkoutClientSecret) {
     return (
-      <div className="w-full max-w-2xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden border border-neutral-100">
-        <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret: checkoutClientSecret }}>
-          <EmbeddedCheckout />
-        </EmbeddedCheckoutProvider>
+      <div className="w-full max-w-2xl mx-auto bg-stone-900/40 backdrop-blur-3xl rounded-3xl shadow-[0_10px_60px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.05)] border border-white/5 overflow-hidden text-stone-200 relative">
+        <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none"></div>
+        <div className="relative z-10 p-4">
+          <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret: checkoutClientSecret }}>
+            <EmbeddedCheckout />
+          </EmbeddedCheckoutProvider>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-sm mx-auto space-y-4">
+    <div className="w-full max-w-sm mx-auto space-y-6">
       <button
         onClick={startCheckout}
         disabled={loading}
-        className="group w-full py-5 px-8 bg-black text-white rounded-2xl font-black text-xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-3 shadow-2xl shadow-black/20 hover:scale-[1.02] active:scale-[0.98]"
+        className="group w-full py-5 px-8 bg-stone-200 text-stone-900 rounded-full font-black text-sm uppercase tracking-[0.4em] transition-all flex items-center justify-center gap-4 shadow-sm hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:bg-white active:scale-95 border border-transparent relative overflow-hidden"
       >
-        {loading ? (
-          <Loader2 className="w-6 h-6 animate-spin" />
-        ) : (
-          <>
-            Start Training
-            <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-          </>
-        )}
+        <div className="absolute top-0 left-[-100%] w-[50%] h-full bg-gradient-to-r from-transparent via-white/80 to-transparent transform -skew-x-[25deg] group-hover:animate-[blade-glint_1.5s_ease-in-out_infinite] opacity-50 pointer-events-none"></div>
+        <div className="relative z-10 flex items-center justify-center gap-3 w-full">
+          {loading ? (
+            <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+          ) : (
+            <>
+              Initialize Protocol
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform duration-300" />
+            </>
+          )}
+        </div>
       </button>
 
       {error && (
-        <p className="text-red-500 text-xs font-bold text-center italic">{error}</p>
+        <p className="text-red-200 text-[10px] font-black uppercase tracking-widest text-center bg-red-950/40 py-3 rounded-xl border border-red-500/30">{error}</p>
       )}
 
       {user && (
-        <p className="text-center text-[10px] text-neutral-400 font-bold uppercase tracking-widest">
-          Signed in as {user.email}
+        <p className="text-center text-[10px] text-stone-400 font-black uppercase tracking-[0.2em] border border-white/5 bg-stone-900/40 rounded-full py-3 shadow-inner relative overflow-hidden">
+          <span className="absolute left-0 top-0 w-1 h-full bg-emerald-500 opacity-50"></span>
+          Session Linked : {user.email}
         </p>
       )}
     </div>

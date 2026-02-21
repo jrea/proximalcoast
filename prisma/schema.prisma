@@ -209,6 +209,7 @@ model jerkstore_ip_tracking {
 
 model bkd_document {
   id        String   @id @default(uuid())
+  userId    String?  // Optional for now, but used to target specific users
   filename  String
   s3Key     String
   status    String   // PENDING, SIGNED
@@ -218,3 +219,4 @@ model bkd_document {
 
   @@schema("main")
 }
+

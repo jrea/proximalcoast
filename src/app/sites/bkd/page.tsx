@@ -4,8 +4,16 @@ import { prisma } from "@/lib/db";
 import { SubscribeButton } from "./_components/subscribe-button";
 import { CompleteAccountForm } from "./_components/complete-account-form";
 import { ManageMembership } from "./_components/dashboard";
+import { SignupForm } from "./_components/signup-form";
 import { syncUserSubscription } from "@/lib/billing/sync";
+import { CheckCircle2 } from "lucide-react";
+import { stripe } from "@/lib/stripe";
+import { PLANS } from "./config";
 
+/**
+ * BKD Page — The Hall of Martial Spirit
+ * Focused on action at the top, with Budo philosophy as the foundation in the footer.
+ */
 export default async function BKDPage({
   searchParams,
 }: {
@@ -15,9 +23,7 @@ export default async function BKDPage({
   const success = params.success === "true";
   const sessionId = params.session_id as string | undefined;
 
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const session = await auth.api.getSession({ headers: await headers() });
 
   let subscription = null;
   let hasSubscription = false;
@@ -25,12 +31,7 @@ export default async function BKDPage({
 
   if (session?.user) {
     subscription = await prisma.user_subscription.findUnique({
-      where: {
-        userId_siteSlug: {
-          userId: session.user.id,
-          siteSlug: "bkd",
-        },
-      },
+      where: { userId_siteSlug: { userId: session.user.id, siteSlug: "bkd" } },
       select: {
         status: true,
         cancelAtPeriodEnd: true,
@@ -38,11 +39,13 @@ export default async function BKDPage({
         plan: true,
         priceAmount: true,
         priceCurrency: true,
-      }
+        updatedAt: true,
+      },
     });
 
-    if (!subscription) {
-      console.log(`[BKD] No sub found for ${session.user.email}, attempting recovery...`);
+    const isStale = subscription && (Date.now() - new Date(subscription.updatedAt).getTime() > 10 * 60 * 1000);
+
+    if (!subscription || isStale) {
       const synced = await syncUserSubscription(session.user.id, "bkd");
       if (synced) {
         subscription = {
@@ -52,102 +55,192 @@ export default async function BKDPage({
           plan: synced.plan,
           priceAmount: synced.priceAmount as any,
           priceCurrency: synced.priceCurrency as any,
+          updatedAt: synced.updatedAt as any,
         };
       }
     }
 
-    hasSubscription = !!subscription && (subscription.status === "active" || subscription.status === "trialing");
+    hasSubscription =
+      !!subscription &&
+      (subscription.status === "active" || subscription.status === "trialing");
 
-    pendingDocuments = await prisma.bkd_document.findMany({
-      where: {
-        OR: [
-          { userId: session.user.id },
-          { userId: null }
-        ],
-        status: "PENDING",
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    try {
+      // @ts-ignore - Handle delay in prisma generation
+      pendingDocuments = await prisma.hanko_document.findMany({
+        where: {
+          userId: session.user.id,
+          status: { in: ["PENDING", "CONSENT_GIVEN", "SIGNING"] }
+        },
+        orderBy: { createdAt: "desc" },
+      });
+    } catch (e) {
+      console.error("Prisma Error loading BKD documents:", e);
+      pendingDocuments = [];
+    }
   }
 
+  // Fetch BKD dynamic price for the card
+  let bkdPrice = { amount: 15000, currency: 'usd' };
+  try {
+    const priceId = PLANS.BKD_SUBSCRIPTION.priceId;
+    if (priceId && !priceId.includes('placeholder')) {
+      const price = await stripe.prices.retrieve(priceId);
+      if (price.unit_amount) {
+        bkdPrice = { amount: price.unit_amount, currency: price.currency };
+      }
+    }
+  } catch (e) {
+    console.error("Failed to fetch Stripe price for BKD:", e);
+  }
+
+  const spirits = [
+    { kanji: "初心", name: "Shoshin", meaning: "Beginner's Mind", desc: "Openness, eagerness, and absence of preconception." },
+    { kanji: "残心", name: "Zanshin", meaning: "Lingering Mind", desc: "Total awareness and continuous focus." },
+    { kanji: "無心", name: "Mushin", meaning: "No Mind", desc: "Acting instinctively without ego or hesitation." },
+    { kanji: "不動心", name: "Fudoshin", meaning: "Immovable Mind", desc: "A calm spirit unaffected by surprise." },
+    { kanji: "洗心", name: "Senshin", meaning: "Purified Mind", desc: "A spirit seeking to protect and harmonize." }
+  ];
+
   return (
-    <div className="bg-[#050505] min-h-screen text-slate-100 flex flex-col items-center justify-between p-6 md:p-12 font-sans selection:bg-emerald-900/50 selection:text-white relative overflow-hidden">
+    <div className="flex flex-col items-center px-4 py-8 md:py-24 md:px-12 relative overflow-x-hidden min-h-screen bkd-shoji-enter bg-[var(--bkd-surface)]">
 
-      {/* Background Organic/Bonsai Atmosphere (Soft, deep, flowing) */}
-      <div className="fixed top-0 left-0 w-[800px] h-[800px] bg-emerald-950/20 rounded-full blur-[150px] pointer-events-none -translate-x-1/3 -translate-y-1/3 mix-blend-screen mix-blend-lighten"></div>
-      <div className="fixed bottom-0 right-0 w-[800px] h-[800px] bg-stone-900/40 rounded-full blur-[180px] pointer-events-none translate-x-1/3 translate-y-1/3 mix-blend-lighten"></div>
+      {/* Background Watermarks - Refined positioning */}
+      <div className="hidden xl:block fixed left-12 top-1/4 bkd-vertical-text text-5xl select-none opacity-[0.03] pointer-events-none">
+        武道精神
+      </div>
+      <div className="hidden xl:block fixed right-12 top-1/3 bkd-vertical-text text-5xl select-none opacity-[0.03] pointer-events-none">
+        礼に始まり礼に終わる
+      </div>
 
-      {/* Central focus glow */}
-      <div className="fixed top-1/2 left-1/2 w-[600px] h-[600px] bg-emerald-900/5 rounded-full blur-[100px] pointer-events-none -translate-x-1/2 -translate-y-1/2 mix-blend-screen"></div>
+      <div className="w-full max-w-5xl space-y-12 md:space-y-32 z-10 flex flex-col items-center">
 
-      {/* Subtle grain overlay for organic texture */}
-      <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-15 pointer-events-none mix-blend-overlay z-0"></div>
-
-      <div className="w-full max-w-xl space-y-12 z-10 flex flex-col flex-1 relative">
-
-        {/* Persistent Header */}
-        <div className="text-center space-y-8 pt-4 md:pt-12 relative z-10">
+        {/* Hero Section */}
+        <header className="text-center space-y-4 w-full">
           <div className="space-y-4">
-            <h1 className="text-4xl md:text-6xl font-black tracking-widest uppercase text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.1)]" style={{ textShadow: "0 0 40px rgba(52,211,153,0.1), 0 0 10px rgba(255,255,255,0.2)" }}>
-              Bushin Kan<br />Dojo
+            <h1 className="bkd-h1 uppercase tracking-[0.2em] text-[48px] md:text-[72px] font-black leading-tight text-balance">
+              Bushin Kan Dojo
             </h1>
-            <p className="text-emerald-500/60 text-xs md:text-sm font-bold uppercase tracking-[0.4em]">
-              Monday & Wednesday • 7pm - 8pm
-            </p>
+            <p className="bkd-mono text-[10px] opacity-40 uppercase tracking-[0.5em] font-bold">Member Portal</p>
           </div>
-          <div className="relative">
-            {/* Katana Line - Sharp contrast */}
-            <div className="absolute left-1/2 -translate-x-1/2 top-0 w-12 h-px bg-gradient-to-r from-transparent via-stone-400 to-transparent"></div>
-            <p className="text-stone-300 text-sm max-w-sm mx-auto leading-relaxed pt-8 font-light tracking-wide">
-              Dedicated to the preservation and promotion of traditional Japanese Budo. Founded in the spirit of "the hall of martial spirit," we focus on classical arts including Jujutsu, Kobudo, and Goshinjutsu to foster discipline, character, and spiritual enlightenment.
-            </p>
-          </div>
-        </div>
 
-        {/* Dynamic Body Content */}
-        <div className="min-h-[200px] flex flex-col justify-center space-y-8 mt-12">
+        </header>
+
+        {/* Action / Primary Section */}
+        <section className="w-full max-w-4xl px-4 space-y-24">
+
+          {/* Pending Documents */}
           {pendingDocuments.length > 0 && (
-            <div className="bg-stone-900/30 border border-white/5 rounded-2xl p-8 space-y-6 backdrop-blur-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.05)] relative overflow-hidden group transition-all duration-700">
-              <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none"></div>
-
-              <h2 className="text-emerald-500/90 text-xs font-black uppercase tracking-[0.3em] flex items-center gap-3 relative z-10">
-                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
-                Action Required
-              </h2>
-              <div className="space-y-3 relative z-10">
+            <div className="space-y-10 bkd-shoji-enter">
+              <div className="text-center space-y-3">
+                <h3 className="bkd-mono text-[11px] font-bold uppercase tracking-[0.4em] text-[#BC241C]">Needs Your Attention</h3>
+                <p className="bkd-body text-sm opacity-50 italic font-serif">Please take a moment to review and sign these forms.</p>
+              </div>
+              <div className="grid grid-cols-1 gap-6">
                 {pendingDocuments.map((doc) => (
                   <a
                     key={doc.id}
                     href={`/sign/${doc.id}`}
-                    className="flex items-center justify-between p-5 bg-black/40 border border-white/5 rounded-xl hover:border-emerald-900/50 hover:bg-black/60 transition-all group/item shadow-sm backdrop-blur-md"
+                    className="flex items-center justify-between p-4 md:p-8 bg-white border border-[var(--bkd-border)] hover:border-[#BC241C] transition-all group/item shadow-sm hover:shadow-md"
                   >
-                    <span className="text-sm font-bold text-stone-300 group-hover/item:text-white transition-colors">{doc.filename}</span>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-stone-200 bg-stone-800/60 border border-white/5 px-4 py-2 rounded-full group-hover/item:bg-emerald-600 group-hover/item:text-white transition-all shadow-sm">
-                      Sign Now
-                    </span>
+                    <div className="space-y-2">
+                      <p className="bkd-mono text-[10px] text-[#BC241C] font-bold opacity-60">Dojo Paperwork</p>
+                      <p className="bkd-body font-bold text-lg tracking-wide">{doc.filename}</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="bkd-mono text-[11px] opacity-40 group-hover/item:text-[#BC241C] group-hover/item:opacity-100 transition-all font-bold">
+                        VIEW AND SIGN
+                      </span>
+                      <div className="w-10 h-10 border border-[var(--bkd-border)] flex items-center justify-center group-hover/item:border-[#BC241C] transition-colors">
+                        <span className="text-xl">&gt;</span>
+                      </div>
+                    </div>
                   </a>
                 ))}
               </div>
             </div>
           )}
 
-          {success && sessionId ? (
-            <CompleteAccountForm sessionId={sessionId} />
-          ) : session && hasSubscription ? (
-            <ManageMembership initialSubscription={subscription as any} />
-          ) : (
-            <div className="relative animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <SubscribeButton user={session?.user} />
-            </div>
-          )}
-        </div>
-      </div>
+          {/* Membership States */}
+          <div className="w-full">
+            {success ? (
+              <div className="p-6 md:p-12 bg-white border border-[var(--bkd-border)] shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                {sessionId ? (
+                  <CompleteAccountForm sessionId={sessionId} />
+                ) : (
+                  <div className="text-center space-y-6">
+                    <div className="w-16 h-16 rounded-full border border-[#BC241C] flex items-center justify-center mx-auto mb-6 bg-white shadow-sm">
+                      <CheckCircle2 className="w-8 h-8 text-[#BC241C]" />
+                    </div>
+                    <h2 className="bkd-h2 uppercase tracking-[0.2em]">Payment Successful</h2>
+                    <p className="bkd-body italic opacity-60">Welcome to the dojo. Your membership is now active.</p>
+                    <a
+                      href="/"
+                      className="bkd-btn-primary px-8 py-3 mt-4"
+                    >
+                      Enter Dashboard
+                    </a>
+                  </div>
+                )}
+              </div>
+            ) : !session ? (
+              <div className="w-full">
+                <SignupForm />
+              </div>
+            ) : hasSubscription ? (
+              <div className="w-full">
+                <ManageMembership initialSubscription={subscription as any} />
+              </div>
+            ) : (
+              <div className="space-y-8">
+                <SubscribeButton
+                  user={session.user}
+                  initialStatus={subscription?.status}
+                  priceAmount={bkdPrice.amount}
+                  priceCurrency={bkdPrice.currency}
+                />
+              </div>
+            )}
+          </div>
+        </section>
 
-      {/* Persistent Footer */}
-      <div className="relative text-center z-10 w-full pt-16 pb-4 opacity-50">
-        <p className="text-[10px] text-white/40 uppercase tracking-[0.5em] font-black border-t border-white/10 inline-block pt-8 px-12 mix-blend-screen">
-          Dai Nippon Butoku Kai
-        </p>
+        {/* Foundation Section */}
+        <section className="w-full pt-32 space-y-20">
+          <div className="flex items-center gap-4 opacity-20">
+            <div className="h-px bg-[var(--bkd-ink)] flex-1" />
+            <h2 className="bkd-h2 uppercase tracking-[0.3em] md:tracking-[0.6em] text-base md:text-lg font-bold whitespace-nowrap">Go-no-shin</h2>
+            <div className="h-px bg-[var(--bkd-ink)] flex-1" />
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-8 max-w-5xl mx-auto w-full">
+            {spirits.map((s, i) => (
+              <div key={i} className="flex flex-col items-center text-center space-y-6 group">
+                <div className="w-20 h-20 rounded-full border border-[var(--bkd-border)] flex items-center justify-center relative group transition-all hover:border-[#BC241C] duration-700 bg-white shadow-sm">
+                  <span className="bkd-vertical-text text-xl absolute opacity-[0.03] group-hover:opacity-[0.1] transition-opacity top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 select-none">{s.kanji}</span>
+                  <span className="bkd-mono text-[11px] font-bold z-10 group-hover:text-[#BC241C] transition-colors">{s.name}</span>
+                </div>
+                <div className="space-y-3">
+                  <p className="bkd-mono text-[9px] font-bold tracking-[0.3em] text-[#BC241C] opacity-80">{s.meaning}</p>
+                  <p className="bkd-body text-[11px] opacity-40 leading-relaxed px-2 font-serif italic">{s.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center pt-8 md:pt-16 space-y-8 md:space-y-10 border-t border-[var(--bkd-border)] border-dashed">
+            <p className="bkd-body text-base max-w-2xl mx-auto opacity-50 leading-relaxed italic font-serif">
+              &ldquo;The ultimate aim of Budo lies not in winning or losing, but in the perfection of the character of its participants.&rdquo;
+            </p>
+            <div className="flex flex-col items-center space-y-6">
+              <div className="flex items-center justify-center gap-6 opacity-30">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#BC241C]" />
+                <p className="bkd-mono text-[10px] tracking-[0.8em] uppercase font-bold">Dai Nippon Butoku Kai</p>
+                <div className="w-1.5 h-1.5 rounded-full bg-[#BC241C]" />
+              </div>
+              <p className="bkd-mono text-[8px] opacity-20 tracking-widest">Est. 1988 · Kitty Hawk, NC</p>
+            </div>
+          </div>
+        </section>
+
       </div>
     </div>
   );

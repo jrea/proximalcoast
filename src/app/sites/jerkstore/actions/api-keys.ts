@@ -14,13 +14,19 @@ export async function getApiKeys() {
   if (!session) return [];
 
   const keys = await prisma.apiKey.findMany({
-    where: { userId: session.user.id },
+    where: {
+      OR: [
+        { userId: session.user.id },
+        { organizationId: session.session.activeOrganizationId }
+      ]
+    },
     orderBy: { createdAt: 'desc' },
     select: {
       id: true,
       name: true,
       lastUsedAt: true,
       createdAt: true,
+      organizationId: true,
       // Never return the key/hash
     }
   });
@@ -46,6 +52,7 @@ export async function createApiKey(name: string) {
       key: hashedKey,
       name: name || "Untitled Token",
       userId: session.user.id,
+      organizationId: session.session.activeOrganizationId, // Automatically scope to active organization if present
     }
   });
 

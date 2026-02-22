@@ -35,19 +35,29 @@ export async function POST(req: Request) {
   switch (event.type) {
     case "payment_intent.succeeded":
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      const piUserId = paymentIntent.metadata?.userId;
+      const piPhone = (paymentIntent as any).shipping?.phone || (paymentIntent as any).billing_details?.phone;
+
+      if (piPhone && piUserId) {
+        await (prisma.user as any).update({
+          where: { id: piUserId },
+          data: { phone: piPhone }
+        });
+        console.log(`[User] Updated phone for user ${piUserId}: ${piPhone}`);
+      }
+
       if (paymentIntent.metadata?.type === "credits_purchase" && paymentIntent.metadata?.source !== "immediate") {
-        const userId = paymentIntent.metadata.userId;
-        if (userId) {
+        if (piUserId) {
           const creditsToAdd = paymentIntent.metadata.creditsAmount ? parseInt(paymentIntent.metadata.creditsAmount) : 50;
           await prisma.user.update({
-            where: { id: userId },
+            where: { id: piUserId },
             data: {
               credits: {
                 increment: creditsToAdd
               }
             }
           });
-          console.log(`[Credits] Added ${creditsToAdd} credits to user ${userId} via PaymentIntent webhook`);
+          console.log(`[Credits] Added ${creditsToAdd} credits to user ${piUserId} via PaymentIntent webhook`);
         }
       }
       break;
@@ -142,20 +152,24 @@ export async function POST(req: Request) {
             });
           }
 
-          await prisma.user.update({
+          await (prisma.user as any).update({
             where: { id: userId },
-            data: { stripeCustomerId: session.customer as string },
+            data: {
+              stripeCustomerId: session.customer as string,
+              phone: session.customer_details?.phone || undefined
+            },
           });
 
           // Also update the customer in Stripe so the dashboard looks good
-          const user = await prisma.user.findUnique({
+          const userLookup = await (prisma.user as any).findUnique({
             where: { id: userId },
-            select: { name: true, email: true }
+            select: { name: true, email: true, phone: true }
           });
-          if (user) {
+          if (userLookup) {
             await stripe.customers.update(session.customer as string, {
-              name: user.name,
-              email: user.email || undefined,
+              name: userLookup.name,
+              email: userLookup.email || undefined,
+              phone: (userLookup as any).phone || undefined,
               metadata: { userId },
             });
           }
@@ -177,6 +191,16 @@ export async function POST(req: Request) {
           const expiresAt = (subscription as any).current_period_end
             ? new Date((subscription as any).current_period_end * 1000)
             : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+          // Capture phone from invoice if present
+          const invoicePhone = (session as any).customer_phone || (session as any).customer_details?.phone;
+          if (invoicePhone) {
+            await (prisma.user as any).update({
+              where: { id: userId },
+              data: { phone: invoicePhone }
+            });
+            console.log(`[User] Updated phone from invoice for user ${userId}: ${invoicePhone}`);
+          }
 
           const price = subscription.items.data[0].price;
 
@@ -207,14 +231,17 @@ export async function POST(req: Request) {
       break;
 
     case "customer.subscription.deleted":
+      // The session object for subscription events is the subscription itself
       await prisma.user_subscription.updateMany({
         where: { stripeSubscriptionId: session.id as string },
         data: {
           status: "canceled",
         },
       });
+      console.log(`[Subscription] Marked subscription ${session.id} as canceled`);
       break;
 
+    case "customer.subscription.created":
     case "customer.subscription.updated":
       const updatedId = session.id as string;
       const subUpdated = session as any;
@@ -240,6 +267,7 @@ export async function POST(req: Request) {
         status: subUpdated.status,
         cancelAtPeriodEnd: subUpdated.cancel_at_period_end,
         expiresAt,
+        updatedAt: new Date(), // Force update timestamp for cache busting
       };
 
       if (price) {
@@ -251,15 +279,13 @@ export async function POST(req: Request) {
         updateData.plan = updatedPlan;
 
         // If the new plan matches the upcoming plan, the switch has happened.
-        // Or if the plan matches what we already have, maybe we shouldn't clear?
-        // Actually, if existingSub.upcomingPlan === updatedPlan, we are done.
         if (existingSub?.upcomingPlan === updatedPlan) {
           updateData.upcomingPlan = null;
         }
       }
 
       const createData: any = {
-        userId: userId || "", // This might be problematic if userId is missing on create, but standard flow avoids this
+        userId: userId || "",
         siteSlug,
         stripeSubscriptionId: updatedId,
         status: subUpdated.status,
@@ -290,8 +316,12 @@ export async function POST(req: Request) {
                 siteSlug,
               },
             },
-            data: updateData,
+            data: {
+              ...updateData,
+              stripeSubscriptionId: updatedId, // Take over if different
+            },
           });
+          console.log(`[Subscription] Updated existing sub for user ${userId} site ${siteSlug}`);
         } else {
           // Otherwise, traditional upsert by stripe ID
           await prisma.user_subscription.upsert({
@@ -299,10 +329,10 @@ export async function POST(req: Request) {
             update: updateData,
             create: createData,
           });
+          console.log(`[Subscription] Upserted sub ${updatedId} for user ${userId}`);
         }
       } else {
         // Fallback if userId is missing from metadata (rare, but possible)
-        // We only update if we can find it by ID
         await prisma.user_subscription.updateMany({
           where: { stripeSubscriptionId: updatedId },
           data: updateData,
@@ -326,6 +356,9 @@ export async function POST(req: Request) {
     case "subscription_schedule.created":
     case "subscription_schedule.released":
     case "invoiceitem.created":
+    case "invoice.created":
+    case "invoice.finalized":
+    case "payment_intent.created":
       // These are expected during normal Stripe operations.
       // We rely on 'customer.subscription.updated' or 'invoice.payment_succeeded' to sync state.
       console.log(`ℹ️ Expected event ${event.type} received`);

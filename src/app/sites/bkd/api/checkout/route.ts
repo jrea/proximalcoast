@@ -2,23 +2,28 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { PLANS, getPlanPriceId } from "../../config";
-import { createCheckoutSession } from "@/lib/billing/checkout";
+import { createSubscriptionIntent } from "@/lib/billing/checkout";
 
 export async function POST(req: Request) {
   const sessionUser = await auth.api.getSession({
     headers: await headers(),
   });
 
-  // If sessionUser is missing, we proceed as guest checkout
-  const checkoutUser = sessionUser ? {
+  if (!sessionUser) {
+    return NextResponse.json({ error: "Session required" }, { status: 401 });
+  }
+
+  const checkoutUser = {
     id: sessionUser.user.id,
     email: sessionUser.user.email,
     name: sessionUser.user.name,
-  } : null;
+  };
 
   try {
     const planId = PLANS.BKD_SUBSCRIPTION.id;
     const priceId = getPlanPriceId(planId);
+
+    console.log(`[BKD Checkout] User: ${checkoutUser.email}, Plan: ${planId}, Price ID: ${priceId}`);
 
     if (!priceId) {
       console.error(`Price ID not found for BKD subscription`);
@@ -28,24 +33,27 @@ export async function POST(req: Request) {
       );
     }
 
-    const result = await createCheckoutSession({
+    const result = await createSubscriptionIntent({
       user: checkoutUser,
       siteSlug: "bkd",
       priceId: priceId,
-      returnUrl: `${req.headers.get("origin")}/?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      metadata: {
-        planId: planId
-      }
+      metadata: { planId }
     });
 
-    if ('type' in result) {
-      if (result.type === 'restored' || result.type === 'active') {
-        return NextResponse.json({ restored: true });
-      }
+    console.log(`[BKD Checkout] Result:`, {
+      type: result.type,
+      subscriptionId: result.subscriptionId,
+      hasSecret: !!result.clientSecret
+    });
+
+    if (result.type === 'active') {
+      return NextResponse.json({ restored: true });
     }
 
-    // It's a session
-    return NextResponse.json({ clientSecret: (result as any).client_secret });
+    return NextResponse.json({
+      clientSecret: result.clientSecret,
+      subscriptionId: result.subscriptionId
+    });
   } catch (error) {
     console.error("BKD Checkout Error:", error);
     return NextResponse.json(

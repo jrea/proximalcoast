@@ -43,6 +43,12 @@ export default async function proxy(req: NextRequest) {
     return NextResponse.rewrite(new URL(path, req.url));
   }
 
+  // Site-specific SEO and assets
+  const SITE_ASSETS = ["/sitemap.xml", "/opengraph-image.png", "/twitter-image.png", "/favicon.ico", "/apple-icon.png"];
+  if (SITE_ASSETS.includes(path)) {
+    return NextResponse.rewrite(new URL(`/sites/${currentHost}${path}`, req.url));
+  }
+
   // Rewrite to /sites/${currentHost}${path}
   return NextResponse.rewrite(new URL(`/sites/${currentHost}${path}`, req.url));
 }

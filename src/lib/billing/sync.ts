@@ -35,31 +35,46 @@ export async function syncUserSubscription(userId: string, siteSlug: string) {
 
     if (!customerId) return null;
 
-    // 3. List active subscriptions for this customer
+    // 3. List all subscriptions for this customer to find the one for this site
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
-      status: "active", // Also handle trialing maybe?
-      limit: 10,
+      status: "all",
+      limit: 20,
       expand: ['data.items.data.price'],
     });
 
-    // We'll also check "trialing" subscriptions
-    const trialingSubscriptions = await stripe.subscriptions.list({
-      customer: customerId,
-      status: "trialing",
-      limit: 10,
-    });
-
-    const allSubs = [...subscriptions.data, ...trialingSubscriptions.data];
+    const allSubs = subscriptions.data;
 
     // 4. Find the best match for this site
     // Priority: 1. Matches siteSlug in metadata, 2. Matches a Price ID associated with BKD
     const bkdPriceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_BKD;
 
-    const matchedSub = allSubs.find(s => s.metadata.siteSlug === siteSlug)
-      || allSubs.find(s => s.items.data.some(item => item.price.id === bkdPriceId));
+    // Find all potential matches
+    const potentialMatches = allSubs.filter(s =>
+      s.metadata.siteSlug === siteSlug || s.items.data.some(item => item.price.id === bkdPriceId)
+    );
 
-    if (!matchedSub) return null;
+    // Prioritize by status
+    const matchedSub = potentialMatches.find(s => s.status === "active" || s.status === "trialing")
+      || potentialMatches.find(s => s.status === "incomplete" || s.status === "past_due" || s.status === "unpaid")
+      || potentialMatches[0];
+
+    if (!matchedSub) {
+      // If no active/trialing sub found in Stripe, but we have one locally, mark it as canceled
+      // This ensures Stripe is the source of truth if we missed a deletion webhook
+      const localSub = await prisma.user_subscription.findUnique({
+        where: { userId_siteSlug: { userId, siteSlug } }
+      });
+
+      if (localSub && localSub.status !== "canceled") {
+        console.log(`[Sync] No active sub in Stripe for ${siteSlug}, marking local sub ${localSub.id} as canceled`);
+        return await prisma.user_subscription.update({
+          where: { id: localSub.id },
+          data: { status: "canceled" }
+        });
+      }
+      return null;
+    }
 
     // 5. Update the database
     const expiresAt = (matchedSub as any).current_period_end
@@ -68,10 +83,12 @@ export async function syncUserSubscription(userId: string, siteSlug: string) {
 
     const price = matchedSub.items.data[0].price;
 
+    console.log(`[Sync] Found sub in Stripe for ${siteSlug}: ${matchedSub.id} (${matchedSub.status}), price: ${price.unit_amount}${price.currency}`);
+
     const updated = await prisma.user_subscription.upsert({
-      where: { stripeSubscriptionId: matchedSub.id },
+      where: { userId_siteSlug: { userId, siteSlug } }, // Use composite key for stability
       update: {
-        userId: userId,
+        stripeSubscriptionId: matchedSub.id,
         status: matchedSub.status,
         expiresAt,
         cancelAtPeriodEnd: matchedSub.cancel_at_period_end,
@@ -83,7 +100,7 @@ export async function syncUserSubscription(userId: string, siteSlug: string) {
         siteSlug: siteSlug,
         stripeSubscriptionId: matchedSub.id,
         status: matchedSub.status,
-        plan: "standard", // Default to standard for BKD
+        plan: "standard",
         expiresAt,
         cancelAtPeriodEnd: matchedSub.cancel_at_period_end,
         priceAmount: price.unit_amount,

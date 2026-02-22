@@ -1,0 +1,417 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Noto+Serif+JP:wght@200..900&family=Shippori+Mincho:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --bkd-surface: #F7F2E8;
+  /* Washi White */
+  --bkd-primary: #BC241C;
+  /* Cinnabar Red */
+  --bkd-ink: rgba(26, 26, 27, 0.9);
+  /* Sumie Black */
+  --bkd-ink-solid: #1A1A1B;
+  --bkd-border: #D1C7B7;
+}
+
+/* Global / Surface adjustments for BKD */
+.bkd-container {
+  /* Use Next.js font variables if available, otherwise fallback */
+  --bkd-font-display-active: var(--bkd-font-display, "Shippori Mincho", serif);
+  --bkd-font-subhead-active: var(--bkd-font-subhead, "Noto Serif JP", serif);
+  --bkd-font-body-active: var(--bkd-font-body, "Inter", sans-serif);
+
+  background-color: var(--bkd-surface);
+  color: var(--bkd-ink);
+  font-family: var(--bkd-font-body-active);
+  position: relative;
+  min-height: 100vh;
+  /* Cursor: custom ink dot */
+  cursor: url('data:image/svg+xml;utf8,<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="6" cy="6" r="4" fill="%231A1A1B"/></svg>') 6 6, auto;
+}
+
+/* Ensure all clickable elements inherit the dot cursor unless explicitly set */
+.bkd-container a,
+.bkd-container button {
+  cursor: url('data:image/svg+xml;utf8,<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="6" cy="6" r="4" fill="%23BC241C"/></svg>') 6 6, pointer;
+}
+
+/* Subtle grain filter via pseudo-element overlay */
+.bkd-grain-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: url('https://grainy-gradients.vercel.app/noise.svg');
+  opacity: 0.03;
+  z-index: 50;
+  mix-blend-mode: multiply;
+}
+
+/* Layout: Tatami Grid */
+/* Columns: 12, Gutter: 24px, Margin: 80px */
+.bkd-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 24px;
+  max-width: calc(100vw - 160px);
+  margin: 0 auto;
+  padding: 40px 0;
+}
+
+.bkd-grid-col-12 {
+  grid-column: span 12;
+}
+
+.bkd-grid-col-10 {
+  grid-column: span 10;
+}
+
+.bkd-grid-col-8 {
+  grid-column: span 8;
+}
+
+.bkd-grid-col-6 {
+  grid-column: span 6;
+}
+
+.bkd-grid-col-4 {
+  grid-column: span 4;
+}
+
+@media (max-width: 768px) {
+  .bkd-grid {
+    grid-template-columns: 1fr;
+    max-width: calc(100vw - 40px);
+    margin: 0 auto;
+    padding: 20px 0;
+  }
+
+  .bkd-grid>* {
+    grid-column: span 1 !important;
+  }
+}
+
+/* Typography */
+.bkd-h1 {
+  font-family: var(--bkd-font-display-active);
+  font-weight: 800;
+  /* Extra Bold */
+  font-size: 64px;
+  line-height: 1.2;
+  color: var(--bkd-ink);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .bkd-h1 {
+    font-size: 40px;
+  }
+}
+
+.bkd-h2 {
+  font-family: var(--bkd-font-subhead-active);
+  font-weight: 700;
+  /* Bold */
+  font-size: 32px;
+  line-height: 1.3;
+  color: var(--bkd-ink);
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .bkd-h2 {
+    font-size: 24px;
+  }
+}
+
+.bkd-body {
+  font-family: var(--bkd-font-body-active);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--bkd-ink);
+}
+
+.bkd-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* Buttons */
+.bkd-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bkd-primary);
+  color: white;
+  text-transform: uppercase;
+  font-family: var(--bkd-font-body-active);
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  padding: 16px 32px;
+  border: none;
+  border-radius: 0;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.bkd-btn-primary:hover {
+  filter: drop-shadow(0 2px 8px rgba(188, 36, 28, 0.5));
+  transform: translateY(-1px);
+}
+
+.bkd-btn-primary:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Secondary Button (Minimalist like Hanko) */
+.bkd-btn-secondary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--bkd-ink-solid);
+  text-transform: uppercase;
+  font-family: var(--bkd-font-body-active);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  padding: 14px 28px;
+  border: 1.5px solid currentColor;
+  border-radius: 0;
+  text-decoration: none;
+  font-size: 12px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.bkd-btn-secondary:hover {
+  background-color: var(--bkd-ink-solid);
+  color: var(--bkd-surface);
+}
+
+/* Hide legacy SVG effects if still in HTML */
+.bkd-btn-secondary svg,
+.bkd-btn-primary svg:not(.bkd-enso-loader) {
+  display: none !important;
+}
+
+/* Fallback border (deprecated but kept for safety) */
+.bkd-btn-secondary-basic {
+  background: transparent;
+  color: var(--bkd-ink-solid);
+  text-transform: uppercase;
+  font-family: var(--bkd-font-body-active);
+  font-weight: 600;
+  padding: 14px 28px;
+  border: 1.5px solid var(--bkd-ink-solid);
+  transition: all 0.3s;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+}
+
+.bkd-btn-secondary-basic:hover {
+  background-color: var(--bkd-ink-solid);
+  color: var(--bkd-surface);
+}
+
+
+/* Cards */
+.bkd-card-header {
+  background-color: var(--bkd-surface);
+  border-left: 8px solid var(--bkd-primary);
+  border-top: 1px solid var(--bkd-border);
+  border-right: 1px solid var(--bkd-border);
+  border-bottom: 1px solid var(--bkd-border);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 32px;
+}
+
+.bkd-card-header.active {
+  border-left-width: 16px;
+}
+
+.bkd-card-header .bg-text {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  writing-mode: vertical-rl;
+  font-family: var(--bkd-font-display-active);
+  font-size: 120px;
+  line-height: 1;
+  opacity: 0.07;
+  color: var(--bkd-ink-solid);
+  pointer-events: none;
+  z-index: -1;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.bkd-card-header>* {
+  position: relative;
+  z-index: 1;
+}
+
+.bkd-card-detail {
+  padding: 32px;
+  border: 1px solid var(--bkd-border);
+  background-color: transparent;
+}
+
+.bkd-card-detail img {
+  filter: grayscale(100%);
+  mix-blend-mode: multiply;
+  max-width: 100%;
+}
+
+/* Form Elements */
+.bkd-input {
+  width: 100%;
+  border: 1px solid var(--bkd-border);
+  background: transparent;
+  padding: 16px;
+  font-family: var(--bkd-font-body-active);
+  color: var(--bkd-ink);
+  outline: none;
+  border-radius: 0;
+  font-size: 16px;
+  transition: border-color 0.2s;
+}
+
+.bkd-input:focus {
+  border-color: var(--bkd-ink-solid);
+  border-width: 2px;
+  padding: 15px;
+  /* offset the extra border width */
+}
+
+.bkd-label {
+  display: block;
+  font-family: var(--bkd-font-subhead-active);
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--bkd-ink);
+  margin-bottom: 8px;
+  letter-spacing: 0.05em;
+}
+
+/* Shoji Screen Entrance Animation */
+@keyframes shojiOpen {
+  0% {
+    opacity: 0;
+    transform: scaleX(0.95) scaleY(1.05);
+    filter: blur(4px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+.bkd-shoji-enter {
+  animation: shojiOpen 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* Vertical Text Element (Calligraphy style) */
+.bkd-vertical-text {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  font-family: var(--font-shippori);
+  color: var(--bkd-ink);
+  letter-spacing: 0.2em;
+  opacity: 0.15;
+}
+
+/* Enso Circular Loader */
+@keyframes drawEnso {
+  0% {
+    stroke-dashoffset: 100;
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 1;
+    stroke-dashoffset: 0;
+  }
+
+  100% {
+    stroke-dashoffset: -100;
+    opacity: 0;
+  }
+}
+
+.bkd-enso-loader {
+  width: 40px;
+  height: 40px;
+  animation: spin 3s linear infinite;
+}
+
+.bkd-enso-loader circle {
+  fill: transparent;
+  stroke: var(--bkd-ink);
+  stroke-width: 3;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  stroke-linecap: round;
+  animation: drawEnso 2s ease-in-out infinite;
+}
+
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Utility to override defaults and force ink color */
+.text-bkd-ink {
+  color: var(--bkd-ink-solid) !important;
+}
+
+.bg-bkd-surface {
+  background-color: var(--bkd-surface) !important;
+}
+
+/* Button Progress Bar (Hanko Style) */
+.bkd-btn-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background-color: rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+  display: none;
+}
+
+.bkd-loading .bkd-btn-progress {
+  display: block;
+}
+
+.bkd-btn-progress::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  height: 100%;
+  width: 50%;
+  background-color: white;
+  animation: bkd-progress-indefinite 2s linear infinite;
+}
+
+@keyframes bkd-progress-indefinite {
+  0% {
+    left: -50%;
+  }
+
+  100% {
+    left: 100%;
+  }
+}

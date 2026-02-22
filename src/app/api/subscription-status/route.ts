@@ -15,6 +15,7 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const siteSlug = searchParams.get("siteSlug") || "jerkstore";
+  const forceSync = searchParams.get("sync") === "true";
 
   try {
     let subscription = await prisma.user_subscription.findUnique({
@@ -25,27 +26,35 @@ export async function GET(req: Request) {
         },
       },
       select: {
+        id: true,
         status: true,
         cancelAtPeriodEnd: true,
         expiresAt: true,
         plan: true,
         priceAmount: true,
         priceCurrency: true,
+        updatedAt: true,
       }
     });
 
-    // AUTO-SYNC: If missing, try to recover from Stripe per user request
-    if (!subscription) {
-      console.log(`[Status API] No sub found for ${sessionUser.user.email}, attempting recovery...`);
+    const isStale = subscription && (Date.now() - new Date(subscription.updatedAt).getTime() > 10 * 60 * 1000); // 10 mins
+
+    // AUTO-SYNC: If missing, forced, or stale, try to recover from Stripe
+    if (!subscription || forceSync || isStale) {
+      if (forceSync) console.log(`[Status API] Force sync requested for ${sessionUser.user.email}`);
+      else if (isStale) console.log(`[Status API] Sub for ${sessionUser.user.email} is stale (>10m), syncing...`);
+
       const synced = await syncUserSubscription(sessionUser.user.id, siteSlug);
       if (synced) {
         subscription = {
+          id: synced.id,
           status: synced.status,
           cancelAtPeriodEnd: synced.cancelAtPeriodEnd,
           expiresAt: synced.expiresAt as any,
           plan: synced.plan,
           priceAmount: synced.priceAmount,
           priceCurrency: synced.priceCurrency,
+          updatedAt: synced.updatedAt,
         };
       }
     }

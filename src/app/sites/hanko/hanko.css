@@ -1,0 +1,893 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif+JP:wght@400;700&family=Shippori+Mincho:wght@800&display=swap');
+
+:root {
+  --hanko-surface: #F7F2E8;
+  --hanko-primary: #BC241C;
+  --hanko-ink: #1A1A1B;
+  --hanko-border: #D1C7B7;
+  --hanko-step-duration: 2.5s;
+  --hanko-total-duration: 7.5s;
+  /* 3 steps × 2.5s */
+}
+
+body {
+  background-color: var(--hanko-surface);
+  color: var(--hanko-ink);
+  font-family: 'Inter', sans-serif;
+  opacity: 0.9;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-image: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E');
+  opacity: 0.03;
+  pointer-events: none;
+  z-index: 50;
+}
+
+a,
+button {
+  cursor: crosshair;
+}
+
+/* Typography */
+.hanko-h1 {
+  font-family: 'Shippori Mincho', serif;
+  font-weight: 800;
+  font-size: clamp(36px, 6vw, 72px);
+  line-height: 1.15;
+}
+
+.hanko-h2 {
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 700;
+  font-size: clamp(24px, 4vw, 40px);
+}
+
+.hanko-body {
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+/* Buttons */
+.hanko-btn-primary {
+  background-color: var(--hanko-primary);
+  color: white;
+  text-transform: uppercase;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  border: none;
+  padding: 16px 32px;
+  border-radius: 0;
+  transition: all 0.3s ease;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.hanko-btn-primary:hover {
+  filter: drop-shadow(0 2px 8px rgba(188, 36, 28, 0.5));
+  transform: translateY(-1px);
+}
+
+.hanko-btn-secondary {
+  background-color: transparent;
+  color: var(--hanko-ink);
+  border: 1.5px solid currentColor;
+  padding: 14px 28px;
+  text-transform: uppercase;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  font-size: 12px;
+  border-radius: 0;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.hanko-btn-secondary:hover {
+  background-color: var(--hanko-ink);
+  color: var(--hanko-surface);
+}
+
+.hanko-scroll-link {
+  opacity: 0.4;
+  transition: opacity 0.2s;
+}
+
+.hanko-scroll-link:hover {
+  opacity: 1;
+}
+
+/* Cards */
+.hanko-card-header {
+  background-color: var(--hanko-surface);
+  border-left: 8px solid var(--hanko-primary);
+  border-top: 1px solid var(--hanko-border);
+  border-right: 1px solid var(--hanko-border);
+  border-bottom: 1px solid var(--hanko-border);
+  padding: 24px;
+  position: relative;
+}
+
+.hanko-card-detail {
+  padding: 32px;
+  border: 1px solid var(--hanko-border);
+  background-color: var(--hanko-surface);
+  position: relative;
+}
+
+/* Layout */
+.hanko-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 80px;
+}
+
+.hanko-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 24px;
+}
+
+/* FAQ Accordion */
+details.hanko-faq {
+  border-bottom: 1px solid var(--hanko-border);
+  padding: 24px 0;
+}
+
+details.hanko-faq summary {
+  list-style: none;
+  cursor: crosshair;
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+details.hanko-faq summary::-webkit-details-marker {
+  display: none;
+}
+
+details.hanko-faq[open] summary {
+  color: var(--hanko-primary);
+}
+
+.hanko-faq-content {
+  padding-top: 16px;
+  font-size: 14px;
+  opacity: 0.7;
+  line-height: 1.7;
+  max-width: 80%;
+}
+
+/* Comparison Table */
+.hanko-comparison {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.hanko-comparison th {
+  text-align: left;
+  padding: 24px;
+  font-family: 'Noto Serif JP', serif;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 10px;
+  opacity: 0.4;
+}
+
+.hanko-comparison td {
+  padding: 24px;
+  border-top: 1px solid var(--hanko-border);
+  font-size: 14px;
+}
+
+.hanko-comparison .hanko-diff-legacy {
+  opacity: 0.3;
+  text-decoration: line-through;
+}
+
+.hanko-comparison .hanko-diff-hanko {
+  color: var(--hanko-primary);
+  font-weight: 800;
+}
+
+/* Page Enter */
+.hanko-slide-enter {
+  animation: slideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   HERO FLOW ANIMATION
+   ============================================ */
+
+.hanko-flow-demo {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  aspect-ratio: 3 / 4;
+  background: white;
+  border: 1px solid var(--hanko-border);
+  box-shadow: 0 32px 80px rgba(26, 26, 27, 0.12), 0 8px 20px rgba(26, 26, 27, 0.06);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Document lines (static background) */
+.hanko-doc-lines {
+  position: absolute;
+  inset: 0;
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hanko-doc-line {
+  height: 2px;
+  background: var(--hanko-border);
+  border-radius: 2px;
+  opacity: 0.5;
+}
+
+.hanko-doc-line:nth-child(1) {
+  width: 75%;
+}
+
+.hanko-doc-line:nth-child(2) {
+  width: 90%;
+}
+
+.hanko-doc-line:nth-child(3) {
+  width: 60%;
+}
+
+.hanko-doc-line:nth-child(4) {
+  width: 85%;
+}
+
+.hanko-doc-line:nth-child(5) {
+  width: 40%;
+}
+
+.hanko-doc-line:nth-child(6) {
+  width: 70%;
+}
+
+.hanko-doc-line:nth-child(7) {
+  width: 80%;
+}
+
+.hanko-doc-line:nth-child(8) {
+  width: 55%;
+}
+
+.hanko-doc-line:nth-child(9) {
+  width: 90%;
+}
+
+.hanko-doc-line:nth-child(10) {
+  width: 65%;
+}
+
+.hanko-doc-line:nth-child(11) {
+  width: 45%;
+}
+
+.hanko-doc-line:nth-child(12) {
+  width: 78%;
+}
+
+/* Step overlay panels */
+.hanko-flow-step {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: none;
+  pointer-events: none;
+}
+
+/* Step 1: Upload — visible 0s–2.5s, then fades at 2.5s */
+.hanko-flow-step-1 {
+  animation: hanko-step-fade var(--hanko-total-duration) ease-in-out infinite;
+  animation-delay: 0s;
+}
+
+/* Step 2: Select — visible 2.5s–5s */
+.hanko-flow-step-2 {
+  animation: hanko-step-fade var(--hanko-total-duration) ease-in-out infinite;
+  animation-delay: calc(var(--hanko-step-duration) * -1 * -1);
+  /* 2.5s delay */
+}
+
+/* Step 3: Send — visible 5s–7.5s */
+.hanko-flow-step-3 {
+  animation: hanko-step-fade var(--hanko-total-duration) ease-in-out infinite;
+  animation-delay: calc(var(--hanko-step-duration) * 2);
+  /* 5s delay, will be negative-offset below */
+}
+
+/* Each step is visible for 1/3 of the total cycle */
+/* timing: fade-in 0.4s, hold 1.7s, fade-out 0.4s = 2.5s per step */
+@keyframes hanko-step-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  5% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  28% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  33.33% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+/* Step 2 is offset by 1/3 of the cycle */
+.hanko-flow-step-2 {
+  animation-delay: calc(var(--hanko-step-duration) * -1);
+}
+
+/* Trick: use negative delay to start mid-cycle */
+.hanko-flow-step-2 {
+  animation-delay: -5s;
+  /* 7.5s - 2.5s = 5s remaining = shows at correct offset */
+}
+
+.hanko-flow-step-3 {
+  animation-delay: -2.5s;
+}
+
+/* Step icon circle */
+.hanko-step-icon {
+  width: 56px;
+  height: 56px;
+  border: 1.5px solid var(--hanko-border);
+  background: var(--hanko-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--hanko-primary);
+}
+
+.hanko-step-label {
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 700;
+  font-size: 14px;
+  text-align: center;
+  color: var(--hanko-ink);
+}
+
+.hanko-step-sublabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  opacity: 0.45;
+  text-align: center;
+}
+
+/* Step 2: selection box animation */
+.hanko-select-box {
+  position: absolute;
+  width: 140px;
+  height: 44px;
+  bottom: 28%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 2px dashed var(--hanko-primary);
+  opacity: 0;
+  animation: hanko-select-appear var(--hanko-total-duration) ease-in-out infinite;
+  animation-delay: -5s;
+}
+
+@keyframes hanko-select-appear {
+  0% {
+    opacity: 0;
+    width: 20px;
+  }
+
+  5% {
+    opacity: 0;
+    width: 20px;
+  }
+
+  10% {
+    opacity: 0.8;
+    width: 140px;
+  }
+
+  28% {
+    opacity: 0.8;
+    width: 140px;
+  }
+
+  33.33% {
+    opacity: 0;
+    width: 140px;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Step 2: animated cursor */
+.hanko-cursor {
+  position: absolute;
+  bottom: calc(28% + 8px);
+  left: calc(50% - 50px);
+  opacity: 0;
+  animation: hanko-cursor-move var(--hanko-total-duration) ease-in-out infinite;
+  animation-delay: -5s;
+  pointer-events: none;
+}
+
+@keyframes hanko-cursor-move {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+
+  5% {
+    opacity: 1;
+    transform: translate(-20px, 20px);
+  }
+
+  15% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+
+  28% {
+    opacity: 0.6;
+  }
+
+  33.33% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Step 3: send animation — envelope flies up */
+.hanko-send-envelope {
+  position: absolute;
+  opacity: 0;
+  animation: hanko-send-fly var(--hanko-total-duration) ease-in-out infinite;
+  animation-delay: -2.5s;
+  pointer-events: none;
+}
+
+@keyframes hanko-send-fly {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.8);
+  }
+
+  5% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+
+  28% {
+    opacity: 1;
+    transform: translate(20px, -30px) scale(0.9);
+  }
+
+  33.33% {
+    opacity: 0;
+    transform: translate(40px, -60px) scale(0.7);
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Step indicator dots */
+.hanko-step-dots {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.hanko-step-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--hanko-border);
+  border-radius: 0;
+  /* square dots to match design */
+}
+
+.hanko-step-dot-1 {
+  animation: hanko-dot-active var(--hanko-total-duration) ease-in-out infinite;
+  animation-delay: 0s;
+}
+
+.hanko-step-dot-2 {
+  animation: hanko-dot-active var(--hanko-total-duration) ease-in-out infinite;
+  animation-delay: -5s;
+}
+
+.hanko-step-dot-3 {
+  animation: hanko-dot-active var(--hanko-total-duration) ease-in-out infinite;
+  animation-delay: -2.5s;
+}
+
+@keyframes hanko-dot-active {
+  0% {
+    background: var(--hanko-primary);
+  }
+
+  33.33% {
+    background: var(--hanko-primary);
+  }
+
+  34% {
+    background: var(--hanko-border);
+  }
+
+  100% {
+    background: var(--hanko-border);
+  }
+}
+
+/* Step label bar at bottom of doc */
+.hanko-doc-step-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--hanko-border);
+  overflow: hidden;
+}
+
+.hanko-doc-step-bar-fill {
+  height: 100%;
+  background: var(--hanko-primary);
+  width: 0%;
+  animation: hanko-progress var(--hanko-total-duration) linear infinite;
+}
+
+@keyframes hanko-progress {
+  0% {
+    width: 0%;
+  }
+
+  33.33% {
+    width: 33.33%;
+  }
+
+  33.34% {
+    width: 33.33%;
+  }
+
+  66.66% {
+    width: 66.66%;
+  }
+
+  66.67% {
+    width: 66.66%;
+  }
+
+  99.99% {
+    width: 100%;
+  }
+
+  100% {
+    width: 0%;
+  }
+}
+
+/* Step number badge */
+.hanko-step-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--hanko-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  opacity: 0;
+}
+
+.hanko-step-badge-1 {
+  animation: hanko-badge-show var(--hanko-total-duration) ease-in-out infinite;
+  animation-delay: 0s;
+}
+
+.hanko-step-badge-2 {
+  animation: hanko-badge-show var(--hanko-total-duration) ease-in-out infinite;
+  animation-delay: -5s;
+}
+
+.hanko-step-badge-3 {
+  animation: hanko-badge-show var(--hanko-total-duration) ease-in-out infinite;
+  animation-delay: -2.5s;
+}
+
+@keyframes hanko-badge-show {
+  0% {
+    opacity: 0;
+  }
+
+  5% {
+    opacity: 1;
+  }
+
+  28% {
+    opacity: 1;
+  }
+
+  33.33% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ============================================
+   PRICING SECTION
+   ============================================ */
+
+.hanko-pricing-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--hanko-border);
+  border: 1px solid var(--hanko-border);
+}
+
+@media (max-width: 640px) {
+  .hanko-pricing-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hanko-pricing-card {
+  background: var(--hanko-surface);
+  padding: 40px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.hanko-pricing-card--pro {
+  background: var(--hanko-ink);
+  color: white;
+}
+
+.hanko-pricing-tier {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5em;
+  opacity: 0.5;
+  font-weight: 700;
+}
+
+.hanko-pricing-price {
+  font-family: 'Shippori Mincho', serif;
+  font-weight: 800;
+  font-size: 48px;
+  line-height: 1;
+  color: var(--hanko-ink);
+}
+
+.hanko-pricing-card--pro .hanko-pricing-price {
+  color: white;
+}
+
+.hanko-pricing-price-unit {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0.5;
+  margin-top: 4px;
+}
+
+.hanko-pricing-feature-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.hanko-pricing-feature-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  opacity: 0.8;
+}
+
+.hanko-pricing-check {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--hanko-primary);
+}
+
+.hanko-pricing-card--pro .hanko-pricing-check {
+  color: #e88a87;
+}
+
+.hanko-pricing-divider {
+  width: 24px;
+  height: 2px;
+  background: var(--hanko-border);
+  margin: 0;
+}
+
+.hanko-pricing-card--pro .hanko-pricing-divider {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Two path cards for the workflow section */
+.hanko-path-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 640px) {
+  .hanko-path-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hanko-path-card {
+  border: 1px solid var(--hanko-border);
+  padding: 32px;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hanko-path-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--hanko-border);
+}
+
+.hanko-path-card--pro::before {
+  background: var(--hanko-primary);
+}
+
+.hanko-path-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--hanko-ink);
+}
+
+.hanko-path-step-num {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hanko-surface);
+  border: 1px solid var(--hanko-border);
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+  font-family: 'Noto Serif JP', serif;
+}
+
+.hanko-path-step-num--active {
+  background: var(--hanko-primary);
+  color: white;
+  border-color: var(--hanko-primary);
+}
+
+.hanko-path-connector {
+  width: 1px;
+  height: 16px;
+  background: var(--hanko-border);
+  margin-left: 12px;
+}
+
+/* Upload bar (step 1 inline animation) */
+@keyframes hanko-upload-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  33.33% {
+    transform: translateX(0%);
+  }
+
+  34% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+  .hanko-flow-demo {
+    max-width: 100%;
+    aspect-ratio: 4 / 3;
+  }
+
+  .hanko-hero-grid {
+    flex-direction: column !important;
+  }
+
+  .hanko-h1 {
+    font-size: clamp(32px, 8vw, 52px);
+  }
+}

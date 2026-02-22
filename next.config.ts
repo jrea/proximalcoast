@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["hanko.lvh.me", "bkd.lvh.me", "jerkstore.lvh.me", "hanko.localhost", "bkd.localhost", "jerkstore.localhost", "localhost"],
   /* config options here */
   async redirects() {
     return [

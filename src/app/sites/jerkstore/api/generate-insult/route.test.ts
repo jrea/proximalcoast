@@ -1,20 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from './route';
 import { prisma } from '@/lib/db';
+import { FIXTURES } from '@/lib/__mocks__/db';
 import { auth } from '@/lib/auth';
 import { cookies, headers } from 'next/headers';
 import * as crypto from 'crypto';
 
-// Mock dependencies
-vi.mock('@/lib/db', () => ({
-  prisma: {
-    apiKey: { findUnique: vi.fn(), update: vi.fn() },
-    user_subscription: { findUnique: vi.fn() },
-    user: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
-    jerkstore_insult: { count: vi.fn(), findMany: vi.fn(), create: vi.fn() },
-    jerkstore_ip_tracking: { findUnique: vi.fn(), upsert: vi.fn() },
-  },
-}));
+// Use the central DB mock — no inline factory
+vi.mock('@/lib/db');
 
 vi.mock('@/lib/auth', () => ({
   auth: {
@@ -105,15 +98,15 @@ describe('POST /api/generate-insult', () => {
     const { moderateText } = await import('../../_lib/openai');
     (moderateText as any).mockResolvedValue(false);
 
-    // Default mock returns to prevent crashes
-    (prisma.user.create as any).mockResolvedValue({ id: 'guest_created', username: 'guest_created' });
+    // Default mock returns — grounded in real bkd@bkd.com fixture shape
+    (prisma.user.create as any).mockResolvedValue({ ...FIXTURES.guestUser, id: 'guest_created', username: 'guest_created' });
     (prisma.jerkstore_insult.findMany as any).mockResolvedValue([]);
     (prisma.jerkstore_insult.count as any).mockResolvedValue(0);
     (prisma.jerkstore_ip_tracking.findUnique as any).mockResolvedValue(null);
     (prisma.user_subscription.findUnique as any).mockResolvedValue(null);
 
-    // Default to plenty of credits to pass rate limits for logic tests
-    (prisma.user.findUnique as any).mockResolvedValue({ credits: 100 });
+    // Default to plenty of credits so rate-limit tests focus on logic, not credits
+    (prisma.user.findUnique as any).mockResolvedValue({ ...FIXTURES.user, credits: 100 });
   });
 
   // --- Authentication Tests ---

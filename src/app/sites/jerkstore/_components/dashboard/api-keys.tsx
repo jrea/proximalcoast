@@ -10,6 +10,7 @@ interface ApiKey {
   name: string;
   createdAt: Date;
   lastUsedAt: Date | null;
+  organizationId: string | null;
 }
 
 export function ApiKeys({ initialKeys }: { initialKeys: ApiKey[] }) {
@@ -99,7 +100,14 @@ export function ApiKeys({ initialKeys }: { initialKeys: ApiKey[] }) {
         {keys.map((key) => (
           <div key={key.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/5">
             <div>
-              <div className="font-medium text-white">{key.name}</div>
+              <div className="flex items-center gap-2">
+                <div className="font-medium text-white">{key.name}</div>
+                {key.organizationId && (
+                  <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/30 font-bold uppercase tracking-wider">
+                    Org
+                  </span>
+                )}
+              </div>
               <div className="text-xs text-neutral-500 flex gap-4 mt-1">
                 <span>Created: {new Date(key.createdAt).toLocaleDateString()}</span>
                 <span>Last used: {key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString() : 'Never'}</span>

@@ -58,8 +58,8 @@ export function SubscribeButton({
 
   if (clientSecret) {
     return (
-      <div className="w-full max-w-xl mx-auto py-12 bkd-shoji-enter">
-        <div className="bg-white border border-[var(--bkd-border)] p-8 md:p-10 shadow-2xl">
+      <div className="w-full max-w-xl mx-auto py-6 md:py-12 bkd-shoji-enter">
+        <div className="bg-white border border-[var(--bkd-border)] p-4 md:p-10 shadow-2xl">
           <Elements
             stripe={stripePromise}
             options={{
@@ -117,9 +117,9 @@ export function SubscribeButton({
         <span className="bg-text opacity-[0.05] group-hover:opacity-[0.08] transition-opacity duration-700">BUSHIN</span>
 
         <div className="relative z-10 flex flex-col items-center text-center space-y-8">
-          <div className="space-y-4">
-            <h2 className="bkd-h1 uppercase tracking-[0.15em]">Monthly Membership</h2>
-            <p className="bkd-mono text-[10px] opacity-40 uppercase tracking-[0.4em] font-bold">Dojo Training</p>
+          <div className="space-y-4 px-2">
+            <h2 className="bkd-h2 md:bkd-h1 uppercase tracking-[0.1em] md:tracking-[0.15em] text-balance">Monthly Membership</h2>
+            <p className="bkd-mono text-[9px] md:text-[10px] opacity-40 uppercase tracking-[0.4em] font-bold">Dojo Training</p>
           </div>
 
           <div className="bkd-card-detail bg-[var(--bkd-surface)]/50 w-full text-center py-10 relative">
@@ -134,7 +134,7 @@ export function SubscribeButton({
 
             <div className="h-px bg-[var(--bkd-border)] w-2/3 mx-auto mb-8 opacity-50" />
 
-            <div className="grid grid-cols-2 gap-6 px-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 px-4 md:px-8">
               <div className="flex items-center gap-3">
                 <span className="w-1.5 h-1.5 bg-[#BC241C]" />
                 <div className="text-left">
@@ -184,11 +184,11 @@ export function SubscribeButton({
       )}
 
       {user && (
-        <div className="flex items-center justify-center gap-4 pt-10 border-t border-[var(--bkd-border)] border-dashed bkd-shoji-enter" style={{ animationDelay: '0.4s' }}>
-          <span className="opacity-30 bkd-mono text-[9px] uppercase tracking-[0.2em] font-bold">
-            Session: <span className="text-[#BC241C]/60">{user.email}</span>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 pt-10 border-t border-[var(--bkd-border)] border-dashed bkd-shoji-enter" style={{ animationDelay: '0.4s' }}>
+          <span className="opacity-30 bkd-mono text-[9px] uppercase tracking-[0.2em] font-bold shrink-0">
+            Session: <span className="text-[#BC241C]/60 truncate max-w-[150px] inline-block align-bottom">{user.email}</span>
           </span>
-          <div className="w-px h-3 bg-[var(--bkd-border)]" />
+          <div className="hidden sm:block w-px h-3 bg-[var(--bkd-border)]" />
           <button
             onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => { window.location.href = "/"; } } })}
             className="bkd-mono text-[9px] uppercase tracking-[0.2em] font-bold opacity-30 hover:opacity-100 hover:text-[#BC241C] transition-all flex items-center gap-1.5 group/logout"

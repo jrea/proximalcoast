@@ -80,7 +80,7 @@ export function SignupForm() {
           </p>
         </div>
 
-        <div className="bg-white border border-[var(--bkd-border)] p-8 md:p-12 shadow-xl space-y-10 relative overflow-hidden">
+        <div className="bg-white border border-[var(--bkd-border)] p-6 md:p-12 shadow-xl space-y-10 relative overflow-hidden">
           {/* Vertical watermark restored */}
           <span className="absolute -right-2 top-1/2 -translate-y-1/2 writing-mode-vertical opacity-[0.02] text-7xl font-black select-none pointer-events-none">
             {mode === "login" ? "SIGN IN" : "JOIN"}
@@ -122,7 +122,7 @@ export function SignupForm() {
             <button
               type="submit"
               disabled={loading}
-              className={`bkd-btn-primary w-full py-8 text-lg shadow-lg relative overflow-hidden ${loading ? 'bkd-loading text-white/50' : ''}`}
+              className={`bkd-btn-primary w-full py-6 md:py-8 text-base md:text-lg shadow-lg relative overflow-hidden ${loading ? 'bkd-loading text-white/50' : ''}`}
             >
               <span className="relative z-10 tracking-[0.3em] font-black">
                 {loading ? (mode === "login" ? "Signing In..." : "Creating Account...") : (mode === "login" ? "SIGN IN" : "CREATE ACCOUNT")}

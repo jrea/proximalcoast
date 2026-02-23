@@ -132,11 +132,11 @@ export function ManageMembership({ initialSubscription }: { initialSubscription?
       <div className="bkd-card-header active">
         <span className={`bg-text transition-all duration-500 ${subscription?.cancelAtPeriodEnd ? 'blur-sm' : ''}`}>{subscription?.plan || 'Bushin'}</span>
 
-        <div className="text-center space-y-2 mb-10">
-          <h2 className="bkd-h1 uppercase tracking-[0.15em]">
+        <div className="text-center space-y-2 mb-6 md:mb-10">
+          <h2 className="bkd-h2 md:bkd-h1 uppercase tracking-[0.1em] md:tracking-[0.15em] text-balance">
             Monthly Membership
           </h2>
-          <p className="bkd-mono text-[10px] opacity-50 mt-2">
+          <p className="bkd-mono text-[9px] md:text-[10px] opacity-50 mt-1 md:mt-2">
             Active Status
           </p>
         </div>
@@ -155,9 +155,9 @@ export function ManageMembership({ initialSubscription }: { initialSubscription?
             <span className="bkd-mono text-[10px] opacity-50 uppercase tracking-widest">/ Month</span>
           </div>
 
-          <div className="h-px bg-[var(--bkd-border)] w-2/3 mx-auto my-6 opacity-50" />
+          <div className="h-px bg-[var(--bkd-border)] w-2/3 mx-auto my-4 md:my-6 opacity-50" />
 
-          <div className="grid grid-cols-2 gap-6 px-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 px-4 md:px-8">
             <div className="flex items-center gap-3">
               <span className="w-1.5 h-1.5 bg-[#BC241C]" />
               <div className="text-left">
@@ -174,8 +174,8 @@ export function ManageMembership({ initialSubscription }: { initialSubscription?
             </div>
           </div>
 
-          <div className="h-px bg-[var(--bkd-border)] w-2/3 mx-auto mt-8 opacity-30" />
-          <p className="bkd-mono text-[9px] opacity-40 uppercase tracking-wider text-center pt-4 pb-2">
+          <div className="h-px bg-[var(--bkd-border)] w-2/3 mx-auto mt-6 md:mt-8 opacity-30" />
+          <p className="bkd-mono text-[8px] md:text-[9px] opacity-40 uppercase tracking-wider text-center pt-4 pb-2 px-4 text-balance">
             5230 N. Virginia Dare Trail · Kitty Hawk, NC 27949
           </p>
 
@@ -242,14 +242,14 @@ export function ManageMembership({ initialSubscription }: { initialSubscription?
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-6 pt-12 border-t border-[var(--bkd-border)] border-dashed">
-        <div className="flex items-center gap-3">
-          <p className="bkd-mono text-[9px] opacity-30 uppercase tracking-[0.2em] font-bold">Authorized:</p>
-          <p className="bkd-mono text-[10px] font-bold text-[#BC241C]/60 truncate max-w-[150px]">
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 pt-10 border-t border-[var(--bkd-border)] border-dashed">
+        <div className="flex items-center gap-3 max-w-full">
+          <p className="bkd-mono text-[9px] opacity-30 uppercase tracking-[0.2em] font-bold shrink-0">Authorized:</p>
+          <p className="bkd-mono text-[9px] md:text-[10px] font-bold text-[#BC241C]/60 truncate">
             {session?.user.email}
           </p>
         </div>
-        <div className="w-px h-3 bg-[var(--bkd-border)]" />
+        <div className="hidden sm:block w-px h-3 bg-[var(--bkd-border)]" />
         <button
           onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => { window.location.href = "/"; } } })}
           className="bkd-mono text-[9px] uppercase tracking-[0.2em] font-bold opacity-30 hover:opacity-100 hover:text-[#BC241C] transition-all flex items-center gap-1.5 group/logout"

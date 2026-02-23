@@ -117,7 +117,7 @@ export default async function BKDPage({
         {/* Hero Section */}
         <header className="text-center space-y-4 w-full">
           <div className="space-y-4">
-            <h1 className="bkd-h1 uppercase tracking-[0.2em] text-[48px] md:text-[72px] font-black leading-tight text-balance">
+            <h1 className="bkd-h2 md:bkd-h1 uppercase tracking-[0.1em] md:tracking-[0.2em] text-3xl sm:text-4xl md:text-[72px] font-black leading-tight text-balance">
               Bushin Kan Dojo
             </h1>
             <p className="bkd-mono text-[10px] opacity-40 uppercase tracking-[0.5em] font-bold">Member Portal</p>
@@ -126,7 +126,7 @@ export default async function BKDPage({
         </header>
 
         {/* Action / Primary Section */}
-        <section className="w-full max-w-4xl px-4 space-y-24">
+        <section className="w-full max-w-4xl px-0 md:px-4 space-y-12 md:space-y-24">
 
           {/* Pending Documents */}
           {pendingDocuments.length > 0 && (
@@ -204,7 +204,7 @@ export default async function BKDPage({
         </section>
 
         {/* Foundation Section */}
-        <section className="w-full pt-32 space-y-20">
+        <section className="w-full pt-16 md:pt-32 space-y-12 md:space-y-20">
           <div className="flex items-center gap-4 opacity-20">
             <div className="h-px bg-[var(--bkd-ink)] flex-1" />
             <h2 className="bkd-h2 uppercase tracking-[0.3em] md:tracking-[0.6em] text-base md:text-lg font-bold whitespace-nowrap">Go-no-shin</h2>

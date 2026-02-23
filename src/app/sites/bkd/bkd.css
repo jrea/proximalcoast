@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Noto+Serif+JP:wght@200..900&family=Shippori+Mincho:wght@400;500;600;700;800&display=swap');
-
 :root {
   --bkd-surface: #F7F2E8;
   /* Washi White */
@@ -231,6 +229,12 @@
   padding: 32px;
 }
 
+@media (max-width: 768px) {
+  .bkd-card-header {
+    padding: 24px 16px;
+  }
+}
+
 .bkd-card-header.active {
   border-left-width: 16px;
 }
@@ -261,6 +265,12 @@
   padding: 32px;
   border: 1px solid var(--bkd-border);
   background-color: transparent;
+}
+
+@media (max-width: 768px) {
+  .bkd-card-detail {
+    padding: 24px 12px;
+  }
 }
 
 .bkd-card-detail img {

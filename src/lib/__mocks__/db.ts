@@ -108,10 +108,12 @@ export const FIXTURES = {
 export const prisma = {
   user: {
     findUnique: vi.fn(),
+    findUniqueOrThrow: vi.fn(),
     findFirst: vi.fn(),
     findMany: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
     delete: vi.fn(),
   },
 
@@ -144,9 +146,16 @@ export const prisma = {
 
   jerkstore_ip_tracking: {
     findUnique: vi.fn(),
+    findUniqueOrThrow: vi.fn(),
     upsert: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
     create: vi.fn(),
+  },
+
+  jerkstore_credit_purchase: {
+    create: vi.fn(),
+    findUnique: vi.fn(),
   },
 
   apiKey: {

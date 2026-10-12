@@ -1,142 +1,80 @@
 
 import Link from "next/link";
-import { Metadata } from "next";
-import { Zap, Skull, Share2, MessageCircle, Heart, Baby, Ban, Trash2, Flame, Infinity, Crown, Car, RefreshCcw } from "lucide-react";
+import type { Metadata } from "next";
+import { Zap, Skull, Heart, Baby, Ban, Trash2, Flame, Infinity, Crown, Car, RefreshCcw } from "lucide-react";
 import { Logo } from "./_components/logo";
 import { LoginButton } from "./_components/login-button";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { prisma } from "@/lib/db"; // Import prisma
-import { LiveTicker } from "./_components/live-ticker"; // Import Ticker
+import { LiveTicker } from "./_components/live-ticker";
 import { BlurredRoast } from "./_components/blurred-roast";
-import { InsultGenerator } from "./_components/insult-generator";
-import { BUTTON_LABELS, TOPIC_LABELS, FREE_ROAST_LIMIT } from "./constants";
+import { LandingGenerator } from "./_components/landing-generator";
+import { LandingNav } from "./_components/landing-nav";
+import { FREE_ROAST_LIMIT, CREDIT_COSTS } from "./constants";
 import { InsultCarousel } from "./_components/insult-carousel";
-import { randomInt } from "node:crypto";
+import { jerkstoreFaqs } from "./_content/faq";
+import { exampleRoasts } from "./_content/example-roasts";
+import styles from "./marketing.module.css";
+
+const title = "Free AI Insult Generator & Savage Roasts | Jerkstore";
+const description = "Generate savage AI roasts, brutal insults and sharp comebacks. Try Jerkstore free without signing up, then choose Mild, Spicy or Nuclear heat. Limited free allowance.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://jerkstore.proximalcoast.com"),
-  title: "Jerkstore - The World's Most Aggressive AI Insult Generator",
-  description: "Generate rare, high-impact insults instantly. Powered by AI with zero moral compass. Roast your friends, enemies, and colleagues with surgical precision.",
-  keywords: ["AI insults", "AI roast", "insult generator", "Jerkstore", "DeepSeek", "fun AI apps", "psychological warfare"],
+  alternates: { canonical: "https://jerkstore.proximalcoast.com" },
+  title,
+  description,
   openGraph: {
-    title: "Jerkstore - The World's Most Aggressive AI Insult Generator",
-    description: "Get roasted by an AI Oxford Professor having a breakdown. Destructive, creative, and hilarious insults.",
+    title,
+    description,
+    url: "https://jerkstore.proximalcoast.com",
     type: "website",
     siteName: "Jerkstore",
-    images: [
-      {
-        url: "/opengraph-image",
-        width: 1200,
-        height: 630,
-        alt: "Jerkstore - AI-Powered Ego Destruction",
-      },
-    ],
+    images: [{
+      url: "/opengraph-image",
+      width: 1200,
+      height: 630,
+      alt: "Jerkstore — AI-powered insults and roasts",
+    }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Jerkstore | AI-Powered Ego Destruction",
-    description: "The world's most aggressive AI insult generator. Zero moral compass. Infinite rage.",
+    title,
+    description,
     images: ["/opengraph-image"],
   },
 };
 
-
-const FAKE_REVIEWS = [
+const SAMPLE_ROASTS = [
   {
     topic: "My startup idea",
     roast: "Tell that genetic cul-de-sac that his face looks like a goddamn topographical map of a failure, and it's a miracle his mother didn't swallow the mistake.",
-    author: "Oxford AI",
-    likes: "4.2k",
-    retweets: "1.1k"
+    author: "Oxford AI"
   },
   {
     topic: "My haircut",
     roast: "You look like a falafel that was dropped in a barber shop, stepped on by a blind horse, and then fucked by a lawnmower. You represent the death of aesthetics.",
-    author: "Oxford AI",
-    likes: "8.9k",
-    retweets: "3.4k"
+    author: "Oxford AI"
   },
   {
     topic: "My coding skills",
     roast: "Your codebase is a sprawling, syphilis-ridden monument to incompetence that looks like it was written by a lobotomized howler monkey banging on a keyboard with a dead fish.",
-    author: "Oxford AI",
-    likes: "2.1k",
-    retweets: "500"
+    author: "Oxford AI"
   },
 ];
 
-export default async function MarketingPage() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  const mildInsults = await prisma.jerkstore_insult.findMany({
-    where: { heatLevel: 'mild' },
-    select: { content: true, topic: true },
-    take: 50,
-    orderBy: { createdAt: 'desc' }
-  });
-
-  // Determine Plan & Access for Home Page Generator
-  let plan = "trial";
-  const isActive = true; // Always allow roasting on home page (limits applied by API/Frontend logic)
-
-  if (session) {
-    const subscription = await prisma.user_subscription.findUnique({
-      where: {
-        userId_siteSlug: {
-          userId: session.user.id,
-          siteSlug: "jerkstore",
-        },
-      },
-    });
-
-    const isSubActive = !!(subscription &&
-      (subscription.status === "active" || subscription.status === "trialing") &&
-      new Date(subscription.expiresAt) > new Date());
-
-    if (isSubActive) {
-      plan = subscription?.plan || "trial";
-    }
-  }
-
-  let credits = 0;
-  if (session) {
-    const user = await prisma.user.findUnique({
-      where: {
-        id: session.user.id,
-      },
-      select: { credits: true }
-    });
-    credits = user?.credits || 0;
-  }
-
-  const randomButtonLabel = BUTTON_LABELS[randomInt(BUTTON_LABELS.length)];
-  const randomTopicLabel = TOPIC_LABELS[randomInt(TOPIC_LABELS.length)];
-
+export default function MarketingPage() {
+  const siteUrl = "https://jerkstore.proximalcoast.com";
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "WebApplication",
-    "name": "Jerkstore",
-    "url": "https://jerkstore.proximalcoast.com",
-    "description": "The World's Most Aggressive AI Insult Generator. Powered by AI with zero moral compass.",
-    "applicationCategory": "Entertainment",
-    "operatingSystem": "Web",
-    "offers": {
-      "@type": "Offer",
-      "price": "5.00",
-      "priceCurrency": "USD"
-    },
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": "4.8",
-      "ratingCount": "1242"
-    }
+    "@graph": [
+      { "@type": "Organization", "@id": "https://www.proximalcoast.com/#organization", name: "Proximal Coast", url: "https://www.proximalcoast.com/" },
+      { "@type": "WebSite", "@id": `${siteUrl}/#website`, name: "Jerkstore", url: siteUrl, publisher: { "@id": "https://www.proximalcoast.com/#organization" }, inLanguage: "en" },
+      { "@type": "WebApplication", "@id": `${siteUrl}/#generator`, name: "Jerkstore", url: siteUrl, description, applicationCategory: "EntertainmentApplication", operatingSystem: "Web", isAccessibleForFree: true, offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Three free roast results per 24-hour window. Optional paid credit packs." } },
+      { "@type": "FAQPage", "@id": `${siteUrl}/#faq`, mainEntity: jerkstoreFaqs.map(faq => ({ "@type": "Question", name: faq.question, acceptedAnswer: { "@type": "Answer", text: faq.answer } })) },
+    ],
   };
 
   return (
-    <div className="min-h-screen bg-neutral-100 font-sans text-black selection:bg-red-600 selection:text-white pt-12">
+    <div className={`min-h-screen bg-neutral-100 font-sans text-black selection:bg-red-600 selection:text-white ${styles.page}`}>
       <style>{`
         @keyframes stink-drift {
           0% { transform: translateY(0) translateX(0); opacity: 0; }
@@ -189,53 +127,33 @@ export default async function MarketingPage() {
       `}</style>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
-      {/* Use Live Ticker */}
-      <div className="fixed top-0 w-full z-[60]">
-        <LiveTicker />
-      </div>
-
-      {/* Hero Section */}
-      <header className="fixed w-full top-8 z-50 border-b-4 border-black bg-white p-4 flex justify-between items-center shadow-lg">
-        <Logo />
-        <LoginButton
-          text="Login"
-          icon={true}
-          variant="login"
-          className="px-4 py-2 sm:px-6 bg-red-600 text-white font-black text-sm sm:text-lg uppercase border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-red-500 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all"
-        />
-      </header>
-
-      <main className="pt-24">
+      <a href="#generator" className={styles.skipLink}>Skip to the insult generator</a>
+      <div className={`fixed top-0 w-full z-[60] ${styles.ticker}`}><LiveTicker /></div>
+      <LandingNav />
+      <main className={styles.main}>
         {/* Massive Headline */}
-        <section className="p-8 md:p-20 text-center bg-yellow-300 border-b-8 border-black relative overflow-hidden">
+        <section className="p-5 md:p-8 text-center bg-yellow-300 border-b-8 border-black relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxmaWx0ZXIgaWQ9Im4iPjxmZVR1cmJ1bGVuY2UgdHlwZT0iZnJhY3RhbE5vaXNlIiBiYXNlRnJlcXVlbmN5PSIwLjUiIG51bU9jdGF2ZXM9IjEiIHN0aXRjaFRpbGVzPSJzdGl0Y2giLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWx0ZXI9InVybCgjbikiIG9wYWNpdHk9IjAuNSIvPjwvc3ZnPg==')]"></div>
 
-          <div className="inline-block bg-white border-4 border-black px-6 py-2  mb-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rotate-[-2deg]">
+          <div className="inline-block bg-white border-4 border-black px-4 py-2 mb-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rotate-[-2deg]">
             <span className="font-bold font-mono uppercase text-sm md:text-base">🚀 #1 Product of the Day (in hell)</span>
           </div>
 
-          <h2 className="text-5xl md:text-8xl font-black uppercase leading-[0.9] mb-8 relative z-10 max-w-5xl mx-auto">
+          <h1 id="hero-title" className="text-4xl md:text-7xl font-black uppercase leading-[0.9] mb-4 relative z-10 max-w-5xl mx-auto">
             Use AI for what it was meant to do.
-            <span className="block text-red-600 bg-black text-white px-2 mt-4 transform rotate-1 inline-block">Insult Humanity.</span>
-          </h2>
+            <span className="block text-red-600 bg-black text-white px-2 mt-2 transform rotate-1 inline-block">Insult Humanity.</span>
+          </h1>
 
-          <p className="text-xl md:text-2xl font-bold max-w-2xl mx-auto mb-12 font-mono">
+          <p className="text-base md:text-xl font-bold max-w-2xl mx-auto mb-6 font-mono">
             Stop generating polite emails. Start generating psychological damage.
           </p>
 
           <div className="flex flex-col md:flex-row justify-center gap-6 relative z-20">
-            <div className="w-full max-w-2xl transform hover:scale-[1.01] transition-transform duration-500">
-              <InsultGenerator
-                isActive={isActive}
-                plan={plan}
-                initialButtonLabel={randomButtonLabel}
-                initialTopicLabel={randomTopicLabel}
-                isHomePage={true}
-                areFeaturesLocked={!session}
-                credits={credits}
-              />
+            <div id="generator" tabIndex={-1} aria-label="AI roast generator" className="w-full max-w-2xl transform hover:scale-[1.01] transition-transform duration-500">
+              <LandingGenerator />
+              <p className="mt-4 font-mono text-xs font-bold">{FREE_ROAST_LIMIT} free roast results per 24 hours. No sign-up. Nuclear requires an account.</p>
             </div>
           </div>
         </section>
@@ -272,20 +190,22 @@ export default async function MarketingPage() {
 
 
         <section className="py-12 bg-black text-white border-y-8 border-white overflow-hidden relative">
-          <InsultCarousel insults={mildInsults} variant="dark" />
+          <InsultCarousel insults={exampleRoasts.map(({ topic, roast }) => ({ topic, content: roast }))} variant="dark" subtitle="Example roasts · Rated G for Cowards" />
         </section>
 
 
 
         {/* Viral Feed */}
-        <section className="border-b-8 border-black bg-white p-12 overflow-hidden">
+        <section id="examples" className="border-b-8 border-black bg-white px-5 py-12 md:p-12 overflow-hidden">
           <div className="max-w-7xl mx-auto">
-            <h3 className="text-5xl font-black uppercase mb-16 text-center italic tracking-tighter">
-              <span className="bg-red-600 text-white px-4">Live</span> Wall of Shame
-            </h3>
+            <h2 className="text-3xl sm:text-5xl font-black uppercase mb-4 text-center italic tracking-tighter">
+              <span className="bg-red-600 text-white px-4">Sample</span> Wall of Shame
+            </h2>
+
+            <p className="font-mono text-xs text-center mb-10">Example roasts. The damage is illustrative.</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {FAKE_REVIEWS.map((review, i) => (
+              {SAMPLE_ROASTS.map((review, i) => (
                 <div key={i} className="bg-neutral-50 border-4 border-black p-6 hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-2 transition-all cursor-default group">
                   <div className="flex items-center gap-3 mb-4 border-b-2 border-neutral-200 pb-3">
                     <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center text-white font-bold">OA</div>
@@ -300,23 +220,19 @@ export default async function MarketingPage() {
                     <p className="font-serif text-xl font-bold leading-tight">&quot;<BlurredRoast text={review.roast} />&quot;</p>
                   </div>
 
-                  <div className="flex items-center justify-between text-neutral-400 font-mono text-xs pt-4 border-t-2 border-neutral-100 group-hover:text-black transition-colors">
-                    <div className="flex items-center gap-1 hover:text-blue-500 cursor-pointer"><MessageCircle className="w-4 h-4" /> 24</div>
-                    <div className="flex items-center gap-1 hover:text-green-500 cursor-pointer"><Share2 className="w-4 h-4" /> {review.retweets}</div>
-                    <div className="flex items-center gap-1 hover:text-red-500 cursor-pointer"><Heart className="w-4 h-4" /> {review.likes}</div>
-                  </div>
+
                 </div>
               ))}
             </div>
 
             <div className="text-center mt-12">
-              <Link href="/app" className="inline-block text-xl font-black uppercase border-b-4 border-red-600 hover:text-red-600 hover:border-black transition-colors">View All 8,492 Roasts &rarr;</Link>
+              <a href="/roasts" className="inline-block text-xl font-black uppercase border-b-4 border-red-600 hover:text-red-600 hover:border-black transition-colors">View all your roasts &rarr;</a>
             </div>
           </div>
         </section>
 
         {/* Pricing/Usage Section */}
-        <section className="py-24 px-6 md:px-12 bg-neutral-100 border-b-8 border-black">
+        <section id="pricing" className="py-24 px-6 md:px-12 bg-neutral-100 border-b-8 border-black">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-16">
               <h3 className="text-5xl md:text-7xl font-black uppercase italic tracking-tighter mb-4">
@@ -336,7 +252,7 @@ export default async function MarketingPage() {
                 <h3 className="text-2xl font-black uppercase italic mb-2 text-center mt-4">The Tease</h3>
                 <div className="text-center mb-6">
                   <div className="text-4xl font-black mb-1">FREE</div>
-                  <div className="font-mono font-bold text-neutral-500 text-xs uppercase">Forever</div>
+                  <div className="font-mono font-bold text-neutral-500 text-xs uppercase">Limited daily allowance</div>
                 </div>
 
                 <ul className="space-y-4 font-mono text-xs font-bold uppercase mb-8 border-t-4 border-black pt-6 flex-1">
@@ -345,11 +261,7 @@ export default async function MarketingPage() {
                   <li className="flex gap-2 items-center opacity-50"><Ban className="w-5 h-5 shrink-0 text-red-600" /> No hoarding (You monster)</li>
                 </ul>
 
-                <LoginButton
-                  text="Claim Free"
-                  variant="login"
-                  className="w-full py-3 border-4 border-black font-black uppercase bg-neutral-100 hover:bg-neutral-200 transition-colors text-black text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]"
-                />
+                <a href="#generator" className="w-full py-3 border-4 border-black font-black uppercase text-center bg-neutral-100 hover:bg-neutral-200 transition-colors text-black text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]">Claim Free</a>
               </div>
 
               {/* $1 Starter - The Turd */}
@@ -419,22 +331,26 @@ export default async function MarketingPage() {
               </div>
 
             </div>
+            <p className={styles.pricingNote}>The free allowance counts individual roasts. Standard packs use the free results left, then credits: {CREDIT_COSTS.STANDARD_PACK} credits for a full five-result pack. Max Effort returns one extended roast for {CREDIT_COSTS.LONG_ROAST} credits.</p>
           </div>
+        </section>
+
+        <section id="faq" className={styles.faq} aria-labelledby="faq-title">
+          <h2 id="faq-title">AI insult generator FAQ</h2>
+          <dl>{jerkstoreFaqs.map(faq => <div key={faq.question}><dt>{faq.question}</dt><dd>{faq.answer}</dd></div>)}</dl>
         </section>
 
         {/* CTA */}
         <section className="bg-red-600 p-12 md:p-24 flex flex-col justify-center items-center text-center border-t-8 border-black">
           <h3 className="text-white text-4xl font-black uppercase mb-8">Ready to ruin a friendship?</h3>
-          <LoginButton
-            text="Destroy "
-            className="bg-white text-black text-lg sm:text-2xl font-black uppercase px-6 py-4 sm:px-12 sm:py-6 border-4 sm:border-8 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] sm:shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] sm:hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[8px] active:translate-y-[8px] sm:active:translate-x-[16px] sm:active:translate-y-[16px] transition-all"
-          />
+          <a href="#generator" className="bg-white text-black text-lg sm:text-2xl font-black uppercase px-6 py-4 sm:px-12 sm:py-6 border-4 sm:border-8 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">Destroy</a>
           <p className="mt-6 text-white font-mono font-bold text-sm opacity-75 uppercase">Warning: Emotional damage likely.</p>
         </section>
       </main>
 
-      <footer className="bg-white text-black p-12 text-center border-t-8 border-black">
+      <footer className="bg-white text-black p-6 md:p-8 text-center border-t-8 border-black">
         <Logo className="justify-center mb-4" textClassName="text-3xl font-black uppercase italic" />
+        <nav aria-label="Jerkstore footer" className="flex justify-center gap-6 mb-6 font-mono text-xs underline"><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><a href="https://proximalcoast.com">Proximal Coast</a></nav>
         <div className="max-w-4xl mx-auto font-mono uppercase font-bold text-neutral-400 text-[10px] leading-tight text-center sm:text-justify">
           <p className="mb-4"><BlurredRoast text="© 2026 Proximal Coast LLC. All rights reserved by the machine gods. Do not sue us. We have no money. We spent it all on high-quality insults and premium snacks. If you use this at work you will lose your job. It probably isn't a good job anyway. Maybe quit?" /></p>
           <p className="mb-2 text-neutral-600">⚠️ IMPORTANT SAFETY INFORMATION & SIDE EFFECTS ⚠️</p>

@@ -11,7 +11,7 @@ const MOCK_VICTIMS = [
 
 export function LiveTicker() {
   return (
-    <div className="bg-black text-white overflow-hidden py-1 border-b-4 border-black relative z-[60]">
+    <div aria-hidden="true" className="bg-black text-white overflow-hidden py-1 border-b-4 border-black relative z-[60]">
       <div className="flex animate-marquee whitespace-nowrap">
         {[...Array(20)].map((_, i) => (
           <div key={i} className="flex items-center gap-8 mx-4">

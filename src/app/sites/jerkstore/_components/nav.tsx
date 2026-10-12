@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Flame, Settings, CreditCard } from "lucide-react";
+import { Flame, Settings, CreditCard, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "./logo";
 import { LogoutButton } from "./logout-button";
@@ -19,7 +19,8 @@ export function JerkstoreNav({ showSettings = true }: { showSettings?: boolean }
         <Logo />
       </div>
 
-      <nav className="flex items-center gap-2 sm:gap-4">
+      <nav className="flex items-center gap-2 sm:gap-4" aria-label="Your Jerkstore">
+        <a href="/roasts" title="Your roast history" aria-label="View all your roasts" className="p-2 hover:bg-neutral-100"><History className="w-5 h-5" aria-hidden="true" /></a>
         <Link
           href="/app"
           className={cn(

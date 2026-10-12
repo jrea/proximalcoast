@@ -15,6 +15,7 @@ import { POST } from './route';
 import { auth } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/db';
+import { guestCookieValue } from '../../_lib/guest-identity';
 
 const makeRequest = (body: object = {}) => ({
   json: vi.fn().mockResolvedValue(body),
@@ -23,6 +24,7 @@ const makeRequest = (body: object = {}) => ({
 describe('POST /api/rate-insult', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv("BETTER_AUTH_SECRET", "unit-test-only-guest-cookie-secret");
     (auth.api.getSession as any).mockResolvedValue({ user: { id: 'user_1' } });
     (prisma.jerkstore_insult.findFirst as any).mockResolvedValue({ id: 'insult_1', content: 'You suck' });
     (prisma.jerkstore_insult.update as any).mockResolvedValue({});
@@ -39,8 +41,8 @@ describe('POST /api/rate-insult', () => {
 
   it('allows guest user authenticated via cookie', async () => {
     (auth.api.getSession as any).mockResolvedValue(null);
-    (cookies as any).mockResolvedValue({ get: vi.fn().mockReturnValue({ value: 'guest_id' }) });
-    (prisma.user.findUnique as any).mockResolvedValue({ id: 'guest_id' });
+    (cookies as any).mockResolvedValue({ get: vi.fn().mockReturnValue({ value: guestCookieValue('guest_id') }) });
+    (prisma.user.findUnique as any).mockResolvedValue({ id: 'guest_id', isGuest: true });
     (prisma.jerkstore_insult.findFirst as any).mockResolvedValue({ id: 'insullt_g', content: 'Guest roast' });
 
     const res = await POST(makeRequest({ content: 'Guest roast', weight: 1 }));

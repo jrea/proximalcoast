@@ -3,6 +3,7 @@
 import { usePathname, useSearchParams } from "next/navigation"
 import { useEffect, Suspense } from "react"
 import { usePostHog } from 'posthog-js/react'
+import { analyticsUrl } from './sites/jerkstore/_lib/analytics-events'
 
 function PageView() {
   const pathname = usePathname()
@@ -16,7 +17,7 @@ function PageView() {
         url = url + `?${searchParams.toString()}`
       }
       posthog.capture('$pageview', {
-        '$current_url': url,
+        '$current_url': window.location.hostname.startsWith('jerkstore.') ? analyticsUrl(url) : url,
       })
     }
   }, [pathname, searchParams, posthog])

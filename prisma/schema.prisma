@@ -109,6 +109,7 @@ model user {
   overmake_estimate overmake_estimate[]
   apiKeys          ApiKey[]
   bkd_documents    bkd_document[]
+  jerkstore_credit_purchases jerkstore_credit_purchase[]
   preferences      Json?
   credits          Int      @default(3)
   phone            String?
@@ -178,6 +179,18 @@ model jerkstore_insult {
   createdAt        DateTime @default(now()) @db.Timestamp(6)
   weight           Int      @default(0)
   safe_insult      jerkstore_insult_safe[]
+
+  @@schema("main")
+}
+
+// One immutable receipt per new Jerkstore credit purchase. Checkout and
+// webhook fulfillment use the same ID, so retries cannot add credits twice.
+model jerkstore_credit_purchase {
+  paymentIntentId String @id
+  userId String
+  credits Int
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  user user @relation(fields: [userId], references: [id], onDelete: NoAction)
 
   @@schema("main")
 }

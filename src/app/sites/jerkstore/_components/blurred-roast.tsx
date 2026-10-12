@@ -1,12 +1,12 @@
 "use client";
 
-import { usePostHog } from 'posthog-js/react';
+import { useJerkstoreAnalytics } from "../_lib/analytics-client";
 import Link from "next/link";
 
 const BAD_WORDS = ["goddamn", "fucked", "syphilis-ridden", "syphilitic", "lobotomized"];
 
 export function BlurredRoast({ text }: { text: string }) {
-  const posthog = usePostHog();
+  const posthog = useJerkstoreAnalytics();
   const words = text.split(/(\s+)/);
   return (
     <>
@@ -18,7 +18,7 @@ export function BlurredRoast({ text }: { text: string }) {
               key={i}
               href="/billing"
               className="inline-block cursor-pointer select-none bg-neutral-200 px-1 rounded mx-0.5 hover:bg-red-100 border-b-2 border-transparent hover:border-red-600 transition-all group/word"
-              title="Click to unlock with Pro"
+              title="View credit options"
               onClick={() => posthog?.capture('blurred_roast_click', { word: cleanWord })}
             >
               <span>{word[0]}</span>

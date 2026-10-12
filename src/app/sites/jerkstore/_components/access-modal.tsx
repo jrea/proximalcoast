@@ -5,7 +5,7 @@ import { ShieldAlert, X } from "lucide-react";
 import { LoginButton } from "./login-button";
 import { createPortal } from "react-dom";
 
-import { usePostHog } from 'posthog-js/react';
+import { useJerkstoreAnalytics } from "../_lib/analytics-client";
 
 export function AccessModal({
   onClose,
@@ -20,7 +20,7 @@ export function AccessModal({
   title?: string,
   description?: string
 }) {
-  const posthog = usePostHog();
+  const posthog = useJerkstoreAnalytics();
   void isActive;
   void onSuccess;
   const [mounted, setMounted] = useState(false);

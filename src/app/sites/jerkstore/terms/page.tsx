@@ -1,16 +1,37 @@
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { Logo } from "../_components/logo";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Terms | Jerkstore",
+  description: "Terms for using the Jerkstore AI roast generator.",
+  alternates: { canonical: "https://jerkstore.proximalcoast.com/terms" },
+  openGraph: {
+    title: "Terms | Jerkstore",
+    description: "Terms for using the Jerkstore AI roast generator.",
+    type: "website",
+    url: "https://jerkstore.proximalcoast.com/terms",
+    siteName: "Jerkstore",
+    images: ["https://jerkstore.proximalcoast.com/opengraph-image"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Terms | Jerkstore",
+    description: "Terms for using the Jerkstore AI roast generator.",
+    images: ["https://jerkstore.proximalcoast.com/opengraph-image"],
+  },
+};
 
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-neutral-100 font-sans text-black selection:bg-red-600 selection:text-white">
       {/* Header */}
       <header className="fixed w-full top-0 z-50 border-b-4 border-black bg-white p-4 flex justify-between items-center shadow-lg">
-        <Link href="/sites/jerkstore" className="group">
+        <Link href="/" className="group" aria-label="Jerkstore home">
           <Logo iconClassName="w-8 h-8 group-hover:scale-110 transition-transform" />
         </Link>
-        <Link href="/sites/jerkstore" className="px-4 py-2 bg-black text-white font-bold uppercase hover:bg-neutral-800 transition-colors border-2 border-neutral-600">
+        <Link href="/" className="px-4 py-2 bg-black text-white font-bold uppercase hover:bg-neutral-800 transition-colors border-2 border-neutral-600">
           Back to Safety
         </Link>
       </header>
@@ -68,8 +89,8 @@ export default function TermsPage() {
 
               <h3>5. Data Collection</h3>
               <p>
-                We collect nothing locally other than a flag to know you passed the age gate.
-                We don&apos;t want your data. We barely want you here.
+                We store roast topics and results for your history, use cookies for guest access and sign-in, and keep usage records for the free allowance. AI providers process roast requests, Stripe handles payments, and product analytics help us understand what works.
+                <Link href="/privacy">Read how your roast data works</Link> before submitting private details.
               </p>
 
               <div className="border-t-4 border-black mt-12 pt-8 text-center">

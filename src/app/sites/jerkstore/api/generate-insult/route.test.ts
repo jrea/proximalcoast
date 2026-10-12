@@ -1,379 +1,164 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { POST } from './route';
-import { prisma } from '@/lib/db';
-import { FIXTURES } from '@/lib/__mocks__/db';
-import { auth } from '@/lib/auth';
-import { cookies, headers } from 'next/headers';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { POST } from "./route";
+import { prisma } from "@/lib/__mocks__/db";
+import { auth } from "@/lib/auth";
+import { generateText, streamText } from "ai";
+import { moderateText } from "../../_lib/openai";
+import { GenerationLimitError, reserveGeneration, refundGeneration } from "../../_lib/generation-quota";
+import { guestCookieValue } from "../../_lib/guest-identity";
 
-// Use the central DB mock — no inline factory
-vi.mock('@/lib/db');
+const { tasks, cookieGet } = vi.hoisted(() => ({ tasks: [] as Array<() => Promise<void>>, cookieGet: vi.fn() }));
+vi.mock("@/lib/db");
+vi.mock("@/lib/auth", () => ({ auth: { api: { getSession: vi.fn() } } }));
+vi.mock("next/headers", () => ({ cookies: vi.fn(async () => ({ get: cookieGet })) }));
+vi.mock("next/server", () => ({ after: (task: () => Promise<void>) => tasks.push(task) }));
+vi.mock("ai", async (original) => ({ ...await original<typeof import("ai")>(), generateText: vi.fn(), streamText: vi.fn() }));
+vi.mock("../../_lib/ai", () => ({ deepseekV3: { modelId: "deepseek-chat" }, deepseekR1: { modelId: "deepseek-reasoner" } }));
+vi.mock("../../_lib/openai", () => ({ moderateText: vi.fn() }));
+vi.mock("../../_lib/generation-quota", async (original) => ({ ...await original<typeof import("../../_lib/generation-quota")>(), reserveGeneration: vi.fn(), refundGeneration: vi.fn() }));
 
-vi.mock('@/lib/auth', () => ({
-  auth: {
-    api: {
-      getSession: vi.fn(),
-    },
-  },
-}));
+function request(body: unknown = { topic: "My browser tabs" }, options: { stream?: boolean; authorization?: string } = {}) {
+  return new Request(`http://jerkstore.localhost/api/generate-insult?stream=${options.stream !== false}`, { method: "POST", headers: { "Content-Type": "application/json", ...(options.authorization ? { authorization: options.authorization } : {}) }, body: JSON.stringify(body) });
+}
+function resultFor(options: { system?: unknown }) {
+  const count = Number(/Generate exactly (\d+)/.exec(typeof options.system === "string" ? options.system : "")?.[1] ?? 5);
+  return { output: { roasts: Array.from({ length: count }, (_, i) => `Roast ${i + 1}`) }, usage: { inputTokens: 10, outputTokens: 12 } };
+}
 
-vi.mock('next/headers', () => ({
-  headers: vi.fn(),
-  cookies: vi.fn(),
-}));
-
-// Mock AI SDK
-vi.mock('ai', async (importOriginal) => {
-  return {
-    ...await importOriginal<typeof import('ai')>(),
-    generateText: vi.fn().mockResolvedValue({
-      text: "Mocked Roast",
-      usage: { inputTokens: 10, outputTokens: 10 },
-      output: { roasts: ["Roast 1", "Roast 2", "Roast 3", "Roast 4", "Roast 5"] }
-    }),
-    streamText: vi.fn().mockReturnValue({
-      toTextStreamResponse: vi.fn().mockReturnValue(new Response("Streamed Response")),
-      output: Promise.resolve({ roasts: ["Roast 1", "Roast 2", "Roast 3", "Roast 4", "Roast 5"] }),
-      totalUsage: Promise.resolve({ inputTokens: 10, outputTokens: 10 })
-    })
-  }
+beforeEach(() => {
+  vi.resetAllMocks();
+  vi.stubEnv("BETTER_AUTH_SECRET", "unit-test-only-guest-cookie-secret");
+  tasks.length = 0;
+  vi.mocked(auth.api.getSession).mockResolvedValue({ user: { id: "owner" } } as never);
+  vi.mocked(moderateText).mockResolvedValue(false);
+  prisma.jerkstore_insult.findMany.mockResolvedValue([]);
+  prisma.$transaction.mockImplementation(async (callback) => callback(prisma));
+  cookieGet.mockReturnValue(undefined);
+  vi.mocked(reserveGeneration).mockImplementation(async ({ userId, isGuest, isEmail }) => ({ userId, windows: [], resultCount: isEmail ? 1 : isGuest ? 3 : 5, freeResults: isGuest ? 3 : 0, paidCredits: isGuest ? 0 : isEmail ? 2 : 5 }));
+  vi.mocked(refundGeneration).mockResolvedValue(undefined);
+  vi.mocked(generateText).mockImplementation(async (options) => resultFor(options) as never);
+  vi.mocked(streamText).mockImplementation((options) => {
+    const result = resultFor(options);
+    return { output: Promise.resolve(result.output), totalUsage: Promise.resolve(result.usage), textStream: (async function* () { const text = JSON.stringify(result.output); yield text.slice(0, -1); yield text.slice(-1); })() } as never;
+  });
 });
 
-// Mock deepseek libs
-vi.mock('../../_lib/ai', () => ({
-  deepseekV3: { modelId: 'deepseek-v3' },
-  deepseekR1: { modelId: 'deepseek-r1' }
-}));
-
-import { FREE_ROAST_LIMIT } from '../../constants';
-
-// Mock OpenAI moderation
-vi.mock('../../_lib/openai', () => ({
-  moderateText: vi.fn().mockResolvedValue(false)
-}));
-
-describe('POST /api/generate-insult', () => {
-  const reqMock = (body = {}, headersMap: Record<string, string> = {}) => ({
-    json: vi.fn().mockResolvedValue(body),
-    headers: {
-      get: (key: string) => headersMap[key.toLowerCase()] || null
-    },
-    url: 'http://localhost/api/generate-insult?stream=true'
-  } as unknown as Request);
-
-  const mockHeaders = new Headers();
-  const mockCookies = { get: vi.fn() };
-
-  // ... (unchanged lines)
-
-  it('Modes: Reasoning Mode should use R1 model', async () => {
-    (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
-    // Must be savage to use reasoning
-    (prisma.user_subscription.findUnique as any).mockResolvedValue({
-      plan: 'savage',
-      status: 'active',
-      expiresAt: new Date(Date.now() + 10000000)
-    });
-
-    const { streamText, generateText } = await import('ai');
-
-    const req = reqMock({ topic: 't', useReasoning: true });
-
-    await POST(req);
-
-    expect(streamText).toHaveBeenCalledWith(expect.objectContaining({
-      model: expect.objectContaining({ modelId: 'deepseek-r1' })
-    }));
-    expect(generateText).not.toHaveBeenCalled();
-  });
-
-  beforeEach(async () => {
-    vi.clearAllMocks();
-    (headers as any).mockReturnValue(mockHeaders);
-    (cookies as any).mockResolvedValue(mockCookies);
-
-    // Reset moderation to false
-    const { moderateText } = await import('../../_lib/openai');
-    (moderateText as any).mockResolvedValue(false);
-
-    // Default mock returns — grounded in real bkd@bkd.com fixture shape
-    (prisma.user.create as any).mockResolvedValue({ ...FIXTURES.guestUser, id: 'guest_created', username: 'guest_created' });
-    (prisma.jerkstore_insult.findMany as any).mockResolvedValue([]);
-    (prisma.jerkstore_insult.count as any).mockResolvedValue(0);
-    (prisma.jerkstore_ip_tracking.findUnique as any).mockResolvedValue(null);
-    (prisma.user_subscription.findUnique as any).mockResolvedValue(null);
-
-    // Default to plenty of credits so rate-limit tests focus on logic, not credits
-    (prisma.user.findUnique as any).mockResolvedValue({ ...FIXTURES.user, credits: 100 });
-  });
-
-  // --- Authentication Tests ---
-
-  it('Auth: Should authenticate via API Key', async () => {
-    // Mock API Key lookup
-    (prisma.apiKey.findUnique as any).mockResolvedValue({
-      userId: 'api_user',
-      user: { name: 'Bot', email: 'bot@p.com', image: null },
-      id: 'key_id'
-    });
-
-    // Auth via header
-    const req = reqMock({ topic: 'test' }, { 'authorization': 'Bearer valid_key' });
-    const res = await POST(req);
-
-    expect(prisma.apiKey.findUnique).toHaveBeenCalled();
-    expect(prisma.apiKey.update).toHaveBeenCalledWith({ where: { id: 'key_id' }, data: expect.anything() });
-    expect(res.status).toBe(200);
-  });
-
-  it('Auth: Should handle missing API Key and fallback to Session', async () => {
-    (auth.api.getSession as any).mockResolvedValue({ user: { id: 'session_user' } });
-
-    const req = reqMock({ topic: 'test' });
-    const res = await POST(req);
-
-    expect(prisma.apiKey.findUnique).not.toHaveBeenCalled();
-    expect(auth.api.getSession).toHaveBeenCalled();
-    expect(res.status).toBe(200);
-  });
-
-  it('Auth: Should create new Guest if no Auth', async () => {
-    (auth.api.getSession as any).mockResolvedValue(null);
-    mockCookies.get.mockReturnValue(null); // No guest cookie
-
-    // Mock user creation success
-    (prisma.user.create as any).mockResolvedValue({ id: 'new_guest_id', username: 'NewGuest' });
-
-    const req = reqMock({ topic: 'test' });
-    const res = await POST(req);
-
-    expect(prisma.user.create).toHaveBeenCalled();
-    expect(res.status).toBe(200);
-    // Check for Set-Cookie header implies we sent back the guest ID
-    // Note: in NextJS route handlers we manipulate response headers. 
-    // The test mock for streamText helper returns a Response, we'd need to verify it was called with headers.
-    // However, our mock of streamText returns a simple Response object.
-  });
-
-  it('Auth: Should reuse existing Guest Cookie', async () => {
-    (auth.api.getSession as any).mockResolvedValue(null);
-    mockCookies.get.mockReturnValue({ value: 'existing_guest_id' });
-    (prisma.user.findUnique as any).mockResolvedValue({ id: 'existing_guest_id', username: 'OldGuest' });
-
-    const req = reqMock({ topic: 'test' });
-    await POST(req);
-
+describe("Jerkstore generation boundary", () => {
+  it.each([null, [], {}, { topic: "  " }, { topic: 23 }, { topic: "x".repeat(1001) }, { topic: "test", isEmail: "true" }, { topic: "test", heatLevel: "typo" }, { topic: "test", language: "not-a-language" }, { topic: "test", username: "bad;handle" }])("rejects invalid input before auth, DB, quotas or AI: %j", async (body) => {
+    expect((await POST(request(body))).status).toBe(400);
+    expect(auth.api.getSession).not.toHaveBeenCalled();
     expect(prisma.user.create).not.toHaveBeenCalled();
-    expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { id: 'existing_guest_id' } });
+    expect(reserveGeneration).not.toHaveBeenCalled();
+    expect(streamText).not.toHaveBeenCalled();
   });
-
-  it('Auth: Should fail if Guest creation fails (Handle taken)', async () => {
-    (auth.api.getSession as any).mockResolvedValue(null);
-    mockCookies.get.mockReturnValue(null);
-
-    // Mock Create fail P2002
-    (prisma.user.create as any).mockRejectedValue({ code: 'P2002' });
-
-    const req = reqMock({ topic: 'test' });
-    const res = await POST(req);
-
-    expect(res.status).toBe(409);
-    expect(await res.text()).toContain("already taken");
+  it("returns400 for malformed JSON", async () => {
+    expect((await POST(new Request("http://local/api", { method: "POST", body: "{" }))).status).toBe(400);
   });
-
-  it('Auth: Should fail 500 on generic Guest creation error', async () => {
-    (auth.api.getSession as any).mockResolvedValue(null);
-    mockCookies.get.mockReturnValue(null);
-    (prisma.user.create as any).mockRejectedValue(new Error("DB Dead"));
-
-    const req = reqMock({ topic: 'test' });
-    const res = await POST(req);
-
-    expect(res.status).toBe(500);
+  it("accepts the legacy object/prompt body without changing the user's choices", async () => {
+    const response = await POST(request({ object: { prompt: "My 47 tabs", heatLevel: "spicy", language: "Spanish" } }, { stream: false }));
+    expect(response.status).toBe(200);
+    expect(generateText).toHaveBeenCalledWith(expect.objectContaining({ prompt: "<user_input>My 47 tabs</user_input>" }));
   });
-
-  it('Auth: Should return 401 if UserId cannot be resolved (Paranoia check)', async () => {
-    // This covers lines 141-143. Hard to reach given logic, but if Guest Logic failed silently or somehow didn't return ID.
-    // We can simulate by having guest cookie exist but DB return null (deleted user), AND create logic skipped? 
-    // Actually logic is: if cookie, try find. If no user, it falls through to 'if (!userId) create'. 
-    // To trigger 401, we need !session AND !userId after guest logic.
-    // Currently guest logic always creates unless error.
-    // So this might be unreachable unless we mock `generateJerkName` to empty or something weird?
-    // Actually, if we just FORCE `userId` to remain null effectively. 
-    // Let's assume auth returns null, cookie is null, and user.create returns null/undefined (violates types but logic handles it?).
-    // Wait, user.create throws on fail. 
-    // So logical 401 is only if variable is somehow null.
-    // Maybe if guest cookie exists but findUnique returns null...
-    // The code:
-    // if (guestUser) { userId = ... }
-    // if (!userId) { create... }
-    // So it self-heals. It's really hard to hit 401 unless Create returns success but no ID? 
-    // Let's mock create returning empty object?
-    (auth.api.getSession as any).mockResolvedValue(null);
-    mockCookies.get.mockReturnValue(null);
-    (prisma.user.create as any).mockResolvedValue({}); // No ID
-
-    const req = reqMock({ topic: 'test' });
-    const res = await POST(req);
-    // userId will be undefined
-    expect(res.status).toBe(401);
+  it("reads current SDK output, returns JSON and persists the bot's five results", async () => {
+    const response = await POST(request(undefined, { stream: false }));
+    expect(await response.json()).toEqual({ roasts: ["Roast 1", "Roast 2", "Roast 3", "Roast 4", "Roast 5"] });
+    expect(prisma.jerkstore_insult.create).toHaveBeenCalledTimes(5);
+    expect(tasks).toHaveLength(0);
+    expect(response.headers.get("cache-control")).toContain("no-store");
   });
-
-
-  // --- Logic & Validation Tests ---
-
-  it('Validation: Should flag moderated content', async () => {
-    (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
-    const { moderateText } = await import('../../_lib/openai');
-    (moderateText as any).mockResolvedValue(true); // Flagged
-
-    const req = reqMock({ topic: 'bad stuff' });
-    const res = await POST(req);
-
-    expect(res.status).toBe(400);
-    expect(await res.text()).toContain("pathetic");
+  it("keeps streaming persistence alive using after", async () => {
+    const response = await POST(request());
+    expect(await response.json()).toHaveProperty("roasts");
+    expect(prisma.jerkstore_insult.create).toHaveBeenCalledTimes(5);
+    expect(tasks).toHaveLength(1);
+    await tasks[0]();
+    expect(prisma.jerkstore_insult.create).toHaveBeenCalledTimes(5);
+    expect(refundGeneration).not.toHaveBeenCalled();
   });
-
-  // --- Credit & Feature Logic Tests ---
-
-  it('Long Roast: Should FAIL if user has insufficient credits (< 2)', async () => {
-    (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
-    (prisma.user.findUnique as any).mockResolvedValue({ credits: 1 }); // Less than 2
-
-    const req = reqMock({ topic: 'test', isEmail: true });
-    const res = await POST(req);
-
-    expect(res.status).toBe(429);
-    expect(await res.text()).toContain("requires 2 credits");
+  it("returns exactly one extended roast without charging a second time during save", async () => {
+    const response = await POST(request({ topic: "My coffee order", isEmail: true }, { stream: false }));
+    expect(await response.json()).toEqual({ roasts: ["Roast 1"] });
+    expect(reserveGeneration).toHaveBeenCalledWith(expect.objectContaining({ isEmail: true }));
+    expect(prisma.user.update).not.toHaveBeenCalled();
   });
-
-  it('Long Roast: Should SUCCEED if user has sufficient credits (>= 2)', async () => {
-    (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
-    (prisma.user.findUnique as any).mockResolvedValue({ credits: 2 }); // Exactly 2
-
-    const req = reqMock({ topic: 'test', isEmail: true });
-    const res = await POST(req);
-
-    expect(res.status).toBe(200);
-    // Wait for async operations (fire-and-forget DB update)
-    await new Promise(resolve => setTimeout(resolve, 10));
-    expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'u1' },
-      data: { credits: { decrement: 2 } }
-    }));
+  it("uses the reasoning model only when explicitly requested", async () => {
+    await POST(request({ topic: "My meetings", useReasoning: true }));
+    expect(streamText).toHaveBeenCalledWith(expect.objectContaining({ model: { modelId: "deepseek-reasoner" } }));
   });
-
-  it('Standard Roast: Should FAIL if usage < FREE_ROAST_LIMIT but user has 0 credits', async () => {
-    (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
-    const usage = FREE_ROAST_LIMIT - 1;
-    (prisma.jerkstore_insult.count as any).mockResolvedValue(usage); // 1 free slot left
-    (prisma.user.findUnique as any).mockResolvedValue({ credits: 0 });
-
-    const req = reqMock({ topic: 'test', isEmail: false });
-    const res = await POST(req);
-
-    expect(res.status).toBe(429);
-    const expectedPaid = 5 - (FREE_ROAST_LIMIT - usage);
-    expect(await res.text()).toContain(`requires ${expectedPaid} credits`);
+  it("does not downgrade an invalid API key into a guest request", async () => {
+    prisma.apiKey.findUnique.mockResolvedValue(null);
+    expect((await POST(request(undefined, { authorization: "Bearer invalid" }))).status).toBe(401);
+    expect(auth.api.getSession).not.toHaveBeenCalled();
+    expect(prisma.user.create).not.toHaveBeenCalled();
   });
-
-  it('Standard Roast: Should SUCCEED if usage < FREE_ROAST_LIMIT and user has sufficient credits', async () => {
-    (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
-    (prisma.jerkstore_insult.count as any).mockResolvedValue(0); // Usage 0
-    const expectedPaid = 5 - FREE_ROAST_LIMIT;
-    (prisma.user.findUnique as any).mockResolvedValue({ credits: expectedPaid });
-
-    const req = reqMock({ topic: 'test', isEmail: false });
-    const res = await POST(req);
-
-    expect(res.status).toBe(200);
-    // Paid = 5 - FREE_ROAST_LIMIT
-    await new Promise(resolve => setTimeout(resolve, 10));
-    expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'u1' },
-      data: { credits: { decrement: expectedPaid } }
-    }));
+  it("accepts a valid key and uses its owner", async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({ id: "key", userId: "bot-owner" });
+    expect((await POST(request(undefined, { authorization: "Bearer valid" }))).status).toBe(200);
+    expect(reserveGeneration).toHaveBeenCalledWith(expect.objectContaining({ userId: "bot-owner", isGuest: false }));
   });
-
-  it(`Standard Roast: Should FAIL if usage >= FREE_ROAST_LIMIT and insufficient credits (< 5)`, async () => {
-    (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
-    (prisma.jerkstore_insult.count as any).mockResolvedValue(FREE_ROAST_LIMIT); // Free limit reached
-    (prisma.user.findUnique as any).mockResolvedValue({ credits: 4 }); // Need 5, have 4
-
-    const req = reqMock({ topic: 'test', isEmail: false });
-    const res = await POST(req);
-
-    expect(res.status).toBe(429);
-    expect(await res.text()).toContain("requires 5 credits");
+  it("issues a signed HttpOnly guest cookie for both streaming and JSON responses", async () => {
+    vi.mocked(auth.api.getSession).mockResolvedValue(null);
+    const response = await POST(request(undefined, { stream: false }));
+    expect((await response.json()).roasts).toHaveLength(3);
+    expect(response.headers.get("set-cookie")).toMatch(/x-jerkstore-guest-id=[\w-]+\.[\w-]+; Path=\/; HttpOnly/);
+    expect(prisma.user.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ isGuest: true }) }));
   });
-
-  it(`Standard Roast: Should SUCCEED if usage >= FREE_ROAST_LIMIT and sufficient credits (>= 5)`, async () => {
-    (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
-    (prisma.jerkstore_insult.count as any).mockResolvedValue(FREE_ROAST_LIMIT); // Free limit reached
-    (prisma.user.findUnique as any).mockResolvedValue({ credits: 10 }); // Have enough
-
-    const req = reqMock({ topic: 'test', isEmail: false });
-    const res = await POST(req);
-
-    expect(res.status).toBe(200);
-    // Usage FREE_ROAST_LIMIT (0 free slots). Pack 5. Paid = 5.
-    await new Promise(resolve => setTimeout(resolve, 10));
-    expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'u1' },
-      data: { credits: { decrement: 5 } }
-    }));
+  it("reuses only a verified guest row", async () => {
+    vi.mocked(auth.api.getSession).mockResolvedValue(null);
+    cookieGet.mockReturnValue({ value: guestCookieValue("guest-owner") });
+    prisma.user.findUnique.mockResolvedValue({ id: "guest-owner", isGuest: true });
+    await POST(request());
+    expect(prisma.user.create).not.toHaveBeenCalled();
+    expect(reserveGeneration).toHaveBeenCalledWith(expect.objectContaining({ userId: "guest-owner" }));
   });
-
-  // --- Modes & Models ---
-
-  it('Modes: Streaming Mode should call streamText', async () => {
-    (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
-    (prisma.user.findUnique as any).mockResolvedValue({ credits: 100 });
-    const { streamText, generateText } = await import('ai');
-
-    const req = {
-      json: vi.fn().mockResolvedValue({ topic: 't' }),
-      headers: { get: vi.fn() },
-      url: 'http://loc/api?stream=true'
-    } as unknown as Request;
-
-    await POST(req);
-    expect(streamText).toHaveBeenCalled();
-    expect(generateText).not.toHaveBeenCalled();
+  it("does not let a guest cookie claim a registered user's identity", async () => {
+    vi.mocked(auth.api.getSession).mockResolvedValue(null);
+    cookieGet.mockReturnValue({ value: guestCookieValue("registered-owner") });
+    prisma.user.findUnique.mockResolvedValue({ id: "registered-owner", isGuest: false });
+    await POST(request());
+    expect(reserveGeneration).toHaveBeenCalledWith(expect.objectContaining({ userId: expect.not.stringMatching(/^registered-owner$/), isGuest: true }));
+    expect(prisma.user.create).toHaveBeenCalled();
   });
-
-  it('Modes: Reasoning Mode should use R1 model (Allowed for everyone)', async () => {
-    (auth.api.getSession as any).mockResolvedValue({ user: { id: 'u1' } });
-    (prisma.user.findUnique as any).mockResolvedValue({ credits: 100 });
-
-    // Reasoning allowed for everyone now
-    const { streamText } = await import('ai');
-
-    const req = reqMock({ topic: 't', useReasoning: true });
-
-    await POST(req);
-
-    expect(streamText).toHaveBeenCalledWith(expect.objectContaining({
-      model: expect.objectContaining({ modelId: 'deepseek-r1' })
-    }));
+  it.each([{ heatLevel: "nuclear" }, { isEmail: true }, { language: "Pirate" }, { useReasoning: true }])("enforces guest feature locks at the API: %j", async (options) => {
+    vi.mocked(auth.api.getSession).mockResolvedValue(null);
+    expect((await POST(request({ topic: "My tabs", ...options }))).status).toBe(403);
+    expect(prisma.user.create).not.toHaveBeenCalled();
+    expect(streamText).not.toHaveBeenCalled();
   });
-
-  it(`Rate Limit: Guest < FREE_ROAST_LIMIT (Lifetime) -> OK`, async () => {
-    (auth.api.getSession as any).mockResolvedValue(null);
-    (prisma.jerkstore_ip_tracking.findUnique as any).mockResolvedValue({ count: FREE_ROAST_LIMIT - 1, updatedAt: new Date() });
-    const res = await POST(reqMock({ topic: 'test' }));
-    expect(res.status).toBe(200);
-
-    // Guest usage should be incremented
-    await new Promise(resolve => setTimeout(resolve, 10));
-    expect(prisma.jerkstore_ip_tracking.upsert).toHaveBeenCalledWith(expect.objectContaining({
-      update: { count: { increment: 5 } }
-    }));
+  it("rejects flagged input without reserving anything", async () => {
+    vi.mocked(moderateText).mockResolvedValue(true);
+    expect((await POST(request())).status).toBe(400);
+    expect(reserveGeneration).not.toHaveBeenCalled();
   });
-
-  it(`Rate Limit: Guest >= FREE_ROAST_LIMIT (Lifetime) -> BLOCK`, async () => {
-    (auth.api.getSession as any).mockResolvedValue(null);
-    (prisma.jerkstore_ip_tracking.findUnique as any).mockResolvedValue({ count: FREE_ROAST_LIMIT, updatedAt: new Date() });
-    const res = await POST(reqMock({ topic: 'test' }));
-    expect(res.status).toBe(429);
+  it("returns503 on moderation/provider setup failures and refunds a reservation only if one exists", async () => {
+    vi.mocked(moderateText).mockRejectedValueOnce(new Error("offline"));
+    expect((await POST(request())).status).toBe(503);
+    expect(refundGeneration).not.toHaveBeenCalled();
+    vi.mocked(generateText).mockRejectedValueOnce(new Error("provider offline"));
+    expect((await POST(request(undefined, { stream: false }))).status).toBe(503);
+    expect(refundGeneration).toHaveBeenCalledTimes(1);
+  });
+  it("refunds failed/invalid output and failed persistence", async () => {
+    vi.mocked(generateText).mockResolvedValueOnce({ output: { roasts: [] }, usage: {} } as never);
+    expect((await POST(request(undefined, { stream: false }))).status).toBe(503);
+    expect(refundGeneration).toHaveBeenCalledTimes(1);
+    prisma.jerkstore_insult.create.mockRejectedValueOnce(new Error("db offline"));
+    expect((await POST(request(undefined, { stream: false }))).status).toBe(503);
+    expect(refundGeneration).toHaveBeenCalledTimes(2);
+  });
+  it("refunds a rejected stream in the retained completion task", async () => {
+    const rejected = Promise.reject(new Error("provider interrupted"));
+    rejected.catch(() => {});
+    vi.mocked(streamText).mockReturnValueOnce({ output: rejected, totalUsage: Promise.resolve({}), textStream: (async function* () { yield "partial"; })() } as never);
+    await POST(request());
+    await tasks[0]();
+    expect(refundGeneration).toHaveBeenCalledTimes(1);
+  });
+  it("returns rate-limit status and retry header without invoking a model", async () => {
+    vi.mocked(reserveGeneration).mockRejectedValueOnce(new GenerationLimitError("Free allowance used", 429, 120));
+    const response = await POST(request());
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("120");
+    expect(streamText).not.toHaveBeenCalled();
   });
 });

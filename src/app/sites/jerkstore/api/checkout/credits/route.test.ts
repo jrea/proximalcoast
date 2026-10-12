@@ -41,6 +41,8 @@ const USER = FIXTURES.user;
 describe('POST /api/checkout/credits (Jerkstore Credits Purchase)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (prisma.$transaction as any).mockImplementation(async (callback: any) => callback(prisma));
+    (prisma.jerkstore_credit_purchase.create as any).mockResolvedValue({});
 
     (auth.api.getSession as any).mockResolvedValue({ user: { id: USER.id } });
     (prisma.user.findUnique as any).mockResolvedValue(USER);
@@ -90,7 +92,7 @@ describe('POST /api/checkout/credits (Jerkstore Credits Purchase)', () => {
       email: USER.email,
       name: USER.name,
       metadata: { userId: USER.id },
-    }));
+    }), expect.objectContaining({ idempotencyKey: expect.any(String) }));
     expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
       where: { id: USER.id },
       data: { stripeCustomerId: 'cus_new' },
@@ -143,7 +145,7 @@ describe('POST /api/checkout/credits (Jerkstore Credits Purchase)', () => {
         userId: USER.id,
         siteSlug: 'jerkstore',
       }),
-    }));
+    }), expect.objectContaining({ idempotencyKey: expect.any(String) }));
   });
 
   // --- Auto-Charge Failure → Fallback ---
@@ -155,7 +157,7 @@ describe('POST /api/checkout/credits (Jerkstore Credits Purchase)', () => {
     });
     // First call (auto-charge) fails; second call (fallback) succeeds
     mockStripe.paymentIntents.create
-      .mockRejectedValueOnce(new Error('card_declined'))
+      .mockRejectedValueOnce(Object.assign(new Error('card_declined'), { type: 'StripeCardError' }))
       .mockResolvedValueOnce({ client_secret: 'pi_fallback_secret', id: 'pi_fallback' });
 
     const res = await POST(makeRequest({ packageId: 'pkg_basic' }));
@@ -217,10 +219,10 @@ describe('POST /api/checkout/credits (Jerkstore Credits Purchase)', () => {
     expect(callArgs.metadata?.creditsAmount).toBe(elite.credits.toString());
   });
 
-  it('falls back to pkg_basic for unknown packageId', async () => {
-    await POST(makeRequest({ packageId: 'pkg_nonexistent' }));
-    const callArgs = mockStripe.paymentIntents.create.mock.calls[0][0];
-    expect(callArgs.amount).toBe(CREDIT_PACKAGES[0].amount);
+  it('rejects unknown packageId without contacting Stripe', async () => {
+    const response = await POST(makeRequest({ packageId: 'pkg_nonexistent' }));
+    expect(response.status).toBe(400);
+    expect(mockStripe.paymentIntents.create).not.toHaveBeenCalled();
   });
 
   // --- Critical: Webhook safety — the fallback PI must NOT have source=immediate ---
@@ -232,5 +234,68 @@ describe('POST /api/checkout/credits (Jerkstore Credits Purchase)', () => {
     const callArgs = mockStripe.paymentIntents.create.mock.calls[0][0];
     // Webhook will use this to know how many credits to add
     expect(callArgs.metadata.creditsAmount).toBe(pro.credits.toString());
+  });
+
+  it('does not create a second payment when a saved-card request has an uncertain network failure', async () => {
+    mockStripe.customers.retrieve.mockResolvedValue({ invoice_settings: { default_payment_method: 'pm_saved_card' } });
+    mockStripe.paymentIntents.create.mockRejectedValueOnce(Object.assign(new Error('Connection lost'), { type: 'StripeConnectionError' }));
+    const res = await POST(makeRequest({ packageId: 'pkg_basic' }));
+    expect(res.status).toBe(503);
+    expect(mockStripe.paymentIntents.create).toHaveBeenCalledTimes(1);
+    expect(prisma.jerkstore_credit_purchase.create).not.toHaveBeenCalled();
+  });
+
+  it('does not charge again when credit fulfillment fails after a successful payment', async () => {
+    mockStripe.customers.retrieve.mockResolvedValue({ invoice_settings: { default_payment_method: 'pm_saved_card' } });
+    mockStripe.paymentIntents.create.mockResolvedValueOnce({ id: 'pi_paid', status: 'succeeded' });
+    vi.mocked(prisma.jerkstore_credit_purchase.create).mockRejectedValueOnce(new Error('DB unavailable'));
+    const res = await POST(makeRequest({ packageId: 'pkg_basic' }));
+    expect(res.status).toBe(503);
+    expect(mockStripe.paymentIntents.create).toHaveBeenCalledTimes(1);
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('returns no additional credits when the same paid receipt is already fulfilled', async () => {
+    mockStripe.customers.retrieve.mockResolvedValue({ invoice_settings: { default_payment_method: 'pm_saved_card' } });
+    mockStripe.paymentIntents.create.mockResolvedValueOnce({ id: 'pi_paid', status: 'succeeded' });
+    vi.mocked(prisma.jerkstore_credit_purchase.create).mockRejectedValueOnce({ code: 'P2002' });
+    const res = await POST(makeRequest({ packageId: 'pkg_basic' }));
+    expect(await res.json()).toMatchObject({ success: true, creditsAdded: 0 });
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('leaves a processing payment alone and tells the browser it is pending', async () => {
+    mockStripe.customers.retrieve.mockResolvedValue({ invoice_settings: { default_payment_method: 'pm_saved_card' } });
+    mockStripe.paymentIntents.create.mockResolvedValueOnce({ id: 'pi_processing', status: 'processing' });
+    const res = await POST(makeRequest({ packageId: 'pkg_basic' }));
+    expect(res.status).toBe(202);
+    expect(await res.json()).toMatchObject({ pending: true });
+    expect(mockStripe.paymentIntents.create).toHaveBeenCalledTimes(1);
+    expect(prisma.jerkstore_credit_purchase.create).not.toHaveBeenCalled();
+  });
+
+  it('reuses the same intent for additional card authentication', async () => {
+    mockStripe.customers.retrieve.mockResolvedValue({ invoice_settings: { default_payment_method: 'pm_saved_card' } });
+    mockStripe.paymentIntents.create.mockResolvedValueOnce({ id: 'pi_action', status: 'requires_action', client_secret: 'pi_action_secret' });
+    const res = await POST(makeRequest({ packageId: 'pkg_basic' }));
+    expect(await res.json()).toMatchObject({ clientSecret: 'pi_action_secret' });
+    expect(mockStripe.paymentIntents.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the Stripe idempotency key stable across a browser retry', async () => {
+    const body = { packageId: 'pkg_basic', requestId: '01959981-96d4-411b-8bc6-1c1e15eb1240' };
+    await POST(makeRequest(body));
+    await POST(makeRequest(body));
+    expect(mockStripe.paymentIntents.create.mock.calls[0][1].idempotencyKey).toBe(mockStripe.paymentIntents.create.mock.calls[1][1].idempotencyKey);
+  });
+
+  it('rejects malformed JSON or attempt identifiers without contacting Stripe', async () => {
+    const malformed = new Request('http://jerkstore.localhost/api/checkout/credits', { method: 'POST', body: '{' });
+    expect((await POST(malformed)).status).toBe(400);
+    const res = await POST(makeRequest({ requestId: 'invalid-attempt' }));
+    expect(res.status).toBe(400);
+    expect(res.headers.get('Cache-Control')).toContain('no-store');
+    expect(res.headers.get('X-Robots-Tag')).toContain('noindex');
+    expect(mockStripe.paymentIntents.create).not.toHaveBeenCalled();
   });
 });

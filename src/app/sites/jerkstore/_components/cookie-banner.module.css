@@ -1,0 +1,7 @@
+.notice { position: fixed; bottom: 8px; right: 8px; z-index: 100; display: flex; align-items: center; justify-content: space-between; gap: 8px; width: min(348px, calc(100% - 16px)); padding: 6px 8px; border: 3px solid #111; background: #fde047; box-shadow: 3px 3px 0 #111; color: #111; font: bold 11px monospace; }
+.notice summary { display: flex; align-items: center; gap: 5px; min-height: 44px; cursor: pointer; text-transform: uppercase; }
+.notice button { flex-shrink: 0; min-height: 44px; padding: 6px 10px; border: 2px solid #111; background: #fff; font: bold 11px monospace; text-transform: uppercase; cursor: pointer; }
+.notice button:hover { background: #111; color: #fff; }
+.explanation { position: absolute; bottom: calc(100% + 8px); left: -3px; right: -3px; padding: 16px; max-height: 50svh; overflow-y: auto; border: 3px solid #111; background: #fde047; box-shadow: 3px 3px 0 #111; font-size: 13px; line-height: 1.6; }
+.explanation h2 { margin-bottom: 8px; font-weight: 900; text-transform: uppercase; }
+.explanation a { text-decoration: underline; }

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Skull, ChevronLeft, ChevronRight, Quote, Lock } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { usePostHog } from 'posthog-js/react';
+import { useJerkstoreAnalytics } from "../_lib/analytics-client";
 
 interface Insult {
   content: string;
@@ -21,7 +21,7 @@ interface InsultCarouselProps {
 export function InsultCarousel({ insults, variant = "default", title, subtitle }: InsultCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
-  const posthog = usePostHog();
+  const posthog = useJerkstoreAnalytics();
 
   useEffect(() => {
     if (!isAutoPlaying) return;

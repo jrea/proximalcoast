@@ -1,112 +1,61 @@
-
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/db";
+import { randomUUID } from "node:crypto";
+import { z } from "zod";
 import { CREDIT_PACKAGES_MAP } from "../../../constants";
+import { CREDIT_FULFILLMENT_VERSION, grantPurchasedCredits } from "../../../_lib/credit-purchases";
 
-const CREDIT_PACKAGES = CREDIT_PACKAGES_MAP;
+const PurchaseSchema = z.object({ packageId: z.enum(["pkg_basic", "pkg_pro", "pkg_elite"]).default("pkg_basic"), requestId: z.string().uuid().optional() });
+const privateHeaders = { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" };
+const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: privateHeaders });
 
 export async function POST(req: Request) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session) {
-    return new NextResponse("Unauthorized", { status: 401 });
-  }
-
-  const { packageId } = await req.json().catch(() => ({ packageId: "pkg_basic" }));
-  const selectedPackage = CREDIT_PACKAGES[packageId as keyof typeof CREDIT_PACKAGES] || CREDIT_PACKAGES["pkg_basic"];
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-  });
-
-  if (!user) {
-    return new NextResponse("User not found", { status: 404 });
-  }
-
-  let customerId = user.stripeCustomerId;
-
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: user.email || undefined,
-      name: user.name || undefined,
-      metadata: {
-        userId: user.id,
-      },
-    });
-    customerId = customer.id;
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { stripeCustomerId: customerId },
-    });
-  }
-
-  // 1. Check for Default Payment Method
-  if (customerId) {
-    const customer = await stripe.customers.retrieve(customerId);
-    const defaultPaymentMethod = "deleted" in customer
-      ? null
-      : customer.invoice_settings?.default_payment_method;
-
-    if (defaultPaymentMethod) {
-      try {
-        // Attempt immediate charge
-        const paymentIntent = await stripe.paymentIntents.create({
-          amount: selectedPackage.amount,
-          currency: 'usd',
-          customer: customerId,
-          payment_method: defaultPaymentMethod as string,
-          off_session: true,
-          confirm: true,
-          metadata: {
-            userId: user.id,
-            siteSlug: "jerkstore",
-            type: "credits_purchase",
-            source: "immediate",
-            creditsAmount: selectedPackage.credits.toString()
-          },
-          description: selectedPackage.name
-        });
-
-        if (paymentIntent.status === 'succeeded') {
-          // Credit the user immediately
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { credits: { increment: selectedPackage.credits } }
-          });
-          return NextResponse.json({ success: true, message: "Tank refilled instantly.", creditsAdded: selectedPackage.credits });
-        }
-      } catch (err) {
-        console.warn("Auto-charge failed, falling back to checkout UI:", err);
-      }
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session) return json({ error: "Sign in required" }, 401);
+    const body = await req.json().catch(() => null);
+    const parsed = PurchaseSchema.safeParse(body);
+    if (!parsed.success) return json({ error: "Choose a valid credit pack." }, 400);
+    const { packageId } = parsed.data;
+    const selected = CREDIT_PACKAGES_MAP[packageId];
+    const requestId = parsed.data.requestId ?? randomUUID();
+    const idempotencyKey = `jerkstore:${session.user.id}:${packageId}:${requestId}`;
+    const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+    if (!user) return json({ error: "User not found" }, 404);
+    let customerId = user.stripeCustomerId;
+    if (!customerId) {
+      const customer = await stripe.customers.create({ email: user.email || undefined, name: user.name || undefined, metadata: { userId: user.id } }, { idempotencyKey: `jerkstore-customer:${user.id}` });
+      customerId = customer.id;
+      await prisma.user.update({ where: { id: user.id }, data: { stripeCustomerId: customerId } });
     }
+    const metadata = { userId: user.id, siteSlug: "jerkstore", type: "credits_purchase", creditsAmount: selected.credits.toString(), packageId, fulfillmentVersion: CREDIT_FULFILLMENT_VERSION };
+    const customer = await stripe.customers.retrieve(customerId);
+    const paymentMethod = "deleted" in customer ? null : customer.invoice_settings?.default_payment_method;
+    if (paymentMethod) {
+      let intent;
+      try {
+        intent = await stripe.paymentIntents.create({ amount: selected.amount, currency: "usd", customer: customerId, payment_method: typeof paymentMethod === "string" ? paymentMethod : paymentMethod.id, off_session: true, confirm: true, metadata: { ...metadata, source: "immediate" }, description: selected.name }, { idempotencyKey: `${idempotencyKey}:saved-card` });
+      } catch (error) {
+        // Only a card failure can start a new checkout attempt. Network or
+        // fulfillment failures must not create a second, potentially paid PI.
+        if ((error as { type?: string }).type !== "StripeCardError") throw error;
+      }
+      if (intent?.status === "succeeded") {
+        // This is outside the payment catch: a DB error after charging must
+        // return an error and let the same receipt/webhook retry fulfillment.
+        const granted = await grantPurchasedCredits(intent.id, user.id, selected.credits);
+        return json({ success: true, message: granted ? "Tank refilled." : "This purchase is already in your balance.", creditsAdded: granted ? selected.credits : 0, paymentIntentId: intent.id, livemode: intent.livemode });
+      }
+      if (intent?.status === "processing") return json({ pending: true, message: "Your payment is processing. Check your balance before trying again." }, 202);
+      if (intent?.client_secret) return json({ clientSecret: intent.client_secret, amount: selected.amount, credits: selected.credits });
+    }
+    const intent = await stripe.paymentIntents.create({ amount: selected.amount, currency: "usd", customer: customerId, setup_future_usage: "off_session", metadata, description: selected.name, automatic_payment_methods: { enabled: true } }, { idempotencyKey: `${idempotencyKey}:checkout` });
+    return json({ clientSecret: intent.client_secret, amount: selected.amount, credits: selected.credits });
+  } catch (error) {
+    console.error("Jerkstore checkout unavailable", { code: (error as { code?: string; name?: string }).code ?? (error as Error).name });
+    return json({ error: "Checkout is temporarily unavailable. Check your balance before buying again. Contact support if a charge is missing credits." }, 503);
   }
-
-  // 2. Fallback: Create PaymentIntent (for Custom Elements UI)
-  const paymentIntent = await stripe.paymentIntents.create({
-    amount: selectedPackage.amount,
-    currency: 'usd',
-    customer: customerId,
-    setup_future_usage: 'off_session',
-    metadata: {
-      userId: user.id,
-      siteSlug: "jerkstore",
-      type: "credits_purchase",
-      creditsAmount: selectedPackage.credits.toString()
-    },
-    description: selectedPackage.name,
-    automatic_payment_methods: {
-      enabled: true,
-    },
-  });
-
-  return NextResponse.json({
-    clientSecret: paymentIntent.client_secret,
-    amount: selectedPackage.amount,
-    credits: selectedPackage.credits
-  });
 }

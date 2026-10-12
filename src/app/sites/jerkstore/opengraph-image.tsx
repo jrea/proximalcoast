@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
 
-export const alt = "Jerkstore - AI-Powered Ego Destruction";
+export const alt = "Jerkstore — AI Insult & Roast Generator";
 export const size = {
   width: 1200,
   height: 630,
@@ -51,7 +51,7 @@ export default function Image() {
             color: "black",
           }}
         >
-          The World&apos;s Most Aggressive AI Insult Generator
+          AI-Powered Insults & Roasts
         </div>
         <div
           style={{
@@ -65,7 +65,7 @@ export default function Image() {
             transform: "rotate(1deg)",
           }}
         >
-          Zero Moral Compass. Infinite Rage.
+          Big Egos. Better Punchlines.
         </div>
       </div>
     ),

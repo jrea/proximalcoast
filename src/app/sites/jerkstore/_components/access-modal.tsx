@@ -1,10 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
-import { Check, ShieldAlert, X, ChevronLeft, Loader2, Zap } from "lucide-react";
+import { ShieldAlert, X } from "lucide-react";
 import { LoginButton } from "./login-button";
-import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 
 import { usePostHog } from 'posthog-js/react';
@@ -23,11 +21,14 @@ export function AccessModal({
   description?: string
 }) {
   const posthog = usePostHog();
+  void isActive;
+  void onSuccess;
   const [mounted, setMounted] = useState(false);
 
   // Prevent hydration mismatch
   useEffect(() => {
-    setMounted(true);
+    const frame = window.requestAnimationFrame(() => setMounted(true));
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   if (!mounted) return null;
@@ -97,4 +98,3 @@ export function AccessModal({
     document.body
   );
 }
-

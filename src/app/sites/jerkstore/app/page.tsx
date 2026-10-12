@@ -3,24 +3,13 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import Link from "next/link";
-import { CreditCard, LogOut, Settings } from "lucide-react";
-
-import { AccessModal } from "../_components/access-modal";
-import { LogoutButton } from "../_components/logout-button";
-import { Logo } from "../_components/logo";
 
 import { BUTTON_LABELS, TOPIC_LABELS } from "../constants";
 
 import { JerkstoreNav } from "../_components/nav";
+import { randomInt } from "node:crypto";
 
-export default async function JerkstorePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
-  const params = await searchParams;
-
+export default async function JerkstorePage() {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -38,10 +27,6 @@ export default async function JerkstorePage({
     },
   });
 
-  const totalUsage = await prisma.jerkstore_insult.count({
-    where: { userId: session.user.id }
-  });
-
   const isActive = !!(subscription &&
     (subscription.status === "active" || subscription.status === "trialing") &&
     new Date(subscription.expiresAt) > new Date());
@@ -55,8 +40,8 @@ export default async function JerkstorePage({
   });
   const credits = userCredits?.credits || 0;
 
-  const randomButtonLabel = BUTTON_LABELS[Math.floor(Math.random() * BUTTON_LABELS.length)];
-  const randomTopicLabel = TOPIC_LABELS[Math.floor(Math.random() * TOPIC_LABELS.length)];
+  const randomButtonLabel = BUTTON_LABELS[randomInt(BUTTON_LABELS.length)];
+  const randomTopicLabel = TOPIC_LABELS[randomInt(TOPIC_LABELS.length)];
 
   return (
     <div className="min-h-screen bg-neutral-100 p-4 relative overflow-x-hidden">

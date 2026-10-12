@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { createApiKey, revokeApiKey, getApiKeys } from '../../actions/api-keys';
 import { Trash2, Copy, Plus, Key as KeyIcon, AlertTriangle } from 'lucide-react';
-import { cn } from '@/lib/utils'; // Assuming global utils or similar
 
 interface ApiKey {
   id: string;

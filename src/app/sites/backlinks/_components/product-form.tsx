@@ -22,13 +22,18 @@ export function ProductForm({ onSave }: { onSave: (data: ProductData) => void })
 
   useEffect(() => {
     const saved = localStorage.getItem("backlinks_product_data");
-    if (saved) {
-      try {
-        setData(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to parse saved product data", e);
-      }
+    if (!saved) return;
+
+    let parsed: ProductData;
+    try {
+      parsed = JSON.parse(saved) as ProductData;
+    } catch (e) {
+      console.error("Failed to parse saved product data", e);
+      return;
     }
+
+    const timeout = window.setTimeout(() => setData(parsed), 0);
+    return () => window.clearTimeout(timeout);
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {

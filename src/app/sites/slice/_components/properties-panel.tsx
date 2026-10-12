@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRefocusStore } from '../_store/store';
-import { Trash2, ZoomIn, Video, Crosshair, RefreshCcw, Sliders, Hash, Layers, Scissors, Disc, Activity } from 'lucide-react';
+import { Trash2, Crosshair, RefreshCcw, Disc, Activity } from 'lucide-react';
 
 export function PropertiesPanel() {
   const selectedKeyframeId = useRefocusStore((state) => state.selectedKeyframeId);

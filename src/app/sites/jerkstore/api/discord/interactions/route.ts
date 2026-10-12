@@ -4,8 +4,10 @@ import { InteractionType, InteractionResponseType, verifyKey } from 'discord-int
 import { prisma } from '@/lib/db';
 
 
+type DiscordOption = { name: string; value?: string };
+
 // Helper for consistency if not imported
-function jsonResponseHelper(obj: any) {
+function jsonResponseHelper(obj: unknown) {
   return new NextResponse(JSON.stringify(obj), {
     headers: { 'Content-Type': 'application/json' },
   });
@@ -36,8 +38,8 @@ export async function POST(req: NextRequest) {
 
     // --- /link Command
     if (name === 'link') {
-      const apiKey = options?.find((o: any) => o.name === 'api_key')?.value;
-      if (!apiKey) {
+      const apiKey = options?.find((o: DiscordOption) => o.name === 'api_key')?.value;
+      if (!apiKey || typeof apiKey !== "string") {
         return jsonResponseHelper({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: { content: "Please provide your API Key." }
@@ -62,8 +64,6 @@ export async function POST(req: NextRequest) {
       // Link Discord ID to User
       const discordUserId = interaction.member?.user?.id || interaction.user?.id;
       // Username is not stored in account, but we can use it for response if desired
-      const discordUsername = interaction.member?.user?.username || interaction.user?.username;
-
       await prisma.account.upsert({
         where: {
           providerId_accountId: {
@@ -122,10 +122,10 @@ export async function POST(req: NextRequest) {
     // --- /roast Command
     if (name === 'roast') {
       const discordUserId = interaction.member?.user?.id || interaction.user?.id;
-      const target = options?.find((o: any) => o.name === 'target')?.value;
-      let style = options?.find((o: any) => o.name === 'style')?.value;
+      const target = options?.find((o: DiscordOption) => o.name === 'target')?.value;
+      let style = options?.find((o: DiscordOption) => o.name === 'style')?.value;
 
-      if (!target) return jsonResponseHelper({ type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, data: { content: "Roast who? Your imaginary friend?" } });
+      if (!target || typeof target !== "string") return jsonResponseHelper({ type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, data: { content: "Roast who? Your imaginary friend?" } });
 
       // 1. Authenticate via Link
       const account = await prisma.account.findUnique({
@@ -149,7 +149,9 @@ export async function POST(req: NextRequest) {
 
       // If no style provided, check preferences
       if (!style) {
-        const prefs = (account.user.preferences as any) || {};
+        const prefs = account.user.preferences && typeof account.user.preferences === "object"
+          ? account.user.preferences as { default_roast_style?: string }
+          : {};
         style = prefs.default_roast_style || 'spicy';
       }
 

@@ -50,7 +50,7 @@ export async function GET(req: Request) {
           id: synced.id,
           status: synced.status,
           cancelAtPeriodEnd: synced.cancelAtPeriodEnd,
-          expiresAt: synced.expiresAt as any,
+          expiresAt: synced.expiresAt,
           plan: synced.plan,
           priceAmount: synced.priceAmount,
           priceCurrency: synced.priceCurrency,

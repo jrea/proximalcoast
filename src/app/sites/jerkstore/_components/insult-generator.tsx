@@ -2,12 +2,11 @@
 
 import { experimental_useObject as useObject } from "@ai-sdk/react";
 import { z } from "zod";
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useRef } from "react";
-import { Loader2, Zap, Copy, Check, Share2, ThumbsUp, ThumbsDown, Trophy, X, Dices, Image as ImageIcon, Clipboard, Download, Lock } from "lucide-react";
+import { Loader2, Zap, Check, Share2, ThumbsUp, ThumbsDown, Trophy, X, Dices, Image as ImageIcon, Clipboard, Lock } from "lucide-react";
 // import { toBlob } from "html-to-image";
 import { AccessModal } from "./access-modal";
-import { Logo } from "./logo";
 import { ShareCard, type ShareCardHandle } from "./share-card";
 import { HeatLevelSelector } from "./heat-level-selector";
 import { BUTTON_LABELS, TOPIC_LABELS, STANDARD_LANGUAGES, PREMIUM_LANGUAGES, RANDOM_TOPICS, HeatLevel, HEAT_LEVELS, LOADING_MESSAGES, CREDIT_COSTS } from "../constants";
@@ -54,28 +53,12 @@ export function InsultGenerator({
     setAccessModalContent({ title, description: desc });
     setShowAccessModal(true);
   };
-  const [showSavageUpsell, setShowSavageUpsell] = useState(false);
-  const [isBooming, setIsBooming] = useState(false);
   const [useReasoning, setUseReasoning] = useState(false);
 
   const isTrial = credits !== undefined ? credits < 50 : plan === "trial";
   const [heatLevel, setHeatLevel] = useState<HeatLevel>(isTrial ? HeatLevel.MILD : HeatLevel.SPICY);
   const [isRandomizing, setIsRandomizing] = useState(false);
 
-
-  const handleRandomTopic = () => {
-    posthog?.capture('random_topic_selected');
-    setIsRandomizing(true);
-    let count = 0;
-    const interval = setInterval(() => {
-      setInput(RANDOM_TOPICS[Math.floor(Math.random() * RANDOM_TOPICS.length)]);
-      count++;
-      if (count > 10) {
-        clearInterval(interval);
-        setIsRandomizing(false);
-      }
-    }, 50);
-  };
 
   /* Guest handle logic removed per user request */
 
@@ -88,21 +71,27 @@ export function InsultGenerator({
   const resultRef = useRef<HTMLDivElement>(null);
   const shareCardRef = useRef<ShareCardHandle>(null);
 
-  const triggerBoom = () => {
-    setIsBooming(true);
-    setTimeout(() => {
-      setIsBooming(false);
-      setShowSavageUpsell(true);
-    }, 800);
-  };
-
   const [displayText, setDisplayText] = useState("");
   const [input, setInput] = useState("");
   const [roasts, setRoasts] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [hasViewedAll, setHasViewedAll] = useState(true);
-  const [isSimulatingLoading, setIsSimulatingLoading] = useState(false);
+  const [, setHasViewedAll] = useState(true);
+  const [isSimulatingLoading] = useState(false);
   const lastPromptRef = useRef({ topic: "", isEmail: false, language: "", heatLevel: "spicy" });
+
+  const handleRandomTopic = useCallback(() => {
+    posthog?.capture('random_topic_selected');
+    setIsRandomizing(true);
+    let count = 0;
+    const interval = setInterval(() => {
+      setInput(RANDOM_TOPICS[Math.floor(Math.random() * RANDOM_TOPICS.length)]);
+      count++;
+      if (count > 10) {
+        clearInterval(interval);
+        setIsRandomizing(false);
+      }
+    }, 50);
+  }, [posthog]);
 
   const [ratings, setRatings] = useState<Record<string, number>>({});
 
@@ -148,21 +137,33 @@ export function InsultGenerator({
     if (object?.roasts) {
       // During streaming, show the current roast being typed or the first one
       const current = object.roasts[currentIndex] || object.roasts[0] || "";
-      setDisplayText(current);
+      let active = true;
+      queueMicrotask(() => {
+        if (active) setDisplayText(current);
+      });
+      return () => {
+        active = false;
+      };
     }
   }, [object, currentIndex]);
 
   const [loadingMessage, setLoadingMessage] = useState("Initializing hate...");
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let initialMessageTimeout: ReturnType<typeof setTimeout> | undefined;
+    let interval: ReturnType<typeof setInterval> | undefined;
     if ((isLoading || isSimulatingLoading)) {
-      setLoadingMessage(LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]);
+      initialMessageTimeout = setTimeout(() => {
+        setLoadingMessage(LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]);
+      }, 0);
       interval = setInterval(() => {
         setLoadingMessage(LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]);
       }, 2000);
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (initialMessageTimeout) clearTimeout(initialMessageTimeout);
+      if (interval) clearInterval(interval);
+    };
   }, [isLoading, isSimulatingLoading]);
 
   const onGenerate = (e: React.FormEvent) => {
@@ -331,7 +332,7 @@ export function InsultGenerator({
       clearTimeout(initialTimeout);
       clearInterval(interval);
     };
-  }, [isHomePage, isInputFocused, roasts.length, isLoading, isSimulatingLoading]);
+  }, [isHomePage, isInputFocused, roasts.length, isLoading, isSimulatingLoading, handleRandomTopic]);
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseInt(e.target.value);
@@ -364,32 +365,6 @@ export function InsultGenerator({
         @keyframes savage-float {
           0%, 100% { transform: translateY(0) rotate(3deg); }
           50% { transform: translateY(-5px) rotate(5deg); }
-        }
-        @keyframes savage-boom {
-          0% { transform: scale(1) translate(0, 0) rotate(0); }
-          5% { transform: scale(0.85) translate(0, 20px) rotate(0); } /* Hammer impact */
-          10% { transform: scale(1.15) translate(0, -30px) rotate(-1deg); } /* Massive rebound */
-          15% { transform: scale(1.1) translate(-20px, 15px) rotate(2deg); }
-          25% { transform: scale(1.05) translate(20px, -15px) rotate(-2deg); }
-          35% { transform: scale(1.02) translate(-15px, 10px) rotate(1deg); }
-          45% { transform: scale(1.01) translate(15px, -10px) rotate(-1deg); }
-          60% { transform: scale(1) translate(-10px, 5px) rotate(0); }
-          100% { transform: scale(1) translate(0, 0) rotate(0); }
-        }
-        @keyframes savage-flash {
-          0% { background: white; opacity: 0; filter: blur(0px); }
-          5% { background: white; opacity: 1; filter: blur(5px); }
-          15% { background: white; opacity: 0.9; filter: blur(2px); }
-          100% { background: transparent; opacity: 0; filter: blur(0px); }
-        }
-        @keyframes inception-distortion {
-          0% { filter: contrast(1) brightness(1) saturate(1); }
-          5% { filter: contrast(5) brightness(3) saturate(2); }
-          15% { filter: contrast(3) brightness(2) saturate(1.5); }
-          100% { filter: contrast(1) brightness(1) saturate(1); }
-        }
-        .booming-box {
-          animation: savage-boom 0.8s cubic-bezier(.17,.67,.09,.99) both, inception-distortion 0.8s ease-out both;
         }
         .savage-gradient {
           background: linear-gradient(135deg, #9333ea, #db2777, #2563eb);
@@ -430,11 +405,6 @@ export function InsultGenerator({
         }
       `}</style>
 
-      {/* Full screen flash effect */}
-      {isBooming && (
-        <div className="fixed inset-0 z-[200] pointer-events-none animate-[savage-flash_0.8s_ease-out]" />
-      )}
-
       {showAccessModal &&
         <AccessModal
           isActive={isActive}
@@ -443,14 +413,6 @@ export function InsultGenerator({
           description={accessModalContent.description}
         />
       }
-      {showSavageUpsell && (
-        <AccessModal
-          isActive={isActive}
-          onClose={() => setShowSavageUpsell(false)}
-          onSuccess={() => window.location.assign("/app?success=true")}
-        />
-      )}
-
       {/* Tier Badge */}
       <div className={cn(
         "absolute -top-3 right-0 sm:-top-4 sm:-right-4 px-3 sm:px-6 py-1 sm:py-2 font-black uppercase text-[10px] sm:text-sm border-4 border-black z-20 transition-transform duration-500",
@@ -465,7 +427,6 @@ export function InsultGenerator({
 
       <div className={cn(
         "p-4 sm:p-8 border-4 transition-all duration-700 relative overflow-hidden",
-        isBooming && "booming-box",
         isSavage ? "savage-gradient border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] sm:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] text-white" :
           isElite ? "bg-gradient-to-br from-yellow-300 via-yellow-200 to-yellow-400 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black" :
             "bg-white border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)] text-neutral-400"

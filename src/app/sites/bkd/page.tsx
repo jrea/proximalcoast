@@ -7,8 +7,19 @@ import { ManageMembership } from "./_components/dashboard";
 import { SignupForm } from "./_components/signup-form";
 import { syncUserSubscription } from "@/lib/billing/sync";
 import { CheckCircle2 } from "lucide-react";
+import Link from "next/link";
 import { stripe } from "@/lib/stripe";
 import { PLANS } from "./config";
+
+interface MembershipSubscription {
+  status: string;
+  cancelAtPeriodEnd: boolean;
+  expiresAt: Date;
+  plan: string;
+  priceAmount: number | null;
+  priceCurrency: string | null;
+  updatedAt: Date;
+}
 
 /**
  * BKD Page — The Hall of Martial Spirit
@@ -25,9 +36,8 @@ export default async function BKDPage({
 
   const session = await auth.api.getSession({ headers: await headers() });
 
-  let subscription = null;
+  let subscription: MembershipSubscription | null = null;
   let hasSubscription = false;
-  let pendingDocuments: any[] = [];
 
   if (session?.user) {
     subscription = await prisma.user_subscription.findUnique({
@@ -43,7 +53,7 @@ export default async function BKDPage({
       },
     });
 
-    const isStale = subscription && (Date.now() - new Date(subscription.updatedAt).getTime() > 10 * 60 * 1000);
+    const isStale = subscription && (new Date().getTime() - new Date(subscription.updatedAt).getTime() > 10 * 60 * 1000);
 
     if (!subscription || isStale) {
       const synced = await syncUserSubscription(session.user.id, "bkd");
@@ -51,11 +61,11 @@ export default async function BKDPage({
         subscription = {
           status: synced.status,
           cancelAtPeriodEnd: synced.cancelAtPeriodEnd,
-          expiresAt: synced.expiresAt as any,
+          expiresAt: synced.expiresAt,
           plan: synced.plan,
-          priceAmount: synced.priceAmount as any,
-          priceCurrency: synced.priceCurrency as any,
-          updatedAt: synced.updatedAt as any,
+          priceAmount: synced.priceAmount,
+          priceCurrency: synced.priceCurrency,
+          updatedAt: synced.updatedAt,
         };
       }
     }
@@ -63,20 +73,6 @@ export default async function BKDPage({
     hasSubscription =
       !!subscription &&
       (subscription.status === "active" || subscription.status === "trialing");
-
-    try {
-      // @ts-ignore - Handle delay in prisma generation
-      pendingDocuments = await prisma.hanko_document.findMany({
-        where: {
-          userId: session.user.id,
-          status: { in: ["PENDING", "CONSENT_GIVEN", "SIGNING"] }
-        },
-        orderBy: { createdAt: "desc" },
-      });
-    } catch (e) {
-      console.error("Prisma Error loading BKD documents:", e);
-      pendingDocuments = [];
-    }
   }
 
   // Fetch BKD dynamic price for the card
@@ -128,38 +124,6 @@ export default async function BKDPage({
         {/* Action / Primary Section */}
         <section className="w-full max-w-4xl px-0 md:px-4 space-y-12 md:space-y-24">
 
-          {/* Pending Documents */}
-          {pendingDocuments.length > 0 && (
-            <div className="space-y-10 bkd-shoji-enter">
-              <div className="text-center space-y-3">
-                <h3 className="bkd-mono text-[11px] font-bold uppercase tracking-[0.4em] text-[#BC241C]">Needs Your Attention</h3>
-                <p className="bkd-body text-sm opacity-50 italic font-serif">Please take a moment to review and sign these forms.</p>
-              </div>
-              <div className="grid grid-cols-1 gap-6">
-                {pendingDocuments.map((doc) => (
-                  <a
-                    key={doc.id}
-                    href={`/sign/${doc.id}`}
-                    className="flex items-center justify-between p-4 md:p-8 bg-white border border-[var(--bkd-border)] hover:border-[#BC241C] transition-all group/item shadow-sm hover:shadow-md"
-                  >
-                    <div className="space-y-2">
-                      <p className="bkd-mono text-[10px] text-[#BC241C] font-bold opacity-60">Dojo Paperwork</p>
-                      <p className="bkd-body font-bold text-lg tracking-wide">{doc.filename}</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="bkd-mono text-[11px] opacity-40 group-hover/item:text-[#BC241C] group-hover/item:opacity-100 transition-all font-bold">
-                        VIEW AND SIGN
-                      </span>
-                      <div className="w-10 h-10 border border-[var(--bkd-border)] flex items-center justify-center group-hover/item:border-[#BC241C] transition-colors">
-                        <span className="text-xl">&gt;</span>
-                      </div>
-                    </div>
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Membership States */}
           <div className="w-full">
             {success ? (
@@ -173,12 +137,12 @@ export default async function BKDPage({
                     </div>
                     <h2 className="bkd-h2 uppercase tracking-[0.2em]">Payment Successful</h2>
                     <p className="bkd-body italic opacity-60">Welcome to the dojo. Your membership is now active.</p>
-                    <a
+                    <Link
                       href="/"
                       className="bkd-btn-primary px-8 py-3 mt-4"
                     >
                       Enter Dashboard
-                    </a>
+                    </Link>
                   </div>
                 )}
               </div>
@@ -188,7 +152,7 @@ export default async function BKDPage({
               </div>
             ) : hasSubscription ? (
               <div className="w-full">
-                <ManageMembership initialSubscription={subscription as any} />
+                <ManageMembership initialSubscription={subscription} />
               </div>
             ) : (
               <div className="space-y-8">

@@ -53,7 +53,11 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ clientSecret: (result as any).client_secret });
+    if (!('client_secret' in result)) {
+      return NextResponse.json({ error: "Checkout session could not be created" }, { status: 500 });
+    }
+
+    return NextResponse.json({ clientSecret: result.client_secret });
   } catch (error) {
     console.error("Overmake Checkout Error:", error);
     return NextResponse.json(

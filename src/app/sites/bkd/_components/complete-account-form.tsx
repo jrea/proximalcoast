@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { getErrorMessage } from "@/lib/utils";
 
 export function CompleteAccountForm({ sessionId }: { sessionId: string }) {
+  const router = useRouter();
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,8 +40,8 @@ export function CompleteAccountForm({ sessionId }: { sessionId: string }) {
       }
 
       setSuccess(true);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to complete account setup"));
     } finally {
       setLoading(false);
     }
@@ -56,7 +59,7 @@ export function CompleteAccountForm({ sessionId }: { sessionId: string }) {
           <p className="bkd-mono text-[10px] opacity-70">Welcome to the dojo.</p>
         </div>
         <button
-          onClick={() => window.location.href = "/"}
+          onClick={() => router.push("/")}
           className="bkd-btn-primary w-full"
         >
           Enter Dashboard

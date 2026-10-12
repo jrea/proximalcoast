@@ -10,7 +10,6 @@ const SUBREDDIT = 'RoastMe';
 const POLL_INTERVAL = 60000; // 1 minute
 const COOLDOWN_MINUTES = 5;
 const BOT_START_TIME = Date.now() / 1000;
-const HUMAN_IN_LOOP_COUNT = 10;
 
 // Env validation
 const {
@@ -53,6 +52,12 @@ interface PendingPost {
   timestamp: number;
 }
 
+interface RedditPostSummary {
+  id: string;
+  title: string;
+  permalink: string;
+}
+
 // Map chatId -> PendingPost
 const pendingApprovals = new Map<number, PendingPost>();
 
@@ -90,7 +95,7 @@ async function getInsultCandidates(context: string): Promise<string[] | null> {
   }
 }
 
-async function notifyTelegram(post: any, roasts: string[]) {
+async function notifyTelegram(post: RedditPostSummary, roasts: string[]) {
   const chatId = parseInt(TELEGRAM_CHAT_ID!);
 
   // Store in pending

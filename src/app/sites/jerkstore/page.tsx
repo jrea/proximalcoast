@@ -1,18 +1,18 @@
 
 import Link from "next/link";
 import { Metadata } from "next";
-import { Star, Zap, Skull, Share2, MessageCircle, Heart, Check, X, Baby, Clock, Ban, Trash2, Flame, Infinity, Bomb, Crown, Car, RefreshCcw } from "lucide-react";
+import { Zap, Skull, Share2, MessageCircle, Heart, Baby, Ban, Trash2, Flame, Infinity, Crown, Car, RefreshCcw } from "lucide-react";
 import { Logo } from "./_components/logo";
 import { LoginButton } from "./_components/login-button";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/db"; // Import prisma
 import { LiveTicker } from "./_components/live-ticker"; // Import Ticker
-import { cn } from "@/lib/utils";
 import { BlurredRoast } from "./_components/blurred-roast";
 import { InsultGenerator } from "./_components/insult-generator";
 import { BUTTON_LABELS, TOPIC_LABELS, FREE_ROAST_LIMIT } from "./constants";
 import { InsultCarousel } from "./_components/insult-carousel";
+import { randomInt } from "node:crypto";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://jerkstore.proximalcoast.com"),
@@ -71,15 +71,6 @@ export default async function MarketingPage() {
     headers: await headers(),
   });
 
-  // Fetch a random safe roast for the spotlight
-  const safeRoastCount = await prisma.jerkstore_insult_safe.count();
-  const skip = Math.floor(Math.random() * safeRoastCount);
-  const safeRoastRef = await prisma.jerkstore_insult_safe.findFirst({
-    skip: skip,
-    take: 1,
-    include: { insult: true }
-  });
-
   const mildInsults = await prisma.jerkstore_insult.findMany({
     where: { heatLevel: 'mild' },
     select: { content: true, topic: true },
@@ -87,11 +78,9 @@ export default async function MarketingPage() {
     orderBy: { createdAt: 'desc' }
   });
 
-  const safeRoast = safeRoastRef?.insult;
-
   // Determine Plan & Access for Home Page Generator
   let plan = "trial";
-  let isActive = true; // Always allow roasting on home page (limits applied by API/Frontend logic)
+  const isActive = true; // Always allow roasting on home page (limits applied by API/Frontend logic)
 
   if (session) {
     const subscription = await prisma.user_subscription.findUnique({
@@ -123,8 +112,8 @@ export default async function MarketingPage() {
     credits = user?.credits || 0;
   }
 
-  const randomButtonLabel = BUTTON_LABELS[Math.floor(Math.random() * BUTTON_LABELS.length)];
-  const randomTopicLabel = TOPIC_LABELS[Math.floor(Math.random() * TOPIC_LABELS.length)];
+  const randomButtonLabel = BUTTON_LABELS[randomInt(BUTTON_LABELS.length)];
+  const randomTopicLabel = TOPIC_LABELS[randomInt(TOPIC_LABELS.length)];
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -265,7 +254,7 @@ export default async function MarketingPage() {
             <div className="bg-white p-8 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
               <div className="text-6xl mb-4">🎯</div>
               <h4 className="text-xl font-black uppercase mb-2">1. Choose a Victim</h4>
-              <p className="font-mono font-bold text-neutral-600">Enter a topic. Yourself, your boss, your ex's mixtape.</p>
+              <p className="font-mono font-bold text-neutral-600">Enter a topic. Yourself, your boss, your ex&apos;s mixtape.</p>
             </div>
             <div className="bg-white p-8 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative top-4">
               <div className="text-6xl mb-4">🤖</div>
@@ -308,7 +297,7 @@ export default async function MarketingPage() {
 
                   <div className="mb-4">
                     <span className="text-xs font-bold bg-neutral-200 px-2 py-1 rounded uppercase tracking-wide text-neutral-600 mb-2 inline-block">Topic: {review.topic}</span>
-                    <p className="font-serif text-xl font-bold leading-tight">"<BlurredRoast text={review.roast} />"</p>
+                    <p className="font-serif text-xl font-bold leading-tight">&quot;<BlurredRoast text={review.roast} />&quot;</p>
                   </div>
 
                   <div className="flex items-center justify-between text-neutral-400 font-mono text-xs pt-4 border-t-2 border-neutral-100 group-hover:text-black transition-colors">

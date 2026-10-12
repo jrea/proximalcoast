@@ -3,5 +3,6 @@
     "silent": true
   },
   "installCommand": "pnpm install",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "buildCommand": "pnpm run build --webpack"
 }

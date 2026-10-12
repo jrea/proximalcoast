@@ -47,7 +47,13 @@ export async function POST(req: Request) {
         throw new Error("Failed to create user during signup");
       }
 
-      user = signUpResult.user as any;
+      user = await prisma.user.findUnique({
+        where: { id: signUpResult.user.id },
+      });
+
+      if (!user) {
+        throw new Error("Failed to load the newly created user");
+      }
 
       // Update stripeCustomerId on the newly created user
       await prisma.user.update({
@@ -70,8 +76,9 @@ export async function POST(req: Request) {
     // 3. Explicitly link the subscription to the user (since guest checkouts don't have userId in webhook)
     if (subscriptionId) {
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-      const expiresAt = (subscription as any).current_period_end
-        ? new Date((subscription as any).current_period_end * 1000)
+      const periodEnd = subscription.items.data[0]?.current_period_end;
+      const expiresAt = periodEnd
+        ? new Date(periodEnd * 1000)
         : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
       await prisma.user_subscription.upsert({

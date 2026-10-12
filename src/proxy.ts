@@ -1,38 +1,79 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const ACTIVE_SUBSITES = new Set([
+  "backlinks",
+  "bkd",
+  "jerkstore",
+  "overmake",
+  "slice",
+]);
+
 export const config = {
-  matcher: [
-    /*
-     * Match all paths except for:
-     * 1. /api routes
-     * 2. /_next (Next.js internals)
-     * 3. /_static (inside /public)
-     * 4. all root files inside /public (e.g. /favicon.ico)
-     */
-    "/((?!_next/|_static/|[\\w-]+\\.\\w+).*)",
-  ],
+  // Validate hosts before handling shared assets, APIs or redirects.
+  matcher: "/:path*",
 };
 
 export default async function proxy(req: NextRequest) {
   const url = req.nextUrl;
-  let hostname = req.headers.get("host") || "";
+  let hostname = (req.headers.get("host") || "").toLowerCase();
 
   // Remove port if present
-  hostname = hostname.split(":")[0];
+  hostname = hostname.split(":")[0].replace(/\.$/, "");
 
   // Remove www. if present
   if (hostname.startsWith("www.")) {
     hostname = hostname.replace("www.", "");
   }
 
-  const rootDomain = process.env.ROOT_DOMAIN?.split(":")[0];
+  const rootDomain = (process.env.ROOT_DOMAIN || "proximalcoast.com")
+    .toLowerCase().split(":")[0].replace(/^www\./, "").replace(/\.$/, "");
+  // Only Vercel's declared preview URLs may serve a review build directly.
+  // Production and unrelated *.vercel.app hosts retain normal isolation.
+  const isPreviewHost = process.env.VERCEL_ENV === "preview" &&
+    [process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL]
+      .some(host => host?.toLowerCase() === hostname);
+  const isRootHost = hostname === rootDomain || isPreviewHost;
+  const currentHost = hostname.endsWith(`.${rootDomain}`)
+    ? hostname.slice(0, -(rootDomain.length + 1))
+    : "";
 
-  // If it's the root domain (e.g. proximalcoast.com or lvh.me) or www, show the main site
-  if (hostname === rootDomain || hostname === `www.${rootDomain}`) {
+  if (!isRootHost && !ACTIVE_SUBSITES.has(currentHost)) {
+    return new NextResponse(req.method === "HEAD" ? null : "Not Found\n", {
+      status: 404,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "private, no-store, max-age=0",
+        "X-Robots-Tag": "noindex, nofollow",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+        "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+      },
+    });
+  }
+
+  // Keep the public shortcut behind host validation, rather than in the
+  // earlier next.config redirect layer where unknown hosts could reach it.
+  if (/^\/jerkstore(?:\/|$)/i.test(url.pathname)) {
+    const destination = new URL("https://jerkstore.proximalcoast.com");
+    destination.pathname = url.pathname.slice("/jerkstore".length) || "/";
+    destination.search = url.search;
+    return NextResponse.redirect(destination, 308);
+  }
+
+  // Preserve the previous matcher exclusions for every active site, while
+  // still letting their sitemap and robots handlers use subdomain routing.
+  if (
+    url.pathname !== "/sitemap.xml" &&
+    url.pathname !== "/robots.txt" &&
+    /^\/(?:_next\/|_static\/|[\w-]+\.\w+)/.test(url.pathname)
+  ) {
     return NextResponse.next();
   }
 
-  const currentHost = hostname.replace(`.${rootDomain}`, "");
+  // If it's the root domain (e.g. proximalcoast.com or lvh.me) or www, show the main site
+  if (isRootHost) {
+    return NextResponse.next();
+  }
 
   const searchParams = req.nextUrl.searchParams.toString();
   const path = `${url.pathname}${searchParams.length > 0 ? `?${searchParams}` : ""}`;
@@ -43,12 +84,23 @@ export default async function proxy(req: NextRequest) {
     return NextResponse.rewrite(new URL(path, req.url));
   }
 
-  // Site-specific SEO and assets
-  const SITE_ASSETS = ["/sitemap.xml", "/opengraph-image.png", "/twitter-image.png", "/favicon.ico", "/apple-icon.png"];
-  if (SITE_ASSETS.includes(path)) {
-    return NextResponse.rewrite(new URL(`/sites/${currentHost}${path}`, req.url));
+  // Only rewrite metadata files actually provided by the subsite.
+  // Other subsites continue to use the root site's metadata routes.
+  if (url.pathname === "/sitemap.xml" || url.pathname === "/robots.txt") {
+    const siteMetadataPaths: Record<string, string[]> = {
+      jerkstore: ["/sitemap.xml", "/robots.txt"],
+      slice: ["/sitemap.xml", "/robots.txt"],
+    };
+
+    if (siteMetadataPaths[currentHost]?.includes(url.pathname)) {
+      return NextResponse.rewrite(new URL(`/sites/${currentHost}${path}`, req.url));
+    }
+
+    return NextResponse.next();
   }
 
-  // Rewrite to /sites/${currentHost}${path}
-  return NextResponse.rewrite(new URL(`/sites/${currentHost}${path}`, req.url));
+  // A trailing slash on the internal site root triggers Next's canonical
+  // redirect and exposes /sites/... as the browser's public URL.
+  const sitePath = url.pathname === "/" ? path.slice(1) : path;
+  return NextResponse.rewrite(new URL(`/sites/${currentHost}${sitePath}`, req.url));
 }

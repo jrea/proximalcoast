@@ -25,6 +25,11 @@ export function HeatLevelSelector({
   isSavage,
   areFeaturesLocked
 }: HeatLevelSelectorProps) {
+  void isTrial;
+  void useReasoning;
+  void setUseReasoning;
+  void isSavage;
+
   const getIcon = (level: HeatLevel) => {
     switch (level) {
       case HeatLevel.MILD: return Baby;

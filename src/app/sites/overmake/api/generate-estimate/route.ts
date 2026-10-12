@@ -10,7 +10,6 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
 import { prisma } from "@/lib/db";
-import { moderateText } from "../../../../sites/jerkstore/_lib/openai"; // Reuse moderation
 
 import { SITE_SLUG, getPlanFromId } from "@overmake/constants";
 

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { X, Cookie } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export function CookieBanner() {
   const [isVisible, setIsVisible] = useState(false);
@@ -43,7 +42,7 @@ export function CookieBanner() {
             WE USE COOKIES.
           </h4>
           <p className="font-mono text-sm font-bold mb-4 leading-tight">
-            We use cookies to keep you logged in (even if you're a guest) and to process payments via Stripe so we can take your money. We don't want your data, it's boring. We just want to ensure you can be properly insulted and billed.
+            We use cookies to keep you logged in (even if you&apos;re a guest) and to process payments via Stripe so we can take your money. We don&apos;t want your data, it&apos;s boring. We just want to ensure you can be properly insulted and billed.
           </p>
 
           <button

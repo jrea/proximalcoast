@@ -2,7 +2,6 @@
 
 import { usePostHog } from 'posthog-js/react';
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 
 const BAD_WORDS = ["goddamn", "fucked", "syphilis-ridden", "syphilitic", "lobotomized"];
 

@@ -76,7 +76,7 @@ export async function GET() {
     let seededCount = 0;
     for (const burn of MILD_INSULTS) {
       // Check if this content already exists in jerkstore_insult for System User
-      let existingInsult = await prisma.jerkstore_insult.findFirst({
+      const existingInsult = await prisma.jerkstore_insult.findFirst({
         where: {
           content: burn.content,
           heatLevel: 'mild'
@@ -115,8 +115,8 @@ export async function GET() {
       seeded: seededCount,
       updatedLegacy: updateResult.count
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Migration/Seed failed:", error);
-    return NextResponse.json({ error: "Operation failed", details: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Operation failed", details: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
   }
 }

@@ -6,7 +6,6 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
-import { LucideLoader2 } from "lucide-react";
 
 export function PaymentForm({
   subscriptionId,
@@ -39,17 +38,7 @@ export function PaymentForm({
       return;
     }
 
-    // 2. Extract phone number to save it for ourselves
-    const elementsData = await elements.getElement(PaymentElement);
-    // We can't directly read the value from Element for security, 
-    // but confirmPayment will send it to Stripe.
-    // To "save it for ourselves", we might want to capture it in a separate state 
-    // or just use a webhook. But since we need to save it NOW:
-    // We'll rely on confirmPayment sending it and then we can update our DB after success 
-    // if we had a way to get it. Alternatively, we can use a separate input for phone 
-    // but the user wants it in the stripe form.
-
-    // 3. Confirm payment
+    // Confirm payment. Billing details are sent to Stripe with the PaymentElement.
     const { error: confirmErr } = await stripe.confirmPayment({
       elements,
       confirmParams: {

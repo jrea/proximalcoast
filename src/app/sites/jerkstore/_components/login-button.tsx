@@ -67,7 +67,7 @@ export function LoginButton({
   reason?: string;
 }) {
   const router = useRouter();
-  const { data: session, isPending } = authClient.useSession();
+  const { data: session } = authClient.useSession();
   const [randomLabel, setRandomLabel] = useState(text);
   const posthog = usePostHog();
 
@@ -75,9 +75,9 @@ export function LoginButton({
     // Pick a random label only once on mount or when session changes
     if (session && !text) {
       const randomIndex = Math.floor(Math.random() * ALTERNATIVE_LABELS.length);
-      setRandomLabel(ALTERNATIVE_LABELS[randomIndex]);
+      queueMicrotask(() => setRandomLabel(ALTERNATIVE_LABELS[randomIndex]));
     }
-  }, [session]);
+  }, [session, text]);
 
   const handleAction = async (e: React.MouseEvent) => {
     e.preventDefault(); // Prevent any default form submission or link behavior

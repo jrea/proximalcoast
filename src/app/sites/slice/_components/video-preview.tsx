@@ -2,8 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useRefocusStore } from '../_store/store';
-import { cn } from '@/lib/utils';
-import { Activity, Terminal, Disc, Download, Plus } from 'lucide-react';
+import { Activity, Terminal, Download } from 'lucide-react';
 
 const ExportOverlay = ({ onAbort }: { onAbort: () => void }) => {
   const currentTime = useRefocusStore((state) => state.currentTime);
@@ -98,7 +97,7 @@ export function VideoPreview() {
   const musicSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
 
   // State
-  const [isHovering, setIsHovering] = useState(false);
+  const [, setIsHovering] = useState(false);
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
 
@@ -109,7 +108,6 @@ export function VideoPreview() {
   const exportSettings = useRefocusStore((state) => state.exportSettings);
   const currentTime = useRefocusStore((state) => state.currentTime);
   const videoVolume = useRefocusStore((state) => state.videoVolume);
-  const segments = useRefocusStore((state) => state.segments);
 
   // Actions
   const play = useRefocusStore((state) => state.play);
@@ -132,7 +130,8 @@ export function VideoPreview() {
           if (audioCtxRef.current?.state === 'suspended') {
             audioCtxRef.current.resume();
           }
-          store.isPlaying ? pause() : play();
+          if (store.isPlaying) pause();
+          else play();
           break;
         case 'x':
           splitSegment();
@@ -156,9 +155,11 @@ export function VideoPreview() {
   useEffect(() => {
     const initAudio = () => {
       if (!audioCtxRef.current) {
-        // @ts-ignore
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        audioCtxRef.current = new AudioContext();
+        const AudioContextConstructor = window.AudioContext ??
+          (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (AudioContextConstructor) {
+          audioCtxRef.current = new AudioContextConstructor();
+        }
       }
     };
     initAudio();
@@ -310,8 +311,8 @@ export function VideoPreview() {
         ];
 
         const selected = candidates.find(c => MediaRecorder.isTypeSupported(c.mime)) || candidates[2];
-        let mimeType = selected.mime;
-        let extension = selected.ext;
+        const mimeType = selected.mime;
+        const extension = selected.ext;
 
         console.log(`Export: Using MIME ${mimeType} in .${extension} container`);
 
@@ -545,8 +546,8 @@ export function VideoPreview() {
                     style={{
                       borderColor: `${item.color}40`,
                       color: item.color,
-                      ['--hover-color' as any]: item.color
-                    }}
+                      '--hover-color': item.color
+                    } as React.CSSProperties}
                   >
                     <div className="transform skew-x-[12deg]">{item.key}</div>
                   </div>

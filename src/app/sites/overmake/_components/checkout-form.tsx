@@ -7,7 +7,6 @@ import {
   EmbeddedCheckout
 } from '@stripe/react-stripe-js';
 import { cn } from "@/lib/utils";
-import { THEMES } from "@overmake/constants";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -17,7 +16,7 @@ interface CheckoutFormProps {
   theme?: string;
 }
 
-export function OvermakeCheckoutForm({ planId, onClose, theme }: CheckoutFormProps) {
+export function OvermakeCheckoutForm({ planId, theme }: CheckoutFormProps) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchClientSecret = useCallback(() => {

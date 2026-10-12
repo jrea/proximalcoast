@@ -164,13 +164,6 @@ export const prisma = {
     update: vi.fn(),
   },
 
-  hanko_document: {
-    findUnique: vi.fn(),
-    findMany: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-  },
-
   $queryRaw: vi.fn(),
   $transaction: vi.fn(),
   $connect: vi.fn(),

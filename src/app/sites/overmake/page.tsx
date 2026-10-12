@@ -7,11 +7,24 @@ import { cn } from "@/lib/utils";
 
 import { PLANS, THEMES } from "@overmake/constants";
 
+interface EstimateBomItem {
+  item: string;
+  description: string;
+  cost: string;
+  source: string;
+}
+
+interface EstimateResult {
+  proposal: string;
+  bom: EstimateBomItem[];
+  totalCost: string;
+}
+
 export default function OvermakePage() {
   const [task, setTask] = useState("");
   const [level, setLevel] = useState(5);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null); // Using any for simplicity with raw JSON parsing, refine later
+  const [result, setResult] = useState<EstimateResult | null>(null);
 
   const isLuxury = level > PLANS.DIYER.maxLevel;
   const isTrash = level <= PLANS.BUSHFIX.maxLevel;
@@ -42,12 +55,12 @@ export default function OvermakePage() {
 
       // Read the stream
       const reader = response.body?.getReader();
+      if (!reader) throw new Error("Estimate stream unavailable");
       const decoder = new TextDecoder();
       let done = false;
       let textBuffer = "";
 
       while (!done) {
-        // @ts-ignore
         const { value, done: doneReading } = await reader.read();
         done = doneReading;
         const chunkValue = decoder.decode(value);
@@ -69,7 +82,7 @@ export default function OvermakePage() {
       }
 
       try {
-        const parsed = JSON.parse(jsonStr);
+        const parsed = JSON.parse(jsonStr) as EstimateResult;
         setResult(parsed);
       } catch (e) {
         console.error("Failed to parse JSON response", e);

@@ -47,8 +47,10 @@ export async function POST(req: Request) {
 
   // 1. Check for Default Payment Method
   if (customerId) {
-    const customer = await stripe.customers.retrieve(customerId) as any;
-    const defaultPaymentMethod = customer.invoice_settings?.default_payment_method;
+    const customer = await stripe.customers.retrieve(customerId);
+    const defaultPaymentMethod = "deleted" in customer
+      ? null
+      : customer.invoice_settings?.default_payment_method;
 
     if (defaultPaymentMethod) {
       try {

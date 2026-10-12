@@ -3,13 +3,15 @@ import { organization } from "better-auth/plugins";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./db";
 
+const organizationPlugin = organization();
+
 export const authConfig = {
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
   plugins: [
-    organization(),
-  ],
+    organizationPlugin,
+  ] as [typeof organizationPlugin],
   emailAndPassword: {
     enabled: true,
   },

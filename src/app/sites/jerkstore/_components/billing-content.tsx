@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CreditCard, Loader2, Coins } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { CreditCard, Loader2, Coins, Trash2, Infinity, Heart, Flame, Car, Zap, Skull, Crown, Check, type LucideIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { loadStripe } from "@stripe/stripe-js";
 import {
@@ -13,17 +13,34 @@ import {
 } from "@stripe/react-stripe-js";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
-import { Logo } from "./logo";
 import { JerkstoreNav } from "./nav";
 import { cn } from "@/lib/utils";
-import { Trash2, Infinity, Heart, Flame, Car, Zap, Skull, Crown, Check } from "lucide-react";
 import { CREDIT_PACKAGES as BASE_PACKAGES } from "../constants";
+
+type SavedPaymentMethod = {
+  brand: string;
+  last4: string;
+};
+
+type CreditPackageFeature = {
+  icon: LucideIcon;
+  text: string;
+  color?: string;
+  iconColor?: string;
+};
+
+type CreditPackageExtension = {
+  features: CreditPackageFeature[];
+  className: string;
+  buttonClassName: string;
+};
 
 interface BillingContentProps {
   creditBalance: number;
+  initialPaymentMethod: SavedPaymentMethod | null;
 }
 
-function CheckoutForm({ clientSecret, amount, onCancel, onSuccess }: { clientSecret: string, amount: number, onCancel: () => void, onSuccess: () => void }) {
+function CheckoutForm({ amount, onCancel, onSuccess }: { amount: number, onCancel: () => void, onSuccess: (paymentIntentId: string) => Promise<void> | void }) {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
@@ -40,7 +57,7 @@ function CheckoutForm({ clientSecret, amount, onCancel, onSuccess }: { clientSec
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: window.location.href.split('?')[0] + '?success=true',
+        return_url: window.location.href.split('?')[0],
       },
       redirect: "if_required",
     });
@@ -49,7 +66,8 @@ function CheckoutForm({ clientSecret, amount, onCancel, onSuccess }: { clientSec
       setErrorMessage(error.message || "An unexpected error occurred.");
       setLoading(false);
     } else if (paymentIntent && paymentIntent.status === "succeeded") {
-      onSuccess();
+      await onSuccess(paymentIntent.id);
+      setLoading(false);
     }
   };
 
@@ -86,7 +104,7 @@ function CheckoutForm({ clientSecret, amount, onCancel, onSuccess }: { clientSec
   );
 }
 
-const UI_EXTENSIONS: Record<string, any> = {
+const UI_EXTENSIONS: Record<string, CreditPackageExtension> = {
   pkg_basic: {
     features: [
       { icon: Trash2, text: "50 Roasts in the Bag" },
@@ -121,28 +139,25 @@ const CREDIT_PACKAGES = BASE_PACKAGES.map(pkg => ({
   ...UI_EXTENSIONS[pkg.id]
 }));
 
-export function BillingContent({ creditBalance }: BillingContentProps) {
-  const [loading, setLoading] = useState(false);
+export function BillingContent({ creditBalance, initialPaymentMethod }: BillingContentProps) {
   const [balance, setBalance] = useState(creditBalance);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [selectedPackageId, setSelectedPackageId] = useState("pkg_pro");
+  const [paymentMethod, setPaymentMethod] = useState<SavedPaymentMethod | null>(initialPaymentMethod);
 
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const isSuccess = searchParams.get("success") === "true";
-
-  useEffect(() => {
-    if (isSuccess) {
-      router.refresh();
-      toast.success("PAYMENT RECEIVED. TANK REFILLED.");
-    }
-  }, [isSuccess, router]);
 
   // Sync balance with prop changes
   useEffect(() => {
-    setBalance(creditBalance);
+    const frame = window.requestAnimationFrame(() => setBalance(creditBalance));
+    return () => window.cancelAnimationFrame(frame);
   }, [creditBalance]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setPaymentMethod(initialPaymentMethod));
+    return () => window.cancelAnimationFrame(frame);
+  }, [initialPaymentMethod]);
 
   const selectedPackage = CREDIT_PACKAGES.find(p => p.id === selectedPackageId) || CREDIT_PACKAGES[1];
 
@@ -170,6 +185,29 @@ export function BillingContent({ creditBalance }: BillingContentProps) {
       toast.error("Something went wrong. Please try again.");
     } finally {
       setCheckoutLoading(false);
+    }
+  };
+
+  const handlePaymentSuccess = async (paymentIntentId: string) => {
+    setBalance((balance) => balance + selectedPackage.credits);
+    setClientSecret(null);
+
+    try {
+      const response = await fetch("/api/checkout/credits/payment-method", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentIntentId }),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (response.ok && data.paymentMethod) {
+        setPaymentMethod(data.paymentMethod);
+      }
+    } catch (error) {
+      // The charge succeeded even if this status update is temporarily unavailable.
+      console.error("Failed to save the payment method status", error);
+    } finally {
+      router.refresh();
     }
   };
 
@@ -215,7 +253,7 @@ export function BillingContent({ creditBalance }: BillingContentProps) {
         }
       `}</style>
       <div className="max-w-2xl mx-auto">
-        <JerkstoreNav />
+        <JerkstoreNav showSettings={false} />
 
         <main className="bg-white border-4 border-black p-4 sm:p-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
           <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
@@ -243,6 +281,32 @@ export function BillingContent({ creditBalance }: BillingContentProps) {
               </p>
             </div>
 
+            {/* Payment method status */}
+            <div
+              className={cn(
+                "border-4 border-black p-4 sm:p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex items-center justify-between gap-4 transition-colors duration-300",
+                paymentMethod ? "bg-teal-400 text-black" : "bg-yellow-300 text-black"
+              )}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="bg-white border-2 border-black p-2 shrink-0">
+                  <CreditCard className="w-5 h-5" aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-mono text-[10px] font-black uppercase tracking-wider">Payment Method</p>
+                  <p className="font-black uppercase text-sm sm:text-base truncate">
+                    {paymentMethod
+                      ? `${paymentMethod.brand} ending in ${paymentMethod.last4}`
+                      : "No payment method saved"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 font-mono text-[10px] font-black uppercase text-right shrink-0">
+                {paymentMethod ? <Check className="w-4 h-4" aria-hidden="true" /> : null}
+                <span>{paymentMethod ? "Ready" : "Needed"}</span>
+              </div>
+            </div>
+
             {/* Package Selection */}
             {!clientSecret && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -258,7 +322,7 @@ export function BillingContent({ creditBalance }: BillingContentProps) {
                         : ""
                     )}
                   >
-                    {pkg.popular && (
+                    {pkg.id === "pkg_pro" && (
                       <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-2 py-0.5 text-[10px] font-black uppercase border-2 border-black rotate-1 z-20">
                         Popular
                       </div>
@@ -320,22 +384,16 @@ export function BillingContent({ creditBalance }: BillingContentProps) {
                     }}
                   >
                     <CheckoutForm
-                      clientSecret={clientSecret}
                       amount={selectedPackage.amount}
                       onCancel={() => setClientSecret(null)}
-                      onSuccess={() => {
-                        toast.success("PAYMENT RECEIVED. TANK REFILLED.");
-                        setBalance((b) => b + selectedPackage.credits);
-                        setClientSecret(null);
-                        router.refresh();
-                      }}
+                      onSuccess={handlePaymentSuccess}
                     />
                   </Elements>
                 </div>
               ) : (
                 <>
                   <ul className="space-y-3 font-mono text-[10px] sm:text-xs font-bold uppercase mb-8 border-t-4 border-black/10 pt-6">
-                    {selectedPackage.features.map((feature: any, i: number) => (
+                    {selectedPackage.features.map((feature, i) => (
                       <li key={i} className="flex gap-2 items-center">
                         <feature.icon className={cn("w-5 h-5 shrink-0", feature.color || feature.iconColor || "text-black")} />
                         <span dangerouslySetInnerHTML={{ __html: feature.text }} />

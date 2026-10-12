@@ -6,17 +6,9 @@ import { VideoPreview } from './_components/video-preview';
 import { Timeline } from './_components/timeline';
 import { PropertiesPanel } from './_components/properties-panel';
 import { AudioPlayer } from './_components/audio-player';
-import { Plus, Scissors, Hash, Terminal, Box, Disc, Activity, Sliders } from 'lucide-react';
+import { Plus, Terminal, Box, Disc, Activity, Sliders } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { IdentityDisk } from './_components/identity-disk';
-
-// TRON Legacy Defined Colors
-const COLORS = {
-  identityBlue: '#6FC3DF',
-  neonTeal: '#28E7FF',
-  rinzlerOrange: '#FF8F00',
-  deepGridBlack: '#02090E'
-};
 
 export default function RefocusPage() {
   const videoSrc = useRefocusStore((state) => state.videoSrc);

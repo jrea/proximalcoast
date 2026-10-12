@@ -12,7 +12,7 @@
 /* Global / Surface adjustments for BKD */
 .bkd-container {
   /* Use Next.js font variables if available, otherwise fallback */
-  --bkd-font-display-active: var(--bkd-font-display, "Shippori Mincho", serif);
+  --bkd-font-display-active: var(--bkd-font-subhead-active, "Noto Serif JP", serif);
   --bkd-font-subhead-active: var(--bkd-font-subhead, "Noto Serif JP", serif);
   --bkd-font-body-active: var(--bkd-font-body, "Inter", sans-serif);
 
@@ -164,7 +164,7 @@
   pointer-events: none;
 }
 
-/* Secondary Button (Minimalist like Hanko) */
+/* Secondary Button */
 .bkd-btn-secondary {
   position: relative;
   display: inline-flex;
@@ -389,7 +389,7 @@
   background-color: var(--bkd-surface) !important;
 }
 
-/* Button Progress Bar (Hanko Style) */
+/* Button Progress Bar */
 .bkd-btn-progress {
   position: absolute;
   bottom: 0;

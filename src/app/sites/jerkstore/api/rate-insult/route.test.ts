@@ -97,7 +97,8 @@ describe('POST /api/rate-insult', () => {
   });
 
   it('saves weight=1 (thumbs up)', async () => {
-    const res = await POST(makeRequest({ content: 'You suck', weight: 1 }));
+    const response = await POST(makeRequest({ content: 'You suck', weight: 1 }));
+    expect(response.status).toBe(200);
     expect(prisma.jerkstore_insult.update).toHaveBeenCalledWith(expect.objectContaining({
       data: { weight: 1 },
     }));

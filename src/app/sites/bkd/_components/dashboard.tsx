@@ -1,20 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { LogOut } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 
 interface Subscription {
   status: string;
   cancelAtPeriodEnd: boolean;
-  expiresAt: string;
+  expiresAt: Date | string;
   plan: string;
   priceAmount?: number | null;
   priceCurrency?: string | null;
 }
 
 export function ManageMembership({ initialSubscription }: { initialSubscription?: Subscription | null }) {
+  const router = useRouter();
   const { data: session } = authClient.useSession();
   const [subscription, setSubscription] = useState<Subscription | null>(initialSubscription || null);
   const [loading, setLoading] = useState(!initialSubscription);
@@ -22,8 +25,7 @@ export function ManageMembership({ initialSubscription }: { initialSubscription?
   const [resuming, setResuming] = useState(false);
 
   useEffect(() => {
-    if (initialSubscription && subscription && (subscription.status === 'active' || subscription.status === 'trialing')) {
-      setLoading(false);
+    if (initialSubscription && (initialSubscription.status === 'active' || initialSubscription.status === 'trialing')) {
       return;
     }
 
@@ -53,7 +55,7 @@ export function ManageMembership({ initialSubscription }: { initialSubscription?
       <div className="bg-[#F7F2E8] border border-[#D1C7B7] shadow-2xl w-[calc(100vw-2rem)] max-w-md mx-auto p-8">
         <p className="bkd-mono text-[11px] font-bold uppercase tracking-[0.3em] mb-2">Pause Training?</p>
         <p className="bkd-body text-sm opacity-60 mb-8 leading-relaxed">
-          You'll keep access until the end of your current billing period.
+          You&apos;ll keep access until the end of your current billing period.
         </p>
         <div className="flex gap-4">
           <button
@@ -88,8 +90,8 @@ export function ManageMembership({ initialSubscription }: { initialSubscription?
         style: { background: '#F7F2E8', border: '1px solid #D1C7B7', borderRadius: 0, fontFamily: 'monospace', fontSize: '11px' }
       });
       setSubscription(prev => prev ? { ...prev, cancelAtPeriodEnd: true } : null);
-    } catch (err: any) {
-      toast.error(err.message, {
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err), {
         style: { background: '#F7F2E8', border: '1px solid #BC241C', borderRadius: 0, fontFamily: 'monospace', fontSize: '11px' }
       });
     } finally {
@@ -112,8 +114,8 @@ export function ManageMembership({ initialSubscription }: { initialSubscription?
         style: { background: '#F7F2E8', border: '1px solid #D1C7B7', borderRadius: 0, fontFamily: 'monospace', fontSize: '11px' }
       });
       setSubscription(prev => prev ? { ...prev, cancelAtPeriodEnd: false } : null);
-    } catch (err: any) {
-      toast.error(err.message, {
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err), {
         style: { background: '#F7F2E8', border: '1px solid #BC241C', borderRadius: 0, fontFamily: 'monospace', fontSize: '11px' }
       });
     } finally {
@@ -251,7 +253,7 @@ export function ManageMembership({ initialSubscription }: { initialSubscription?
         </div>
         <div className="hidden sm:block w-px h-3 bg-[var(--bkd-border)]" />
         <button
-          onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => { window.location.href = "/"; } } })}
+          onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => router.push("/") } })}
           className="bkd-mono text-[9px] uppercase tracking-[0.2em] font-bold opacity-30 hover:opacity-100 hover:text-[#BC241C] transition-all flex items-center gap-1.5 group/logout"
         >
           <LogOut className="w-3 h-3 group-hover/logout:-translate-x-0.5 transition-transform" />

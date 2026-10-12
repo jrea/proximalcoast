@@ -57,11 +57,13 @@ export async function POST(req: Request) {
       message: "Subscription reactivated successfully",
       status: dbUpdate.status
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Stripe Reactivation Error:", error);
 
+    const stripeError = error as { code?: unknown; raw?: { code?: unknown }; statusCode?: unknown };
+
     // If Stripe says the subscription doesn't exist, we should sync our DB
-    if (error.code === 'resource_missing' || (error.raw && error.raw.code === 'resource_missing')) {
+    if (stripeError.code === 'resource_missing' || stripeError.raw?.code === 'resource_missing') {
       try {
         await prisma.user_subscription.update({
           where: {
@@ -84,7 +86,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal Server Error" },
-      { status: error.statusCode || 500 }
+      { status: typeof stripeError.statusCode === "number" ? stripeError.statusCode : 500 }
     );
   }
 }

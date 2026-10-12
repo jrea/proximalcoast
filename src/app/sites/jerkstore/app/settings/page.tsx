@@ -1,13 +1,9 @@
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft, CreditCard } from "lucide-react";
 import { ApiKeys } from "../../_components/dashboard/api-keys";
 import { UserProfile } from "../../_components/user-profile";
 import { getApiKeys } from "../../actions/api-keys";
-import { LogoutButton } from "../../_components/logout-button";
-import { Logo } from "../../_components/logo";
 
 import { JerkstoreNav } from "../../_components/nav";
 

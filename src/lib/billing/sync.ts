@@ -77,8 +77,9 @@ export async function syncUserSubscription(userId: string, siteSlug: string) {
     }
 
     // 5. Update the database
-    const expiresAt = (matchedSub as any).current_period_end
-      ? new Date((matchedSub as any).current_period_end * 1000)
+    const periodEnd = matchedSub.items.data[0]?.current_period_end;
+    const expiresAt = periodEnd
+      ? new Date(periodEnd * 1000)
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
     const price = matchedSub.items.data[0].price;

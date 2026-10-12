@@ -4,7 +4,6 @@ import { prisma } from '@/lib/db';
 import { FIXTURES } from '@/lib/__mocks__/db';
 import { auth } from '@/lib/auth';
 import { cookies, headers } from 'next/headers';
-import * as crypto from 'crypto';
 
 // Use the central DB mock — no inline factory
 vi.mock('@/lib/db');
@@ -29,9 +28,7 @@ vi.mock('ai', async (importOriginal) => {
     generateText: vi.fn().mockResolvedValue({
       text: "Mocked Roast",
       usage: { inputTokens: 10, outputTokens: 10 },
-      object: { roasts: ["Roast 1", "Roast 2", "Roast 3", "Roast 4", "Roast 5"] },
-      // Mocking experimental_output for compatibility with code
-      experimental_output: { roasts: ["Roast 1", "Roast 2", "Roast 3", "Roast 4", "Roast 5"] }
+      output: { roasts: ["Roast 1", "Roast 2", "Roast 3", "Roast 4", "Roast 5"] }
     }),
     streamText: vi.fn().mockReturnValue({
       toTextStreamResponse: vi.fn().mockReturnValue(new Response("Streamed Response")),
@@ -47,7 +44,7 @@ vi.mock('../../_lib/ai', () => ({
   deepseekR1: { modelId: 'deepseek-r1' }
 }));
 
-import { FREE_ROAST_LIMIT, CREDIT_COSTS } from '../../constants';
+import { FREE_ROAST_LIMIT } from '../../constants';
 
 // Mock OpenAI moderation
 vi.mock('../../_lib/openai', () => ({
@@ -349,7 +346,7 @@ describe('POST /api/generate-insult', () => {
     (prisma.user.findUnique as any).mockResolvedValue({ credits: 100 });
 
     // Reasoning allowed for everyone now
-    const { streamText, generateText } = await import('ai');
+    const { streamText } = await import('ai');
 
     const req = reqMock({ topic: 't', useReasoning: true });
 

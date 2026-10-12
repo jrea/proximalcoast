@@ -31,10 +31,10 @@ async function getOrCreateStripeCustomer({
     try {
       // Verify customer still exists in Stripe
       const customer = await stripe.customers.retrieve(user.stripeCustomerId);
-      if (!(customer as any).deleted) {
+      if (!("deleted" in customer)) {
         return user.stripeCustomerId;
       }
-    } catch (e) {
+    } catch {
       console.warn(`[Stripe] Customer ${user.stripeCustomerId} found in DB but missing in Stripe. Clearing.`);
       await prisma.user.update({
         where: { id: sessionUser.id },
@@ -159,20 +159,28 @@ export async function createSubscriptionIntent({
 }) {
   const customerId = await getOrCreateStripeCustomer({ user: sessionUser, siteSlug });
 
-  const getSecretFromSub = async (sub: any) => {
+  type PaymentIntentWithInvoiceReference = Stripe.PaymentIntent & {
+    invoice?: string | null;
+  };
+
+  const getSecretFromSub = async (sub: Stripe.Subscription) => {
+    type InvoiceWithPaymentIntent = Stripe.Invoice & {
+      payment_intent?: string | Stripe.PaymentIntent | null;
+    };
+
     console.log(`[Checkout] getSecretFromSub for ${sub.id}, status: ${sub.status}`);
 
     // 1. Check sub object directly (should be there if expanded)
     let invoice = sub.latest_invoice;
-    let pi: any = null;
-    let si: any = null;
+    let pi: string | Stripe.PaymentIntent | null | undefined = null;
+    let si: string | Stripe.SetupIntent | null | undefined = null;
 
     if (invoice) {
       if (typeof invoice === "string") {
         console.log(`[Checkout] Invoice is ID string ${invoice}, fetching expanded...`);
         invoice = await stripe.invoices.retrieve(invoice, { expand: ["payment_intent"] });
       }
-      pi = invoice.payment_intent;
+      pi = (invoice as InvoiceWithPaymentIntent).payment_intent;
       console.log(`[Checkout] Found PI on sub.latest_invoice: ${typeof pi === 'string' ? pi : pi?.id || 'null'}`);
     }
 
@@ -191,7 +199,7 @@ export async function createSubscriptionIntent({
       });
       if (invoices.data.length > 0) {
         invoice = invoices.data[0];
-        pi = invoice.payment_intent;
+        pi = (invoice as InvoiceWithPaymentIntent).payment_intent;
         console.log(`[Checkout] Found PI via invoices.list: ${typeof pi === 'string' ? pi : pi?.id || 'null'}`);
       }
     }
@@ -200,17 +208,19 @@ export async function createSubscriptionIntent({
     if (!pi && !si && invoice) {
       const invoiceId = typeof invoice === "string" ? invoice : invoice.id;
       console.log(`[Checkout] ULTIMATE FALLBACK: Listing PIs for customer ${sub.customer} to find link to ${invoiceId}...`);
+      const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
       const customerPIs = await stripe.paymentIntents.list({
-        customer: sub.customer as string,
+        customer: customerId,
         limit: 10,
       });
 
-      const matchedPI = customerPIs.data.find(p =>
-        (p as any).invoice === invoiceId ||
-        (p as any).metadata?.invoice === invoiceId ||
-        (p as any).metadata?.order_reference === invoiceId ||
-        (p as any).payment_details?.order_reference === invoiceId
-      );
+      const matchedPI = customerPIs.data.find((paymentIntent) => {
+        const candidate = paymentIntent as PaymentIntentWithInvoiceReference;
+        return candidate.invoice === invoiceId ||
+          candidate.metadata?.invoice === invoiceId ||
+          candidate.metadata?.order_reference === invoiceId ||
+          candidate.payment_details?.order_reference === invoiceId;
+      });
 
       if (matchedPI) {
         pi = matchedPI;
@@ -278,7 +288,7 @@ export async function createSubscriptionIntent({
 
     // Cleanup un-resumable sub
     console.log(`[Checkout] Cannot resume incomplete sub ${incompleteSub.id}, canceling`);
-    try { await stripe.subscriptions.cancel(incompleteSub.id); } catch (e) { }
+    try { await stripe.subscriptions.cancel(incompleteSub.id); } catch { }
   }
 
   // 3. Create Subscription

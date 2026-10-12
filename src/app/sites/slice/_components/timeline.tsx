@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useRef, MouseEvent, useEffect } from 'react';
+import React, { useCallback, useRef, MouseEvent, useEffect } from 'react';
 import { useRefocusStore } from '../_store/store';
 import { cn } from '@/lib/utils';
-import { Play, Pause, Plus, Trash2, Scissors, Music, Download, ChevronRight, Hash, Slash, Square, Circle } from 'lucide-react';
+import { Play, Pause, Trash2, Music, Download, Hash, Circle } from 'lucide-react';
 
 export function Timeline() {
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -28,13 +28,13 @@ export function Timeline() {
   const selectSegment = useRefocusStore((state) => state.selectSegment);
   const getProjectTime = useRefocusStore((state) => state.getProjectTime);
 
-  const getTimeFromEvent = (e: MouseEvent | globalThis.MouseEvent) => {
+  const getTimeFromEvent = useCallback((e: MouseEvent | globalThis.MouseEvent) => {
     if (!timelineRef.current || duration === 0) return 0;
     const rect = timelineRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const percent = Math.max(0, Math.min(1, x / rect.width));
     return percent * duration;
-  };
+  }, [duration]);
 
   const handleMouseDown = (e: MouseEvent<HTMLDivElement>) => {
     isDragging.current = true;
@@ -65,7 +65,7 @@ export function Timeline() {
       window.removeEventListener('mouseup', handleGlobalMouseUp);
       window.removeEventListener('mousemove', handleGlobalMouseMove);
     };
-  }, [duration, seek, play, pause]);
+  }, [seek, play, pause, getTimeFromEvent]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -91,7 +91,6 @@ export function Timeline() {
           <div className="flex items-center">
             <button
               onClick={() => {
-                const videoPreviewElement = document.querySelector('video');
                 // We'll rely on the VideoPreview component's internal state for the actual resumption,
                 // but we can also trigger a broad resumption here.
                 if (isPlaying) pause();
@@ -164,9 +163,10 @@ export function Timeline() {
                 store.seek(0);
 
                 // Broad AudioContext resumption on user gesture
-                const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-                if (AudioContext) {
-                  const tempCtx = new AudioContext();
+                const AudioContextConstructor = window.AudioContext ??
+                  (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+                if (AudioContextConstructor) {
+                  const tempCtx = new AudioContextConstructor();
                   tempCtx.resume();
                 }
               }

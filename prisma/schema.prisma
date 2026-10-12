@@ -109,7 +109,6 @@ model user {
   overmake_estimate overmake_estimate[]
   apiKeys          ApiKey[]
   bkd_documents    bkd_document[]
-  hanko_documents  hanko_document[]
   preferences      Json?
   credits          Int      @default(3)
   phone            String?
@@ -232,64 +231,6 @@ model bkd_document {
 
   user           user         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization   organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
-  @@schema("main")
-}
-
-
-model hanko_document {
-  id            String   @id @default(uuid())
-  userId        String
-  filename      String
-  s3Key         String
-  status        String
-  config        Json
-  documentHash  String?
-  sealedHash    String?
-  signerEmail   String?
-  signerName    String?
-  signatureFont String?
-  createdAt     DateTime @default(now()) @db.Timestamp(6)
-  signedAt      DateTime?
-
-  user          user               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  signEvents    hanko_sign_event[]
-  consentRecord hanko_consent_record?
-
-  @@schema("main")
-}
-
-model hanko_sign_event {
-  id           String   @id @default(uuid())
-  documentId   String
-  eventType    String
-  signerEmail  String
-  signerId     String?
-  timestamp    DateTime @default(now()) @db.Timestamp(6)
-  ipAddress    String
-  userAgent    String
-  geoCountry   String?
-  geoCity      String?
-  documentHash String
-  sequenceNum  Int
-  metadata     Json?
-
-  document     hanko_document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-
-  @@schema("main")
-}
-
-model hanko_consent_record {
-  id           String   @id @default(uuid())
-  documentId   String   @unique
-  signerEmail  String
-  timestamp    DateTime @default(now()) @db.Timestamp(6)
-  ipAddress    String
-  userAgent    String
-  viewportSize String
-  browserName  String?
-
-  document     hanko_document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@schema("main")
 }

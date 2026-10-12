@@ -23,7 +23,6 @@ export async function POST(req: Request) {
   const apiKeyRaw = authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
 
   let session = null;
-  let diligentBot = false;
 
   if (apiKeyRaw) {
     // Hash the key to match DB storage
@@ -49,7 +48,6 @@ export async function POST(req: Request) {
         where: { id: keyRecord.id },
         data: { lastUsedAt: new Date() }
       });
-      diligentBot = true;
     }
   }
 
@@ -65,7 +63,6 @@ export async function POST(req: Request) {
   const topic = bodyTopic || prompt;
 
   let userId = session?.user.id;
-  let userPlan = "trial"; // Default to trial
   let isGuest = false;
   let newGuestId: string | null = null;
   let finalUsername: string | null = null;
@@ -113,8 +110,9 @@ export async function POST(req: Request) {
         newGuestId = newUser.id;
         isGuest = true;
         finalUsername = newUsername;
-      } catch (e: any) {
-        if (e.code === 'P2002') {
+      } catch (e: unknown) {
+        const prismaError = e as { code?: unknown };
+        if (prismaError.code === 'P2002') {
           return new Response("That handle is already taken. Be more original.", { status: 409 });
         }
         console.error("Failed to create guest user", e);
@@ -129,7 +127,7 @@ export async function POST(req: Request) {
   }
 
   // Heat Level Lock removed. Everyone can use all heat levels.
-  let heatLevel = requestedHeatLevel;
+  const heatLevel = requestedHeatLevel;
 
   // Rate Limiting Logic
   let currentUsage = 0;
@@ -387,18 +385,15 @@ ${historyString}
       ...v3Params,
     });
 
-    // Save to DB synchronously since we have the full result
-    // Access the structured output. 
-    // Types in this version of AI SDK might put it in experimental_output or object (if using experimental_generateObject wrapper).
-    // result.experimental_output is the likely place for generateText + output param.
-    const { roasts } = (result as any).experimental_output || (result as any).object;
+    // AI SDK 7 returns structured output here for both bot and browser requests.
+    const { roasts } = result.output;
     const usage = result.usage;
 
     if (roasts && roasts.length > 0) {
       const perRoastInput = Math.ceil((usage.inputTokens ?? 0) / ROAST_COUNT);
       const perRoastOutput = Math.ceil((usage.outputTokens ?? 0) / ROAST_COUNT);
 
-      await Promise.all(roasts.map((text: string) =>
+      await Promise.all(roasts.map((text) =>
         prisma.jerkstore_insult.create({
           data: {
             content: text,
@@ -508,4 +503,3 @@ ${historyString}
     headers: responseHeaders
   });
 }
-

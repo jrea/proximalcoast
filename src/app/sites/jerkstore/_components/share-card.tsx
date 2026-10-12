@@ -88,7 +88,7 @@ export const ShareCard = forwardRef<ShareCardHandle, ShareCardProps>(({
           <div className="absolute inset-0 flex flex-col justify-around py-20 uppercase font-black text-[10px] tracking-[0.5em] text-white opacity-20 -rotate-12 scale-150">
             {[...Array(10)].map((_, k) => (
               <div key={`text-${k}`} className="whitespace-nowrap translate-x-[-10%]">
-                I'M ONLY ON THE TRIAL • I'M ONLY ON THE TRIAL • I'M ONLY ON THE TRIAL • I'M ONLY ON THE TRIAL
+                I&apos;M ONLY ON THE TRIAL • I&apos;M ONLY ON THE TRIAL • I&apos;M ONLY ON THE TRIAL • I&apos;M ONLY ON THE TRIAL
               </div>
             ))}
           </div>

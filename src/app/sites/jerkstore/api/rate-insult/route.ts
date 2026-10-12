@@ -16,7 +16,6 @@ export async function POST(req: Request) {
     const { content, weight, topic } = RateSchema.parse(body);
 
     let userId: string | null = null;
-    let isGuest = false;
 
     // 1. Check Auth Session
     const session = await auth.api.getSession({
@@ -38,7 +37,6 @@ export async function POST(req: Request) {
 
         if (guestUser) {
           userId = guestUser.id;
-          isGuest = true;
         }
       }
     }

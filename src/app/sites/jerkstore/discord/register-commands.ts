@@ -21,12 +21,12 @@ const rest = new REST({ version: '10' }).setToken(token);
   try {
     console.log(`Started refreshing ${COMMANDS.length} application (/) commands.`);
 
-    const data: any = await rest.put(
+    const data = await rest.put(
       Routes.applicationCommands(clientId),
       { body: COMMANDS },
     );
 
-    console.log(`Successfully reloaded ${data.length} application (/) commands.`);
+    console.log(`Successfully reloaded ${Array.isArray(data) ? data.length : 0} application (/) commands.`);
   } catch (error) {
     console.error(error);
   }

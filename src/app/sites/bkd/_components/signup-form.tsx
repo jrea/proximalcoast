@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 
 export function SignupForm() {
+  const router = useRouter();
   const { data: session, isPending: isSessionPending } = authClient.useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,7 +22,7 @@ export function SignupForm() {
         provider: "google",
         callbackURL: "/",
       });
-    } catch (err: any) {
+    } catch {
       toast.error("Failed to sign in with Google");
       setLoading(false);
     }
@@ -48,9 +51,9 @@ export function SignupForm() {
         if (signInError) throw new Error(signInError.message || "Failed to sign in");
       }
 
-      window.location.href = "/";
-    } catch (err: any) {
-      setError(err.message);
+      router.push("/");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to sign in"));
       setLoading(false);
     }
   };

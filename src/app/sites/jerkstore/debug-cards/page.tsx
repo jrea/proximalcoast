@@ -4,6 +4,8 @@ import { ShareCard, type ShareCardHandle } from "../_components/share-card";
 import { useRef } from "react";
 
 export default function DebugCardsPage() {
+  const refs = useRef<(ShareCardHandle | null)[]>([]);
+
   if (process.env.NODE_ENV === "production") {
     return <div>Not found</div>;
   }
@@ -93,8 +95,6 @@ export default function DebugCardsPage() {
       },
     },
   ];
-
-  const refs = useRef<(ShareCardHandle | null)[]>([]);
 
   const downloadCard = async (index: number, title: string) => {
     const handle = refs.current[index];

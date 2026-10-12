@@ -95,7 +95,7 @@ export function InsultCarousel({ insults, variant = "default", title, subtitle }
               </span>
             </div>
             <p className="text-2xl md:text-4xl font-black leading-tight italic">
-              "{currentInsult.content}"
+              &quot;{currentInsult.content}&quot;
             </p>
           </div>
         </div>

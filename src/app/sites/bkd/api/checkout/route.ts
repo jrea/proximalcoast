@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { PLANS, getPlanPriceId } from "../../config";
 import { createSubscriptionIntent } from "@/lib/billing/checkout";
 
-export async function POST(req: Request) {
+export async function POST() {
   const sessionUser = await auth.api.getSession({
     headers: await headers(),
   });

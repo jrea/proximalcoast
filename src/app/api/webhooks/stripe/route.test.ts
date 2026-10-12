@@ -100,6 +100,21 @@ describe('POST /api/webhooks/stripe', () => {
     }));
   });
 
+  it('saves the credit payment card as the customer default', async () => {
+    const event = makeEvent('payment_intent.succeeded', {
+      customer: 'cus_123',
+      payment_method: 'pm_123',
+      metadata: { type: 'credits_purchase', userId: 'user_1', creditsAmount: '100' },
+    });
+    mockStripe.webhooks.constructEvent.mockReturnValueOnce(event);
+
+    await POST(buildRequest(JSON.stringify(event)));
+
+    expect(mockStripe.customers.update).toHaveBeenCalledWith('cus_123', {
+      invoice_settings: { default_payment_method: 'pm_123' },
+    });
+  });
+
   it('does NOT double-credit on payment_intent.succeeded with source=immediate', async () => {
     const event = makeEvent('payment_intent.succeeded', {
       metadata: { type: 'credits_purchase', userId: 'user_1', creditsAmount: '50', source: 'immediate' },

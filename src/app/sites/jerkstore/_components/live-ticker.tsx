@@ -1,7 +1,5 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import { useEffect, useState } from "react";
 
 const MOCK_VICTIMS = [
   "My Ex's Mixtape", "Crypto Bros", "My Boss", "HR Department",

@@ -70,7 +70,7 @@ export async function POST(req: Request) {
     } else {
       // DOWNGRADE: Schedule for end of period
 
-      let scheduleId = typeof stripeSub.schedule === 'string' ? stripeSub.schedule : null;
+      const scheduleId = typeof stripeSub.schedule === 'string' ? stripeSub.schedule : null;
       let schedule;
 
       if (scheduleId) {
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
       }
 
       // Use Stripe's official period end for precise alignment
-      const periodEnd = (stripeSub as any).current_period_end;
+      const periodEnd = stripeSub.items.data[0]?.current_period_end ?? Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
       console.log(`Scheduling downgrade to ${newPlanName} (${priceId}) at ${new Date(periodEnd * 1000)}`);
 
       // Debug logging
@@ -104,7 +104,7 @@ export async function POST(req: Request) {
             {
               start_date: phaseStart,
               end_date: phaseEnd,
-              items: currentPhase.items.map((item: any) => ({
+              items: currentPhase.items.map((item) => ({
                 price: typeof item.price === 'string' ? item.price : item.price.id,
                 quantity: item.quantity
               })),
@@ -115,7 +115,7 @@ export async function POST(req: Request) {
             },
           ],
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error updating schedule phases:", err);
         throw err;
       }
@@ -131,11 +131,17 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Failed to update subscription:", error);
 
+    const stripeError = error as {
+      code?: unknown;
+      raw?: { code?: unknown };
+      statusCode?: unknown;
+    };
+
     // If Stripe says the subscription doesn't exist, we should sync our DB
-    if (error.code === 'resource_missing' || (error.raw && error.raw.code === 'resource_missing')) {
+    if (stripeError.code === 'resource_missing' || stripeError.raw?.code === 'resource_missing') {
       try {
         await prisma.user_subscription.update({
           where: {
@@ -158,7 +164,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal Error" },
-      { status: error.statusCode || 500 }
+      { status: typeof stripeError.statusCode === "number" ? stripeError.statusCode : 500 }
     );
   }
 }

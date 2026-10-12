@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Loader2, Check, X, Pencil } from "lucide-react";
+import { getErrorMessage } from "@/lib/utils";
 
 export function UserProfile({ initialName, email }: { initialName: string, email: string }) {
   const [name, setName] = useState(initialName);
@@ -21,8 +22,8 @@ export function UserProfile({ initialName, email }: { initialName: string, email
         throw new Error(data.message || "Failed to update name");
       }
       setIsEditing(false);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
+import Stripe from "stripe";
 
 export async function GET(req: Request) {
   const sessionUser = await auth.api.getSession({
@@ -32,14 +33,19 @@ export async function GET(req: Request) {
     // SYNC WITH STRIPE
     if (subscription?.stripeSubscriptionId && subscription.status !== 'canceled') {
       try {
-        const stripeSub = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId) as any;
+        const stripeSub = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
 
         // Map Stripe status to our status
         // We use the same status strings mostly.
         const stripeStatus = stripeSub.status;
         const cancelAtPeriodEnd = stripeSub.cancel_at_period_end;
-        const currentPeriodEnd = stripeSub.current_period_end
-          ? new Date(stripeSub.current_period_end * 1000)
+        // Stripe exposes the period end on the subscription item. Keep the
+        // top-level fallback for older API responses and lightweight fixtures.
+        const legacyStripeSub = stripeSub as Stripe.Subscription & { current_period_end?: number };
+        const currentPeriodEndUnix = stripeSub.items?.data?.[0]?.current_period_end
+          ?? legacyStripeSub.current_period_end;
+        const currentPeriodEnd = currentPeriodEndUnix
+          ? new Date(currentPeriodEndUnix * 1000)
           : new Date(Date.now() + 86400000); // Default to +1 day if missing
 
         // Check for mismatch

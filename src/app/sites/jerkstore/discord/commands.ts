@@ -1,4 +1,4 @@
-import { REST, Routes, SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder } from 'discord.js';
 
 export const COMMANDS = [
   new SlashCommandBuilder()

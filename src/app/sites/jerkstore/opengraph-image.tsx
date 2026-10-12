@@ -51,7 +51,7 @@ export default function Image() {
             color: "black",
           }}
         >
-          The World's Most Aggressive AI Insult Generator
+          The World&apos;s Most Aggressive AI Insult Generator
         </div>
         <div
           style={{

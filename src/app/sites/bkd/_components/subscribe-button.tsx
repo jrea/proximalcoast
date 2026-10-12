@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 import { PaymentForm } from "./payment-form";
-import { LucideLock, LucideShieldCheck, LucideScrollText, LucideUsers, LucideMountainSnow, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { getErrorMessage } from "@/lib/utils";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -20,12 +22,13 @@ export function SubscribeButton({
   priceAmount?: number,
   priceCurrency?: string
 }) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
 
-  const startCheckout = async () => {
+  const startCheckout = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -40,21 +43,24 @@ export function SubscribeButton({
         setClientSecret(data.clientSecret);
         setSubscriptionId(data.subscriptionId);
       } else if (data.restored) {
-        window.location.href = "/?success=true";
+        router.push("/?success=true");
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Unable to start checkout"));
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
   // AUTO-RESUME: If the server detected an incomplete sub, trigger the checkout flow on mount
   useEffect(() => {
     if (initialStatus === "incomplete") {
-      startCheckout();
+      const timeout = window.setTimeout(() => {
+        void startCheckout();
+      }, 0);
+      return () => window.clearTimeout(timeout);
     }
-  }, [initialStatus]);
+  }, [initialStatus, startCheckout]);
 
   if (clientSecret) {
     return (
@@ -190,7 +196,7 @@ export function SubscribeButton({
           </span>
           <div className="hidden sm:block w-px h-3 bg-[var(--bkd-border)]" />
           <button
-            onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => { window.location.href = "/"; } } })}
+            onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => router.push("/") } })}
             className="bkd-mono text-[9px] uppercase tracking-[0.2em] font-bold opacity-30 hover:opacity-100 hover:text-[#BC241C] transition-all flex items-center gap-1.5 group/logout"
           >
             <LogOut className="w-3 h-3 group-hover/logout:-translate-x-0.5 transition-transform" />

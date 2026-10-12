@@ -9,10 +9,12 @@ interface ProductData {
   name: string;
 }
 
-const ProductForm = ({ onSave }: { onSave: (data: ProductData) => void }) => <div>Product Form</div>;
+const ProductForm = ({ onSave }: { onSave: (data: ProductData) => void }) => {
+  void onSave;
+  return <div>Product Form</div>;
+};
 
 export default function BacklinksPage() {
-  const [product, setProduct] = useState<ProductData | null>(null);
   const [showInstructions, setShowInstructions] = useState(false);
 
   return (
@@ -20,7 +22,7 @@ export default function BacklinksPage() {
       {/* Beta Banner */}
       <div className="absolute top-0 left-0 w-full bg-yellow-400 text-black text-xs font-bold text-center py-1 z-50 flex justify-center items-center gap-2">
         <AlertTriangle size={12} />
-        <span>BETA: This tool is a work in progress and probably doesn't work yet. Tag me on Twitter (@proximalcoast) if you want to see this actually work.</span>
+        <span>BETA: This tool is a work in progress and probably doesn&apos;t work yet. Tag me on Twitter (@proximalcoast) if you want to see this actually work.</span>
       </div>
 
       {/* Sidebar / Tools Area */}
@@ -47,8 +49,8 @@ export default function BacklinksPage() {
               <ol className="list-decimal list-inside mt-2 space-y-1">
                 <li>Download the repository.</li>
                 <li>Go to <code>chrome://extensions</code></li>
-                <li>Enable "Developer Mode".</li>
-                <li>Click "Load Unpacked".</li>
+                <li>Enable &quot;Developer Mode&quot;.</li>
+                <li>Click &quot;Load Unpacked&quot;.</li>
                 <li>Select <code>src/app/sites/backlinks/extension</code> folder.</li>
                 <li>Refresh this page.</li>
               </ol>
@@ -60,7 +62,7 @@ export default function BacklinksPage() {
           {/* Product Info Section */}
           <section className="space-y-4">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">1. Product Info</h2>
-            <ProductForm onSave={setProduct} />
+            <ProductForm onSave={() => undefined} />
           </section>
 
           {/* Directory List Placeholder */}
@@ -93,4 +95,3 @@ export default function BacklinksPage() {
     </div>
   );
 }
-

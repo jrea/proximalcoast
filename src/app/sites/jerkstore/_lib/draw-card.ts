@@ -180,7 +180,7 @@ export async function drawCardToCanvas(
   }
 
   // Vertical Centering in the available space
-  let startY = inputBottom + (maxRoastHeight - totalHeight) / 2;
+  const startY = inputBottom + (maxRoastHeight - totalHeight) / 2;
 
   lines.forEach((line, i) => {
     ctx.fillText(line, padding, startY + i * (fontSize * 0.95));
@@ -197,15 +197,16 @@ export async function drawCardToCanvas(
   // Measure text with tracking adjustment
   ctx.font = 'italic 900 24px "Bebas Neue", sans-serif';
   // Use letterSpacing if supported, else fallback to manual measurement adjustment
-  if ('letterSpacing' in ctx) {
-    (ctx as any).letterSpacing = "2.4px";
+  const contextWithLetterSpacing = ctx as CanvasRenderingContext2D & { letterSpacing?: string };
+  if ('letterSpacing' in contextWithLetterSpacing) {
+    contextWithLetterSpacing.letterSpacing = "2.4px";
   }
 
   const textMetric = ctx.measureText("JERKSTORE");
   let textWidth = textMetric.width;
   // If letterSpacing isn't supported, measureText is too narrow.
   // Add 0.1em * 8 spaces roughly = 2.4 * 8 = 19.2px
-  if (!('letterSpacing' in ctx)) {
+  if (!('letterSpacing' in contextWithLetterSpacing)) {
     textWidth += 20; // 0.1em * length
   }
 
@@ -269,16 +270,4 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
   }
   if (currentLine) lines.push(currentLine);
   return lines;
-}
-
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  if (w < 2 * r) r = w / 2;
-  if (h < 2 * r) r = h / 2;
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
 }

@@ -4,9 +4,9 @@ import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client"; // Assuming this exists based on previous files
-import { Loader2, Zap, AlertTriangle, ArrowRight } from "lucide-react";
+import { Loader2, AlertTriangle, ArrowRight } from "lucide-react";
 import { Logo } from "../_components/logo";
-import { cn } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/utils";
 
 import { usePostHog } from 'posthog-js/react';
 
@@ -67,9 +67,10 @@ function SignInContent() {
         });
         if (error) throw error;
       }
-    } catch (err: any) {
-      posthog?.capture('auth_error', { provider: 'email', type, error: err.message });
-      setError(err.message || "Authentication failed. Try harder.");
+    } catch (err: unknown) {
+      const message = getErrorMessage(err, "Authentication failed. Try harder.");
+      posthog?.capture('auth_error', { provider: 'email', type, error: message });
+      setError(message);
       setIsLoading(false);
     }
   };

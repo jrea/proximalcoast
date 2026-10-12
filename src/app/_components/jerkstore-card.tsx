@@ -29,7 +29,7 @@ export function JerkstoreCard() {
             </span>
           </div>
           <p className="text-base sm:text-xl font-black uppercase tracking-tighter leading-none text-black max-w-sm mb-6 transform skew-x-[-1deg]">
-            The world's most <span className="underline decoration-8 decoration-red-600 underline-offset-4">aggressive</span> AI insult generator.
+            The world&apos;s most <span className="underline decoration-8 decoration-red-600 underline-offset-4">aggressive</span> AI insult generator.
           </p>
 
           <div className="flex items-center justify-center sm:justify-start gap-8 text-[9px] font-black uppercase tracking-[0.2em] text-black">

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { Logo } from "./logo";
 import { LogoutButton } from "./logout-button";
 
-export function JerkstoreNav() {
+export function JerkstoreNav({ showSettings = true }: { showSettings?: boolean }) {
   const pathname = usePathname();
 
   const isActive = (path: string) => pathname === path;
@@ -46,18 +46,20 @@ export function JerkstoreNav() {
           <CreditCard className="w-5 h-5 sm:w-6 sm:h-6" />
         </Link>
 
-        <Link
-          href="/app/settings"
-          className={cn(
-            "flex items-center justify-center p-2 sm:p-2.5 border-2 border-transparent transition-all",
-            isActive("/app/settings")
-              ? "bg-yellow-300 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-              : "hover:bg-neutral-100 hover:border-black/10"
-          )}
-          title="Settings"
-        >
-          <Settings className="w-5 h-5 sm:w-6 sm:h-6" />
-        </Link>
+        {showSettings && (
+          <Link
+            href="/app/settings"
+            className={cn(
+              "flex items-center justify-center p-2 sm:p-2.5 border-2 border-transparent transition-all",
+              isActive("/app/settings")
+                ? "bg-yellow-300 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                : "hover:bg-neutral-100 hover:border-black/10"
+            )}
+            title="Settings"
+          >
+            <Settings className="w-5 h-5 sm:w-6 sm:h-6" />
+          </Link>
+        )}
 
         <div className="w-px h-6 bg-neutral-200 mx-1" />
 

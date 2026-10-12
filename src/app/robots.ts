@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: '/private/',
     },
-    sitemap: 'https://proximalcoast.com/sitemap.xml',
+    sitemap: 'https://www.proximalcoast.com/sitemap.xml',
   }
 }

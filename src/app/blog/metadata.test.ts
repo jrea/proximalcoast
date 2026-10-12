@@ -42,8 +42,8 @@ describe("shared blog canonical ownership", () => {
 
     const metadata = await generateMetadata({ params: Promise.resolve({ slug: post.id }) });
 
-    expect(metadata.alternates?.canonical).toBe("https://proximalcoast.com/blog/example");
-    expect(metadata.openGraph?.url).toBe("https://proximalcoast.com/blog/example");
+    expect(metadata.alternates?.canonical).toBe("https://www.proximalcoast.com/blog/example");
+    expect(metadata.openGraph?.url).toBe("https://www.proximalcoast.com/blog/example");
     expect(requestHeaders).not.toHaveBeenCalled();
   });
 
@@ -53,20 +53,20 @@ describe("shared blog canonical ownership", () => {
 
     const metadata = await generateMetadata({ params: Promise.resolve({ slug: post.id }) });
 
-    expect(metadata.alternates?.canonical).toBe("https://proximalcoast.com/blog/archive/example");
-    expect(metadata.openGraph?.url).toBe("https://proximalcoast.com/blog/archive/example");
+    expect(metadata.alternates?.canonical).toBe("https://www.proximalcoast.com/blog/archive/example");
+    expect(metadata.openGraph?.url).toBe("https://www.proximalcoast.com/blog/archive/example");
     expect(requestHeaders).not.toHaveBeenCalled();
   });
 
   it("keeps both blog indexes canonical on the main domain", () => {
-    expect(blogMetadata.alternates?.canonical).toBe("https://proximalcoast.com/blog");
-    expect(archiveMetadata.alternates?.canonical).toBe("https://proximalcoast.com/blog/archive");
-    expect(blogMetadata.openGraph?.url).toBe("https://proximalcoast.com/blog");
-    expect(archiveMetadata.openGraph?.url).toBe("https://proximalcoast.com/blog/archive");
+    expect(blogMetadata.alternates?.canonical).toBe("https://www.proximalcoast.com/blog");
+    expect(archiveMetadata.alternates?.canonical).toBe("https://www.proximalcoast.com/blog/archive");
+    expect(blogMetadata.openGraph?.url).toBe("https://www.proximalcoast.com/blog");
+    expect(archiveMetadata.openGraph?.url).toBe("https://www.proximalcoast.com/blog/archive");
   });
 
   it("retains main-domain social preview images when index Open Graph fields replace inherited metadata", () => {
-    const images = ["https://proximalcoast.com/opengraph-image"];
+    const images = ["https://www.proximalcoast.com/opengraph-image"];
     expect(blogMetadata.openGraph?.images).toEqual(images);
     expect(archiveMetadata.openGraph?.images).toEqual(images);
   });

@@ -22,7 +22,7 @@ const bebas = Bebas_Neue({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://proximalcoast.com"),
+  metadataBase: new URL("https://www.proximalcoast.com"),
   title: "Proximal Coast",
   description: "Proximatic is our active project. Explore side projects Jerkstore and Slice, and the Proximal Coast archive of abandoned games.",
 };

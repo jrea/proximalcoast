@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
   const { postData, archived } = routePost;
   const route = archived ? `/blog/archive/${slug}` : `/blog/${slug}`;
-  const canonical = `https://proximalcoast.com${route}`;
+  const canonical = `https://www.proximalcoast.com${route}`;
   const title = `${postData.title} | Proximal Coast`;
 
   return {

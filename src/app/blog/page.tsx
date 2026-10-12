@@ -12,13 +12,13 @@ const discordUrl = "https://discord.gg/3S6YXC2FQ";
 export const metadata: Metadata = {
   title: "Blog | Proximal Coast",
   description: "Project-specific updates, videos, and notes from Proximal Coast.",
-  alternates: { canonical: "https://proximalcoast.com/blog" },
+  alternates: { canonical: "https://www.proximalcoast.com/blog" },
   openGraph: {
     title: "Blog | Proximal Coast",
     description: "Project-specific updates, videos, and notes from Proximal Coast.",
     type: "website",
-    url: "https://proximalcoast.com/blog",
-    images: ["https://proximalcoast.com/opengraph-image"],
+    url: "https://www.proximalcoast.com/blog",
+    images: ["https://www.proximalcoast.com/opengraph-image"],
   },
 };
 

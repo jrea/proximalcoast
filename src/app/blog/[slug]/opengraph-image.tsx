@@ -1,99 +1,53 @@
-import { ImageResponse } from 'next/og'
-import { getPostData } from '@/lib/posts'
+import { getArchivePostData, getPostData } from "@/lib/posts";
+import { ImageResponse } from "next/og";
 
-// Image metadata
-export const alt = 'Proximal Coast Blog'
-export const size = {
-  width: 1200,
-  height: 630,
-}
-
-export const contentType = 'image/png'
+export const alt = "Proximal Coast field note";
+export const size = { width: 1200, height: 630 };
+export const contentType = "image/png";
 
 type Params = Promise<{ slug: string }>;
 
-// Image generation
 export default async function Image({ params }: { params: Params }) {
-  const { slug } = await params
-  const postData = await getPostData(slug)
+  const { slug } = await params;
+  let postData;
+  let archived = false;
+
+  try {
+    postData = await getPostData(slug);
+  } catch {
+    postData = await getArchivePostData(slug);
+    archived = true;
+  }
 
   return new ImageResponse(
     (
-      // ImageResponse render element
       <div
         style={{
-          fontSize: 84,
-          background: 'black',
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-start',
-          justifyContent: 'center',
-          color: 'white',
-          padding: '80px',
-          fontFamily: 'sans-serif',
+          display: "flex",
+          width: "100%",
+          height: "100%",
+          flexDirection: "column",
+          justifyContent: "center",
+          padding: "76px 86px",
+          backgroundColor: "#0D1418",
+          backgroundImage: "linear-gradient(rgba(138,164,180,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(138,164,180,0.08) 1px, transparent 1px)",
+          backgroundSize: "58px 58px",
+          color: "#E6E3DC",
+          fontFamily: "sans-serif",
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            marginBottom: '40px',
-          }}
-        >
-          <div
-            style={{
-              background: '#FFD700',
-              width: '80px',
-              height: '80px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: '50%',
-              marginRight: '20px',
-              color: 'black',
-              fontSize: '40px',
-              fontWeight: 'bold',
-            }}
-          >
-            PX
-          </div>
-          <div
-            style={{
-              fontSize: '32px',
-              color: '#FFD700',
-              fontWeight: '600',
-              letterSpacing: '0.1em',
-            }}
-          >
-            PROXIMAL COAST
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, color: "#8AA4B4", fontSize: 22, fontWeight: 700, letterSpacing: 5 }}>
+          <div style={{ width: 54, height: 2, backgroundColor: "#96938C" }} />
+          PROXIMAL COAST / {archived ? "ARCHIVE" : "PROJECT UPDATE"}
         </div>
-        <div
-          style={{
-            fontSize: '84px',
-            fontWeight: 'bold',
-            lineHeight: '1.1',
-            marginBottom: '20px',
-            maxWidth: '1000px',
-          }}
-        >
+        <div style={{ display: "flex", maxWidth: 1030, marginTop: 38, fontSize: 72, fontWeight: 900, letterSpacing: -2, lineHeight: 0.98 }}>
           {postData.title}
         </div>
-        <div
-          style={{
-            fontSize: '32px',
-            color: '#A1A1AA',
-          }}
-        >
-          {postData.date}
+        <div style={{ display: "flex", marginTop: 34, color: "#9AA8AE", fontSize: 26, fontWeight: 700, letterSpacing: 3 }}>
+          {postData.date} / {archived ? "ARCHIVED" : "CURRENT"}
         </div>
       </div>
     ),
-    // ImageResponse options
-    {
-      ...size,
-    }
-  )
+    { ...size },
+  );
 }

@@ -1,8 +1,9 @@
 import { MetadataRoute } from 'next'
-import { getSortedPostsData } from '@/lib/posts'
+import { getSortedCurrentPostsData } from '@/lib/posts'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const posts = getSortedPostsData()
+  // Archived posts use the main site's canonical URLs and sitemap.
+  const posts = getSortedCurrentPostsData()
   const slicePosts = posts
     .filter(post => post.site === 'slice')
     .map((post) => ({

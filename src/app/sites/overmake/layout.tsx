@@ -1,6 +1,26 @@
 
 import { Inter, Playfair_Display, Space_Mono } from "next/font/google"; // Assuming these are available or standard
 import { cn } from "@/lib/utils";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  metadataBase: new URL("https://overmake.proximalcoast.com"),
+  title: "Overmake | Overengineer the Everyday",
+  description: "Turn everyday tasks into playful AI-generated proposals, from makeshift fixes to extravagant engineering.",
+  openGraph: {
+    title: "Overmake | Overengineer the Everyday",
+    description: "Turn everyday tasks into playful AI-generated proposals, from makeshift fixes to extravagant engineering.",
+    siteName: "Overmake",
+    type: "website",
+    images: [],
+  },
+  twitter: {
+    card: "summary",
+    title: "Overmake | Overengineer the Everyday",
+    description: "Turn everyday tasks into playful AI-generated proposals, from makeshift fixes to extravagant engineering.",
+    images: [],
+  },
+};
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfair" });

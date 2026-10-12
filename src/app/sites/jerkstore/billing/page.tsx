@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -6,6 +7,11 @@ import { stripe } from "@/lib/stripe";
 import { BillingContent } from "../_components/billing-content";
 import { Loader2 } from "lucide-react";
 import { redirect } from "next/navigation";
+
+export const metadata: Metadata = {
+  title: "Billing | Jerkstore",
+  robots: { index: false, follow: false },
+};
 
 async function getDefaultPaymentMethod(customerId: string | null) {
   if (!customerId) return null;

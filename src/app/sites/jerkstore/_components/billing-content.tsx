@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CreditCard, Loader2, Coins, Trash2, Infinity, Heart, Flame, Car, Zap, Skull, Crown, Check, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -12,10 +12,12 @@ import {
   useElements
 } from "@stripe/react-stripe-js";
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
 import { JerkstoreNav } from "./nav";
 import { cn } from "@/lib/utils";
 import { CREDIT_PACKAGES as BASE_PACKAGES } from "../constants";
+import { useJerkstoreAnalytics } from "../_lib/analytics-client";
 
 type SavedPaymentMethod = {
   brand: string;
@@ -40,7 +42,7 @@ interface BillingContentProps {
   initialPaymentMethod: SavedPaymentMethod | null;
 }
 
-function CheckoutForm({ amount, onCancel, onSuccess }: { amount: number, onCancel: () => void, onSuccess: (paymentIntentId: string) => Promise<void> | void }) {
+function CheckoutForm({ amount, onCancel, onSuccess }: { amount: number, onCancel: () => void, onSuccess: (paymentIntentId: string, live: boolean) => Promise<void> | void }) {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
@@ -66,7 +68,7 @@ function CheckoutForm({ amount, onCancel, onSuccess }: { amount: number, onCance
       setErrorMessage(error.message || "An unexpected error occurred.");
       setLoading(false);
     } else if (paymentIntent && paymentIntent.status === "succeeded") {
-      await onSuccess(paymentIntent.id);
+      await onSuccess(paymentIntent.id, paymentIntent.livemode);
       setLoading(false);
     }
   };
@@ -140,6 +142,7 @@ const CREDIT_PACKAGES = BASE_PACKAGES.map(pkg => ({
 }));
 
 export function BillingContent({ creditBalance, initialPaymentMethod }: BillingContentProps) {
+  const analytics = useJerkstoreAnalytics();
   const [balance, setBalance] = useState(creditBalance);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -160,27 +163,37 @@ export function BillingContent({ creditBalance, initialPaymentMethod }: BillingC
   }, [initialPaymentMethod]);
 
   const selectedPackage = CREDIT_PACKAGES.find(p => p.id === selectedPackageId) || CREDIT_PACKAGES[1];
+  const purchaseAttempt = useRef<{ packageId: string; id: string } | null>(null);
 
   const handlePurchase = async () => {
+    if (checkoutLoading) return;
     setCheckoutLoading(true);
+    analytics.capture("checkout_started", { packageId: selectedPackage.id, credits: selectedPackage.credits });
+    if (!purchaseAttempt.current || purchaseAttempt.current.packageId !== selectedPackageId) purchaseAttempt.current = { packageId: selectedPackageId, id: crypto.randomUUID() };
     try {
       const res = await fetch("/api/checkout/credits", {
         method: "POST",
-        body: JSON.stringify({ packageId: selectedPackageId }),
+        body: JSON.stringify({ packageId: selectedPackageId, requestId: purchaseAttempt.current.id }),
         headers: { "Content-Type": "application/json" }
       });
       const data = await res.json();
+      if (!res.ok) { analytics.capture("checkout_failed", { packageId: selectedPackage.id, category: "unavailable" }); toast.error(data.error || "Checkout is unavailable."); return; }
+      if (data.pending) { toast.info(data.message); return; }
 
       if (data.success) {
-        setBalance((b) => b + (data.creditsAdded || selectedPackage.credits));
+        if (data.livemode === true && data.creditsAdded > 0 && data.paymentIntentId) analytics.capture("checkout_payment_completed", { packageId: selectedPackage.id, transactionId: data.paymentIntentId });
+        purchaseAttempt.current = null;
+        setBalance((b) => b + (typeof data.creditsAdded === "number" ? data.creditsAdded : selectedPackage.credits));
         toast.success(data.message || "PAYMENT RECEIVED. TANK REFILLED.");
         router.refresh();
       } else if (data.clientSecret) {
+        analytics.capture("checkout_ready", { packageId: selectedPackage.id });
         setClientSecret(data.clientSecret);
       } else {
         toast.error("Failed to start checkout. Please try again.");
       }
     } catch (e) {
+      analytics.capture("checkout_failed", { packageId: selectedPackage.id, category: "unavailable" });
       console.error(e);
       toast.error("Something went wrong. Please try again.");
     } finally {
@@ -188,7 +201,9 @@ export function BillingContent({ creditBalance, initialPaymentMethod }: BillingC
     }
   };
 
-  const handlePaymentSuccess = async (paymentIntentId: string) => {
+  const handlePaymentSuccess = async (paymentIntentId: string, live: boolean) => {
+    if (live) analytics.capture("checkout_payment_completed", { packageId: selectedPackage.id, transactionId: paymentIntentId });
+    purchaseAttempt.current = null;
     setBalance((balance) => balance + selectedPackage.credits);
     setClientSecret(null);
 

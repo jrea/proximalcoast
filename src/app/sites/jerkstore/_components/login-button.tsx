@@ -51,7 +51,7 @@ const ALTERNATIVE_LABELS = [
   "Bridge Burner",
 ];
 
-import { usePostHog } from 'posthog-js/react';
+import { useJerkstoreAnalytics } from "../_lib/analytics-client";
 
 export function LoginButton({
   text = "Login",
@@ -69,7 +69,7 @@ export function LoginButton({
   const router = useRouter();
   const { data: session } = authClient.useSession();
   const [randomLabel, setRandomLabel] = useState(text);
-  const posthog = usePostHog();
+  const posthog = useJerkstoreAnalytics();
 
   useEffect(() => {
     // Pick a random label only once on mount or when session changes

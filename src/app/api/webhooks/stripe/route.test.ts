@@ -115,6 +115,32 @@ describe('POST /api/webhooks/stripe', () => {
     });
   });
 
+  it('credits a new Jerkstore receipt only once when its webhook is replayed', async () => {
+    vi.mocked(prisma.$transaction).mockImplementation(async callback => (callback as (tx: unknown) => Promise<unknown>)(prisma));
+    vi.mocked(prisma.jerkstore_credit_purchase.create).mockResolvedValueOnce({} as never).mockRejectedValueOnce({ code: 'P2002' });
+    const event = makeEvent('payment_intent.succeeded', {
+      id: 'pi_new_paid', metadata: { type: 'credits_purchase', userId: 'user_1', creditsAmount: '50', siteSlug: 'jerkstore', fulfillmentVersion: 'ledger-v1' },
+    });
+    const first = await POST(buildRequest(JSON.stringify(event)));
+    const replay = await POST(buildRequest(JSON.stringify(event)));
+    expect(first.status).toBe(200);
+    expect(replay.status).toBe(200);
+    expect(prisma.user.update).toHaveBeenCalledTimes(1);
+    expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: 'user_1' }, data: { credits: { increment: 50 } } });
+  });
+
+  it('recovers fulfillment for a new saved-card payment even if saving its default card fails', async () => {
+    vi.mocked(prisma.$transaction).mockImplementation(async callback => (callback as (tx: unknown) => Promise<unknown>)(prisma));
+    vi.mocked(prisma.jerkstore_credit_purchase.create).mockResolvedValueOnce({} as never);
+    mockStripe.customers.update.mockRejectedValueOnce(new Error('Stripe unavailable'));
+    const event = makeEvent('payment_intent.succeeded', {
+      id: 'pi_saved_paid', customer: 'cus_123', payment_method: 'pm_123',
+      metadata: { type: 'credits_purchase', userId: 'user_1', creditsAmount: '50', source: 'immediate', siteSlug: 'jerkstore', fulfillmentVersion: 'ledger-v1' },
+    });
+    expect((await POST(buildRequest(JSON.stringify(event)))).status).toBe(200);
+    expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: 'user_1' }, data: { credits: { increment: 50 } } });
+  });
+
   it('does NOT double-credit on payment_intent.succeeded with source=immediate', async () => {
     const event = makeEvent('payment_intent.succeeded', {
       metadata: { type: 'credits_purchase', userId: 'user_1', creditsAmount: '50', source: 'immediate' },

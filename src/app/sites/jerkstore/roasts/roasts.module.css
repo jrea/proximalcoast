@@ -1,0 +1,16 @@
+.page { min-height: 100vh; background: #fff9e8; color: #101010; }
+.header { padding: 1rem clamp(1rem, 4vw, 4rem); display: flex; justify-content: space-between; align-items: center; gap: 1rem; border-bottom: 4px solid #101010; background: white; }
+.header a:last-child, .back { text-decoration: underline; text-underline-offset: .25em; font-weight: 700; }
+.main { max-width: 72rem; margin: auto; padding: 3rem 1.5rem 5rem; }
+.main > h1 { font-size: clamp(2.5rem, 7vw, 4.5rem); font-weight: 900; letter-spacing: -.05em; }
+.main > p { max-width: 46rem; line-height: 1.7; }
+.kicker { font-family: monospace; font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; margin-block: 2rem; }
+.roast, .empty { padding: 1.5rem; border: 3px solid #101010; box-shadow: 5px 5px #101010; background: white; overflow-wrap: anywhere; }
+.roast h2, .empty h2 { font-size: 1.15rem; font-weight: 900; margin-block: .75rem; }
+.roast blockquote, .empty p { line-height: 1.7; }
+.empty { margin-block: 2rem; max-width: 45rem; }
+.button { display: inline-block; background: #ffe34b; border: 3px solid #101010; padding: .75rem 1.25rem; font-weight: 900; margin-top: 1rem; }
+.back { display: block; margin-top: 1rem; }
+.page a:focus-visible { outline: 3px solid #ce262b; outline-offset: 5px; }
+@media (max-width: 640px) { .grid { grid-template-columns: 1fr; } .header { flex-wrap: wrap; } }

@@ -57,6 +57,8 @@ export function HeatLevelSelector({
                 setHeatLevel(level.value as HeatLevel);
               }
             }}
+            aria-pressed={isSelected}
+            aria-label={isLocked ? "Nuclear heat: sign in to unlock" : `${level.label} heat`}
             title={isLocked ? "Sign up to unlock Nuclear" : `${level.label} - ${level.desc}`}
             className={cn(
               "w-8 h-8 sm:w-10 sm:h-10 border-2 border-black transition-all duration-100 flex items-center justify-center relative",

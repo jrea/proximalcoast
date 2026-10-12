@@ -1,24 +1,12 @@
-import { MetadataRoute } from 'next'
-import { getSortedPostsData } from '@/lib/posts'
+import type { MetadataRoute } from 'next'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const posts = getSortedPostsData()
-  const jerkstorePosts = posts
-    .filter(post => post.site === 'jerkstore')
-    .map((post) => ({
-      url: `https://jerkstore.proximalcoast.com/blog/${post.id}`,
-      lastModified: new Date(post.date),
-      changeFrequency: 'monthly' as const,
-      priority: 0.8,
-    }))
-
+  const baseUrl = 'https://jerkstore.proximalcoast.com'
+  // Shared blog posts belong to the main site's canonical URLs and sitemap.
+  // Omit lastModified until the source tracks actual content revision dates.
   return [
-    {
-      url: 'https://jerkstore.proximalcoast.com',
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 1,
-    },
-    ...jerkstorePosts,
+    { url: baseUrl },
+    { url: `${baseUrl}/privacy` },
+    { url: `${baseUrl}/terms` },
   ]
 }

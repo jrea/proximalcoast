@@ -3,9 +3,10 @@ import { auth } from "@/lib/auth";
 import { headers, cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
+import { GUEST_COOKIE, readGuestCookie } from "../../_lib/guest-identity";
 
 const RateSchema = z.object({
-  content: z.string(),
+  content: z.string().trim().min(1).max(10000),
   weight: z.number().int().min(-1).max(2),
   topic: z.string().optional(),
 });
@@ -27,15 +28,15 @@ export async function POST(req: Request) {
     } else {
       // 2. Check Guest Cookie
       const cookieStore = await cookies();
-      const guestIdCookie = cookieStore.get("x-jerkstore-guest-id");
+      const guestId = readGuestCookie(cookieStore.get(GUEST_COOKIE)?.value);
 
-      if (guestIdCookie) {
+      if (guestId) {
         // Verify this guest ID exists
         const guestUser = await prisma.user.findUnique({
-          where: { id: guestIdCookie.value },
+          where: { id: guestId },
         });
 
-        if (guestUser) {
+        if (guestUser?.isGuest) {
           userId = guestUser.id;
         }
       }

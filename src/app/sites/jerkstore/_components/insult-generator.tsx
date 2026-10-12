@@ -2,7 +2,7 @@
 
 import { experimental_useObject as useObject } from "@ai-sdk/react";
 import { z } from "zod";
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useId } from "react";
 import { useRef } from "react";
 import { Loader2, Zap, Check, Share2, ThumbsUp, ThumbsDown, Trophy, X, Dices, Image as ImageIcon, Clipboard, Lock } from "lucide-react";
 // import { toBlob } from "html-to-image";
@@ -12,8 +12,9 @@ import { HeatLevelSelector } from "./heat-level-selector";
 import { BUTTON_LABELS, TOPIC_LABELS, STANDARD_LANGUAGES, PREMIUM_LANGUAGES, RANDOM_TOPICS, HeatLevel, HEAT_LEVELS, LOADING_MESSAGES, CREDIT_COSTS } from "../constants";
 import { cn } from "@/lib/utils";
 import { LoginButton } from "./login-button";
+import styles from "./insult-generator.module.css";
 
-import { usePostHog } from 'posthog-js/react';
+import { useJerkstoreAnalytics } from "../_lib/analytics-client";
 
 export function InsultGenerator({
   isActive,
@@ -22,7 +23,8 @@ export function InsultGenerator({
   initialTopicLabel,
   isHomePage = false,
   areFeaturesLocked = false,
-  credits
+  credits,
+  initialTopic = "",
 }: {
   isActive?: boolean;
   plan: string;
@@ -31,8 +33,21 @@ export function InsultGenerator({
   isHomePage?: boolean;
   areFeaturesLocked?: boolean;
   credits?: number;
+  initialTopic?: string;
 }) {
-  const posthog = usePostHog();
+  const posthog = useJerkstoreAnalytics();
+  const formId = useId();
+  const topicRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    // Focus only when the field is already visible on a desktop keyboard.
+    if (isHomePage && window.matchMedia("(min-width: 700px) and (pointer: fine)").matches) {
+      const field = topicRef.current;
+      const bounds = field?.getBoundingClientRect();
+      if (bounds && bounds.top >= 0 && bounds.bottom <= window.innerHeight) {
+        field?.focus({ preventScroll: true });
+      }
+    }
+  }, [isHomePage]);
   const [language, setLanguage] = useState("English");
   const [isEmail, setIsEmail] = useState(false);
   const [showAccessModal, setShowAccessModal] = useState(false);
@@ -72,8 +87,9 @@ export function InsultGenerator({
   const shareCardRef = useRef<ShareCardHandle>(null);
 
   const [displayText, setDisplayText] = useState("");
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(initialTopic);
   const [roasts, setRoasts] = useState<string[]>([]);
+  const [generatedTopic, setGeneratedTopic] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [, setHasViewedAll] = useState(true);
   const [isSimulatingLoading] = useState(false);
@@ -94,24 +110,30 @@ export function InsultGenerator({
   }, [posthog]);
 
   const [ratings, setRatings] = useState<Record<string, number>>({});
+  const [ratingError, setRatingError] = useState("");
 
   const handleRate = async (content: string, weight: number) => {
+    const previous = ratings[content];
+    setRatingError("");
     // Optimistic update
     setRatings(prev => ({ ...prev, [content]: weight }));
 
     try {
-      await fetch("/api/rate-insult", {
+      const response = await fetch("/api/rate-insult", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content,
           weight,
           topic: lastPromptRef.current.topic // Pass topic for better matching
         })
       });
-      posthog?.capture('insult_rated', { weight, topic: lastPromptRef.current.topic });
+      if (!response.ok) throw new Error("Rating was not saved");
+      posthog?.capture('insult_rated', { weight });
     } catch (e) {
       console.error("Failed to rate", e);
-      // Revert if failed? Nah, it's fine.
+      setRatings(prev => { const updated = { ...prev }; if (previous === undefined) delete updated[content]; else updated[content] = previous; return updated; });
+      setRatingError("Your rating was not saved. Try again.");
     }
   };
 
@@ -122,14 +144,21 @@ export function InsultGenerator({
   const { object, submit, isLoading, error } = useObject({
     api: "/api/generate-insult",
     schema: z.object({
-      roasts: z.array(z.string()).length(5),
+      roasts: z.array(z.string().trim().min(1)).min(1).max(5),
     }),
     onFinish: ({ object }: { object?: { roasts?: string[] } }) => {
       if (object?.roasts) {
+        const choices = lastPromptRef.current;
+        posthog?.capture('insult_generation_completed', { resultCount: object.roasts.length, language: choices.language, heatLevel: choices.heatLevel, isEmail: choices.isEmail });
         setRoasts(object.roasts);
+        setDisplayText(object.roasts[0] ?? "");
         setCurrentIndex(0);
         setHasViewedAll(false);
       }
+    },
+    onError: error => {
+      setDisplayText("");
+      posthog.capture("insult_generation_failed", { category: /allowance|credits|limit/i.test(error.message) ? "allowance" : "unavailable" });
     },
   });
 
@@ -168,6 +197,7 @@ export function InsultGenerator({
 
   const onGenerate = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading || !input.trim()) return;
     if (!isActive) {
       posthog?.capture('insult_generation_blocked', { plan });
       setShowAccessModal(true);
@@ -175,6 +205,7 @@ export function InsultGenerator({
     }
 
     const currentPrompt = { topic: input, isEmail, language, heatLevel }; // Include heatLevel
+    setGeneratedTopic(currentPrompt.topic);
 
 
     // Otherwise, perform real generation
@@ -183,14 +214,14 @@ export function InsultGenerator({
     setDisplayText("");
     setHasViewedAll(false);
 
-    posthog?.capture('insult_generated', {
-      topic: input,
+    posthog?.capture('insult_generation_started', {
       language,
       isEmail,
       heatLevel,
       plan
     });
 
+    lastPromptRef.current = currentPrompt;
     submit({
       language,
       isEmail,
@@ -199,7 +230,6 @@ export function InsultGenerator({
       useReasoning, // Pass reasoning flag
     });
 
-    lastPromptRef.current = currentPrompt;
     // Cycle labels
     setButtonLabel(BUTTON_LABELS[Math.floor(Math.random() * BUTTON_LABELS.length)]);
     setTopicLabel(TOPIC_LABELS[Math.floor(Math.random() * TOPIC_LABELS.length)]);
@@ -212,7 +242,6 @@ export function InsultGenerator({
 
   const copyText = async () => {
     if (!displayText) return;
-    posthog?.capture('roast_copied_text', { topic: input });
     try {
       if (navigator.clipboard) {
         await navigator.clipboard.writeText(displayText);
@@ -224,11 +253,13 @@ export function InsultGenerator({
         textArea.value = displayText;
         document.body.appendChild(textArea);
         textArea.select();
-        document.execCommand("copy");
+        const copiedSuccessfully = document.execCommand("copy");
         document.body.removeChild(textArea);
+        if (!copiedSuccessfully) throw new Error("Clipboard copy was not completed");
         setTextCopied(true);
         setTimeout(() => setTextCopied(false), 2000);
       }
+      posthog?.capture('roast_copied_text', { language, heatLevel, isEmail });
     } catch (err) {
       console.error("Failed to copy text:", err);
     }
@@ -236,15 +267,15 @@ export function InsultGenerator({
 
   const handleShare = async () => {
     if (!displayText) return;
-    posthog?.capture('roast_shared_native', { topic: input });
 
     if (navigator.share) {
       try {
         await navigator.share({
           title: 'Jerkstore Roast',
           text: displayText,
-          url: window.location.href,
+          url: window.location.origin,
         });
+        posthog?.capture('roast_shared_native', { language, heatLevel, isEmail });
       } catch (err) {
         // Ignore abort errors
         if ((err as Error).name !== 'AbortError') {
@@ -259,7 +290,6 @@ export function InsultGenerator({
 
   const copyImage = async () => {
     if (!shareCardRef.current) return;
-    posthog?.capture('roast_copied_image', { topic: input });
     setIsCopying(true);
     try {
       // Create an offscreen canvas for rendering
@@ -282,6 +312,7 @@ export function InsultGenerator({
                 [blob.type]: blob,
               }),
             ]);
+            posthog?.capture('roast_copied_image', { language, heatLevel, isEmail });
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
             return;
@@ -297,6 +328,7 @@ export function InsultGenerator({
         link.download = `jerkstore-roast-${Date.now()}.png`;
         link.click();
         URL.revokeObjectURL(url);
+        posthog?.capture('roast_image_downloaded', { language, heatLevel, isEmail });
 
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
@@ -310,29 +342,6 @@ export function InsultGenerator({
 
   const [sliderValue, setSliderValue] = useState(0);
   const [isInputFocused, setIsInputFocused] = useState(false);
-
-  // Fake Random Topic Click Effect (Home Page Only)
-  // Fake Random Topic Click Effect (Home Page Only)
-  useEffect(() => {
-    // Only run on home page, when not focused, and NO results yet (Attract Mode)
-    // Stop if user has interacted enough to generate a roast or is currently generating
-    if (!isHomePage || isInputFocused || roasts.length > 0 || isLoading || isSimulatingLoading) return;
-
-    // Initial trigger shortly after mount
-    const initialTimeout = setTimeout(() => {
-      handleRandomTopic();
-    }, 800);
-
-    // Periodic trigger
-    const interval = setInterval(() => {
-      handleRandomTopic();
-    }, 3500); // Trigger every 3.5 seconds to keep it fresh
-
-    return () => {
-      clearTimeout(initialTimeout);
-      clearInterval(interval);
-    };
-  }, [isHomePage, isInputFocused, roasts.length, isLoading, isSimulatingLoading, handleRandomTopic]);
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseInt(e.target.value);
@@ -427,6 +436,7 @@ export function InsultGenerator({
 
       <div className={cn(
         "p-4 sm:p-8 border-4 transition-all duration-700 relative overflow-hidden",
+        isHomePage && styles.card,
         isSavage ? "savage-gradient border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] sm:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] text-white" :
           isElite ? "bg-gradient-to-br from-yellow-300 via-yellow-200 to-yellow-400 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-black" :
             "bg-white border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)] text-neutral-400"
@@ -459,7 +469,7 @@ export function InsultGenerator({
 
             {/* Language Selector */}
             <div className="flex-1 space-y-1 relative">
-              <label className={cn(
+              <label htmlFor={`${formId}-language`} className={cn(
                 "block font-bold text-xs uppercase tracking-tight ml-1 h-4",
                 isSavage ? "text-white/80 drop-shadow-md" : isElite ? "text-black/70" : "text-neutral-400"
               )}>
@@ -467,6 +477,7 @@ export function InsultGenerator({
               </label>
               <div className="relative h-10 sm:h-12">
                 <select
+                  id={`${formId}-language`}
                   className={cn(
                     "w-full h-full py-2 px-3 border-2 border-black bg-white text-black font-mono text-sm transition-all duration-300 focus:outline-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus:ring-2 focus:ring-black cursor-pointer appearance-none",
                     // Formerly locked style removed to allow standard languages
@@ -510,7 +521,7 @@ export function InsultGenerator({
             {/* Max Effort Slider */}
             <div className="flex-1 space-y-1">
               <div className="flex justify-between items-end px-1 h-4">
-                <label className={cn(
+                <label htmlFor={`${formId}-effort`} className={cn(
                   "block font-bold text-xs uppercase tracking-tight truncate",
                   isSavage ? "text-white" : "text-neutral-500"
                 )}>
@@ -561,6 +572,8 @@ export function InsultGenerator({
                 {/* Native slider input on top */}
                 <input
                   type="range"
+                  id={`${formId}-effort`}
+                  aria-valuetext={isEmail ? "Long roast" : "Standard roast pack"}
                   min="0"
                   max="100"
                   value={isEmail ? 100 : sliderValue}
@@ -597,7 +610,7 @@ export function InsultGenerator({
           {/* Heat Level Selector */}
           <div className="space-y-2 sm:space-y-3">
             <div className="flex justify-between items-end">
-              <label className={cn(
+              <label htmlFor={`${formId}-topic`} className={cn(
                 "block font-black text-lg sm:text-xl uppercase tracking-tight",
                 isSavage ? "text-white drop-shadow-md" : isElite ? "text-black" : (isStandard || isTrial) ? "text-neutral-500" : "text-neutral-400"
               )}>
@@ -611,6 +624,9 @@ export function InsultGenerator({
             <div className="relative mb-14 sm:mb-16">
               <div className="relative w-full">
                 <input
+                  ref={topicRef}
+                  id={`${formId}-topic`}
+                  maxLength={1000}
                   className={cn(
                     "w-full p-4 sm:p-5 pr-12 text-lg sm:text-xl font-mono border-4 border-black focus:outline-none transition-all duration-300 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
                     isSavage ? "bg-white text-black placeholder:text-neutral-400 focus:ring-4 focus:ring-black" :
@@ -695,21 +711,22 @@ export function InsultGenerator({
               </span>
               {!(isLoading || isSimulatingLoading) && (
                 <span className="text-[10px] sm:text-xs font-mono font-bold opacity-60 tracking-wider">
-                  ({isEmail ? CREDIT_COSTS.LONG_ROAST : CREDIT_COSTS.STANDARD_PACK} CREDITS)
+                  {isEmail ? `(${CREDIT_COSTS.LONG_ROAST} CREDITS)` : areFeaturesLocked ? "FREE ALLOWANCE · NO SIGN-UP" : "UP TO 5 RESULTS · FREE ALLOWANCE FIRST"}
                 </span>
               )}
             </span>
           </button>
           {!isActive && (
             <p className="text-center text-[10px] text-neutral-400 font-mono uppercase mt-2">
-              Generates 5 unique variations per burn
+              Generates a pack of 5 roast drafts
             </p>
           )}
         </form >
 
         <ShareCard
           ref={shareCardRef}
-          input={input}
+          className="hidden"
+          input={generatedTopic || input}
           displayText={displayText}
           isSavage={isSavage}
           isElite={isElite}
@@ -719,12 +736,12 @@ export function InsultGenerator({
 
         {
           error && (
-            <div className="mt-8 p-4 sm:p-6 border-4 border-black bg-red-100 text-red-600 font-bold uppercase text-xs italic shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center justify-between gap-4 text-center sm:text-left">
-              {error.message?.includes("limit reached") ? (
+            <div role="alert" className="mt-8 p-4 sm:p-6 border-4 border-black bg-red-100 text-red-600 font-bold uppercase text-xs italic shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center justify-between gap-4 text-center sm:text-left">
+              {/allowance|credits/i.test(error.message ?? "") ? (
                 <>
-                  <p className="font-black uppercase mb-2">Eternal limit reached. Sign up for more.</p>
+                  <p className="font-black uppercase mb-2">{error.message}</p>
                   <LoginButton
-                    text="SIGN UP"
+                    text="Sign in for credits"
                     variant="login"
                     reason="limit"
                     className="w-full sm:w-auto text-center bg-black text-white px-6 py-3 font-black text-lg not-italic shadow-[2px_2px_0px_0px_rgba(255,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
@@ -737,15 +754,17 @@ export function InsultGenerator({
           )
         }
 
+        {ratingError && <p role="alert" className="mt-4 text-red-700 font-bold">{ratingError}</p>}
+
         {
-          (displayText || isLoading) && (
+          !error && (displayText || isLoading) && (
             <div
               ref={resultRef}
               className={cn(
-                "mt-8 sm:mt-10 p-4 sm:p-8 font-mono text-lg sm:text-xl leading-relaxed relative overflow-visible border-4 border-black transition-all duration-700",
-                isSavage ? "bg-black/60 backdrop-blur-xl text-white border-white/20 shadow-[0_0_30px_rgba(0,0,0,0.5)] sm:shadow-[0_0_50px_rgba(0,0,0,0.5)]" :
+                "mt-8 sm:mt-10 p-4 sm:p-8 pb-14 sm:pb-14 font-mono text-lg sm:text-xl leading-relaxed relative overflow-visible border-4 border-black transition-all duration-700",
+                  isSavage ? "bg-black/60 backdrop-blur-xl text-white border-white/20 shadow-[0_0_30px_rgba(0,0,0,0.5)] sm:shadow-[0_0_50px_rgba(0,0,0,0.5)]" :
                   isElite ? "bg-white text-black shadow-[4px_4px_0px_0px_rgba(34,197,94,0.2)] sm:shadow-[8px_8px_0px_0px_rgba(34,197,94,0.2)]" :
-                    "bg-neutral-50 text-neutral-400 border-dashed shadow-none"
+                    "bg-neutral-50 text-neutral-700 border-dashed shadow-none"
               )}
             >
 
@@ -754,8 +773,9 @@ export function InsultGenerator({
 
 
 
-              <p className={cn("whitespace-pre-wrap text-sm sm:text-xl", isSavage && "drop-shadow-md")}>
-                {displayText}
+              <p role="status" aria-live="polite" aria-busy={isLoading}
+                className={cn("whitespace-pre-wrap break-words text-sm sm:text-xl", isSavage && "drop-shadow-md")}>
+                {displayText || loadingMessage}
               </p>
 
 
@@ -770,6 +790,8 @@ export function InsultGenerator({
                   {roasts.map((_, idx) => (
                     <button
                       key={idx}
+                      aria-label={`Roast ${idx + 1}`}
+                      aria-pressed={currentIndex === idx}
                       onClick={() => {
                         setCurrentIndex(idx);
                         setDisplayText(roasts[idx]);
@@ -852,8 +874,8 @@ export function InsultGenerator({
 
         {/* Action Bar - Outside the Card */}
         {
-          displayText && !isLoading && (
-            <div className="mt-6 flex flex-wrap gap-3 justify-end items-center w-full">
+          displayText && !isLoading && !error && (
+            <div className="mt-12 flex flex-wrap gap-3 justify-end items-center w-full">
               {/* Copy Text */}
               <button
                 onClick={copyText}
@@ -903,6 +925,7 @@ export function InsultGenerator({
             </div>
           )
         }
+        {roasts.length > 0 && !isLoading && <p className="mt-4 text-sm text-black font-bold"><a href="/roasts" className="underline underline-offset-4">View all your roasts</a></p>}
       </div >
     </div >
   );

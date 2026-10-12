@@ -1,0 +1,2 @@
+/* Preserve the original card styling while preventing the hidden share renderer from becoming a scrollable ancestor. */
+.card { overflow: clip; }

@@ -4,6 +4,8 @@ import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/db";
 import Stripe from "stripe";
 import type { Prisma } from "@prisma/client";
+import { CREDIT_FULFILLMENT_VERSION, grantPurchasedCredits } from "@/app/sites/jerkstore/_lib/credit-purchases";
+import { capturePurchaseConversion } from "@/app/sites/jerkstore/_lib/analytics-server";
 
 const getPlanFromPriceId = (priceId: string) => {
   if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_SAVAGE) return "savage";
@@ -55,12 +57,19 @@ export async function POST(req: Request) {
 
       // Saving the card as the default lets future credit purchases charge it securely off-session.
       if (paymentIntent.metadata?.type === "credits_purchase" && customerId && paymentMethodId) {
-        await stripe.customers.update(customerId, {
-          invoice_settings: { default_payment_method: paymentMethodId },
-        });
+        try {
+          await stripe.customers.update(customerId, { invoice_settings: { default_payment_method: paymentMethodId } });
+        } catch {
+          console.error("Payment method default could not be saved; continuing credit fulfillment.");
+        }
       }
 
-      if (paymentIntent.metadata?.type === "credits_purchase" && paymentIntent.metadata?.source !== "immediate") {
+      const usesCreditLedger = paymentIntent.metadata?.type === "credits_purchase" && paymentIntent.metadata?.siteSlug === "jerkstore" && paymentIntent.metadata?.fulfillmentVersion === CREDIT_FULFILLMENT_VERSION;
+      if (usesCreditLedger && piUserId) {
+        // The same receipt can arrive via checkout and repeated webhook events.
+        await grantPurchasedCredits(paymentIntent.id, piUserId, Number(paymentIntent.metadata.creditsAmount));
+        capturePurchaseConversion(paymentIntent, event.created);
+      } else if (paymentIntent.metadata?.type === "credits_purchase" && paymentIntent.metadata?.source !== "immediate") {
         if (piUserId) {
           const creditsToAdd = paymentIntent.metadata.creditsAmount ? parseInt(paymentIntent.metadata.creditsAmount) : 50;
           await prisma.user.update({

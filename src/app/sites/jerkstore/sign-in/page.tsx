@@ -1,17 +1,18 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client"; // Assuming this exists based on previous files
 import { Loader2, AlertTriangle, ArrowRight } from "lucide-react";
 import { Logo } from "../_components/logo";
 import { getErrorMessage } from "@/lib/utils";
 
-import { usePostHog } from 'posthog-js/react';
+import { useJerkstoreAnalytics } from "../_lib/analytics-client";
 
 function SignInContent() {
-  const posthog = usePostHog();
+  const posthog = useJerkstoreAnalytics();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const reason = searchParams.get("reason");
 
@@ -36,10 +37,19 @@ function SignInContent() {
   const handleGoogleSignIn = async () => {
     posthog?.capture('auth_attempt', { provider: 'google', type: 'login' });
     setIsLoading(true);
-    await authClient.signIn.social({
-      provider: "google",
-      callbackURL: "/app",
-    });
+    setError(null);
+    try {
+      const { error } = await authClient.signIn.social({
+        provider: "google",
+        callbackURL: "/app?auth_result=login&auth_provider=google",
+        newUserCallbackURL: "/app?auth_result=signup&auth_provider=google",
+      });
+      if (error) throw error;
+    } catch (error) {
+      posthog.capture("auth_error", { provider: "google", type: "login", category: "authentication_failed" });
+      setError(getErrorMessage(error, "Authentication failed. Try harder."));
+      setIsLoading(false);
+    }
   };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
@@ -67,9 +77,10 @@ function SignInContent() {
         });
         if (error) throw error;
       }
+      router.push(`/app?auth_result=${type}&auth_provider=email`);
     } catch (err: unknown) {
       const message = getErrorMessage(err, "Authentication failed. Try harder.");
-      posthog?.capture('auth_error', { provider: 'email', type, error: message });
+      posthog?.capture('auth_error', { provider: 'email', type, category: 'authentication_failed' });
       setError(message);
       setIsLoading(false);
     }

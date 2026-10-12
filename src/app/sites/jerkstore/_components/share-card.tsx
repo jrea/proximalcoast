@@ -47,6 +47,7 @@ export const ShareCard = forwardRef<ShareCardHandle, ShareCardProps>(({
 
   return (
     <div
+      aria-hidden="true"
       ref={divRef}
       style={style}
       className={cn(

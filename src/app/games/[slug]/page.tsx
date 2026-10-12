@@ -33,13 +33,13 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     title: `${game.title} — Abandoned | Proximal Coast`,
     description,
     alternates: {
-      canonical: `https://proximalcoast.com/games/${game.slug}`,
+      canonical: `https://www.proximalcoast.com/games/${game.slug}`,
     },
     openGraph: {
       title: `${game.title} — Abandoned | Proximal Coast`,
       description,
       type: "website",
-      url: `https://proximalcoast.com/games/${game.slug}`,
+      url: `https://www.proximalcoast.com/games/${game.slug}`,
     },
     twitter: {
       card: "summary_large_image",

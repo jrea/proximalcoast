@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     title: `${game.title} History | Proximal Coast`,
     description: `Preserved project notes for ${game.title}, an abandoned game project from Proximal Coast.`,
     alternates: {
-      canonical: `https://proximalcoast.com/games/${game.slug}/blog`,
+      canonical: `https://www.proximalcoast.com/games/${game.slug}/blog`,
     },
   };
 }

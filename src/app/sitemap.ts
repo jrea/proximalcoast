@@ -5,7 +5,7 @@ import { gameProjects } from '@/content/games'
 export default function sitemap(): MetadataRoute.Sitemap {
   const posts = getSortedCurrentPostsData()
   const archivePosts = getSortedArchivePostsData()
-  const baseUrl = 'https://proximalcoast.com'
+  const baseUrl = 'https://www.proximalcoast.com'
 
   const blogPosts = posts.map((post) => ({
     url: `${baseUrl}/blog/${post.id}`,

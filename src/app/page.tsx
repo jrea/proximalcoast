@@ -14,12 +14,12 @@ const description = "Proximatic is our active project: AI shift scheduling for e
 export const metadata: Metadata = {
   title: "Proximal Coast | Software & Projects",
   description,
-  alternates: { canonical: "https://proximalcoast.com" },
+  alternates: { canonical: "https://www.proximalcoast.com" },
   openGraph: {
     title: "Proximal Coast | Software & Projects",
     description,
     type: "website",
-    url: "https://proximalcoast.com",
+    url: "https://www.proximalcoast.com",
     siteName: "Proximal Coast",
   },
   twitter: {

@@ -15,14 +15,14 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       title: `${postData.title} | Proximal Coast Archive`,
       description: postData.description,
       alternates: {
-        canonical: `https://proximalcoast.com/blog/archive/${slug}`,
+        canonical: `https://www.proximalcoast.com/blog/archive/${slug}`,
       },
       openGraph: {
         title: `${postData.title} | Proximal Coast Archive`,
         description: postData.description,
         type: "article",
         publishedTime: postData.date,
-        url: `https://proximalcoast.com/blog/archive/${slug}`,
+        url: `https://www.proximalcoast.com/blog/archive/${slug}`,
       },
     };
   } catch {

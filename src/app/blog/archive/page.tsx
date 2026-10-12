@@ -8,13 +8,13 @@ import styles from "../blog.module.css";
 export const metadata: Metadata = {
   title: "Blog Archive | Proximal Coast",
   description: "Earlier Proximal Coast posts and project notes, preserved in the archive.",
-  alternates: { canonical: "https://proximalcoast.com/blog/archive" },
+  alternates: { canonical: "https://www.proximalcoast.com/blog/archive" },
   openGraph: {
     title: "Blog Archive | Proximal Coast",
     description: "Earlier Proximal Coast posts and project notes, preserved in the archive.",
     type: "website",
-    url: "https://proximalcoast.com/blog/archive",
-    images: ["https://proximalcoast.com/opengraph-image"],
+    url: "https://www.proximalcoast.com/blog/archive",
+    images: ["https://www.proximalcoast.com/opengraph-image"],
   },
 };
 

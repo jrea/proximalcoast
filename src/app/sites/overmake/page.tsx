@@ -43,7 +43,7 @@ export default function OvermakePage() {
     setResult(null);
 
     try {
-      const response = await fetch("/sites/overmake/api/generate-estimate", {
+      const response = await fetch("/api/generate-estimate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ task, level }),

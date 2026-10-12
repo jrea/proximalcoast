@@ -8,6 +8,8 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://slice.proximalcoast.com"),
+  alternates: { canonical: "https://slice.proximalcoast.com" },
   title: "SLICE// - Pro Pan & Zoom Video Editor (Free & No Login)",
   description: "The fast, free, and intuitive video editor for dynamic pan and zoom effects. No accounts, no watermarks, just professional results in seconds. Add music and export high-quality clips directly in your browser.",
   keywords: ["video editor", "pan and zoom", "ken burns effect", "free video editor", "no login video editor", "video zoom tool", "online video editor", "slice video"],

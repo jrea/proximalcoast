@@ -1,75 +1,100 @@
-import { getPostData, getAllPostIds } from "@/lib/posts";
+import type { Metadata } from "next";
+import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
-import { Metadata } from 'next';
-import { headers } from "next/headers";
+
+import { getAllPostIds, getArchivePostData, getPostData } from "@/lib/posts";
+import styles from "../blog.module.css";
 
 type Params = Promise<{ slug: string }>;
 
+async function getRoutePost(slug: string) {
+  try {
+    return {
+      postData: await getPostData(slug),
+      archived: false,
+    };
+  } catch {
+    try {
+      return {
+        postData: await getArchivePostData(slug),
+        archived: true,
+      };
+    } catch {
+      return null;
+    }
+  }
+}
+
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
-  const postData = await getPostData(slug);
-  const title = `${postData.title} | Proximal Coast`;
-  const description = postData.description;
+  const routePost = await getRoutePost(slug);
 
-  const headerList = await headers();
-  const host = headerList.get("host") || "proximalcoast.com";
-  const protocol = host.includes("localhost") || host.includes("lvh.me") ? "http" : "https";
+  if (!routePost) {
+    return {};
+  }
+
+  const { postData, archived } = routePost;
+  const route = archived ? `/blog/archive/${slug}` : `/blog/${slug}`;
+  const canonical = `https://proximalcoast.com${route}`;
+  const title = `${postData.title} | Proximal Coast`;
 
   return {
     title,
-    description,
+    description: postData.description,
     alternates: {
-      canonical: `${protocol}://${host}/blog/${slug}`,
+      canonical,
     },
     openGraph: {
       title,
-      description,
-      type: 'article',
+      description: postData.description,
+      type: "article",
       publishedTime: postData.date,
-      url: `${protocol}://${host}/blog/${slug}`,
+      url: canonical,
     },
     twitter: {
-      card: 'summary_large_image',
+      card: "summary_large_image",
       title,
-      description,
+      description: postData.description,
     },
   };
 }
 
-export async function generateStaticParams() {
-  const paths = getAllPostIds();
-  return paths.map((path) => ({
+export function generateStaticParams() {
+  return getAllPostIds().map((path) => ({
     slug: path.params.slug,
   }));
 }
 
 export default async function Post({ params }: { params: Params }) {
   const { slug } = await params;
-  const postData = await getPostData(slug);
+  const routePost = await getRoutePost(slug);
+
+  if (!routePost) {
+    notFound();
+  }
+
+  if (routePost.archived) {
+    permanentRedirect(`/blog/archive/${slug}`);
+  }
+
+  const { postData } = routePost;
 
   return (
-    <div className="flex flex-col items-center justify-start py-24 px-4 sm:px-8">
-      <main className="w-full max-w-2xl">
-        <div className="mb-8">
-          <Link
-            href="/"
-            className="text-sm text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors mb-4 inline-block"
-          >
-            ← Back to home
-          </Link>
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 mb-2">
-            {postData.title}
-          </h1>
-          <div className="text-zinc-500 dark:text-zinc-400">
-            <time dateTime={postData.date}>{postData.date}</time>
-          </div>
+    <main className={styles.article}>
+      <Link href="/blog" className={styles.backLink}>
+        ← Back to blog
+      </Link>
+      <div>
+        <h1>{postData.title}</h1>
+        <div className={styles.articleDate}>
+          <time dateTime={postData.date}>{postData.date}</time>
         </div>
+      </div>
 
-        <article
-          className="prose prose-zinc dark:prose-invert max-w-none prose-headings:font-semibold prose-a:text-blue-600 dark:prose-a:text-blue-400 hover:prose-a:text-blue-500 dark:hover:prose-a:text-blue-300"
-          dangerouslySetInnerHTML={{ __html: postData.contentHtml || "" }}
-        />
-      </main>
-    </div>
+      <article
+        className={styles.articleBody}
+        dangerouslySetInnerHTML={{ __html: postData.contentHtml || "" }}
+      />
+    </main>
   );
 }

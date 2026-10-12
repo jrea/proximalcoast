@@ -9,6 +9,7 @@ import { AudioPlayer } from './_components/audio-player';
 import { Plus, Terminal, Box, Disc, Activity, Sliders } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { IdentityDisk } from './_components/identity-disk';
+import styles from './upload.module.css';
 
 export default function RefocusPage() {
   const videoSrc = useRefocusStore((state) => state.videoSrc);
@@ -85,15 +86,15 @@ export default function RefocusPage() {
           </div>
 
           {/* Upload Primary Action */}
-          <div className="w-full max-w-2xl relative transform skew-x-[-12deg] mb-24 cursor-pointer group">
+          <div className={cn(styles.uploadPanel, "w-full max-w-2xl relative mb-24 cursor-pointer group")}>
             <div className="absolute inset-0 bg-[#28E7FF]/5 border border-[#28E7FF]/20 -z-10 blur-sm group-hover:bg-[#28E7FF]/10 transition-colors" />
-            <label className="flex-1 bg-[#02090E]/80 border-2 border-[#28E7FF]/40 hover:border-[#28E7FF] text-[#28E7FF] hover:text-white transition-all px-8 sm:px-12 py-12 sm:py-16 cursor-pointer flex flex-col items-center gap-4 text-center shadow-[0_0_40px_rgba(40,231,255,0.1)] hover:shadow-[0_0_60px_rgba(40,231,255,0.2)]">
-              <div className="transform skew-x-[12deg] flex flex-col items-center">
+            <label htmlFor="slice-video-upload" className={cn(styles.uploadLabel, "flex-1 bg-[#02090E]/80 border-2 border-[#28E7FF]/40 hover:border-[#28E7FF] text-[#28E7FF] hover:text-white transition-all px-8 sm:px-12 py-12 sm:py-16 cursor-pointer flex flex-col items-center gap-4 text-center shadow-[0_0_40px_rgba(40,231,255,0.1)] hover:shadow-[0_0_60px_rgba(40,231,255,0.2)]")}>
+              <div className={cn(styles.uploadContent, "flex flex-col items-center")}>
                 <Plus className="w-12 h-12 sm:w-16 sm:h-16 mb-8 group-hover:rotate-90 transition-transform duration-500 text-[#28E7FF] drop-shadow-[0_0_15px_#28E7FF]" />
-                <div className="text-xl sm:text-2xl font-black uppercase tracking-[0.4em]">DROP_VIDEO_HERE_TO_START</div>
-                <div className="text-[10px] sm:text-[12px] uppercase tracking-[0.5em] mt-6 opacity-40 text-[#FF8F00] font-black italic underline underline-offset-8">NO_LOGIN_REQUIRED // 100%_FREE</div>
+                <div className={styles.uploadPrompt}>Choose a video or drop it here</div>
+                <div className={styles.uploadNote}>No login required · 100% free</div>
               </div>
-              <input type="file" className="hidden" accept="video/*" onChange={handleFileUpload} />
+              <input id="slice-video-upload" type="file" className={styles.fileInput} aria-label="Choose a video to edit" accept="video/*" onChange={handleFileUpload} />
             </label>
           </div>
 

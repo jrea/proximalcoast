@@ -22,8 +22,9 @@ const bebas = Bebas_Neue({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://proximalcoast.com"),
   title: "Proximal Coast",
-  description: "Next-generation site builder and management.",
+  description: "Proximatic is our active project. Explore side projects Jerkstore and Slice, and the Proximal Coast archive of abandoned games.",
 };
 
 export default function RootLayout({
@@ -41,7 +42,7 @@ export default function RootLayout({
           {children}
         </PostHogProvider>
       </body>
-      <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID!} />
+      {process.env.NEXT_PUBLIC_GA_ID && <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />}
     </html>
   );
 }

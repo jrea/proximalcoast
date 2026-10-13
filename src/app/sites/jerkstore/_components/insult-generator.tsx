@@ -25,6 +25,8 @@ export function InsultGenerator({
   areFeaturesLocked = false,
   credits,
   initialTopic = "",
+  initialLanguage = "English",
+  returnTo,
 }: {
   isActive?: boolean;
   plan: string;
@@ -34,6 +36,8 @@ export function InsultGenerator({
   areFeaturesLocked?: boolean;
   credits?: number;
   initialTopic?: string;
+  initialLanguage?: string;
+  returnTo?: string;
 }) {
   const posthog = useJerkstoreAnalytics();
   const formId = useId();
@@ -48,7 +52,11 @@ export function InsultGenerator({
       }
     }
   }, [isHomePage]);
-  const [language, setLanguage] = useState("English");
+  const [language, setLanguage] = useState(() =>
+    PREMIUM_LANGUAGES.some(item => item.value === initialLanguage) ? initialLanguage : "English"
+  );
+  const isSelectedLanguageLocked = areFeaturesLocked
+    && !STANDARD_LANGUAGES.some(item => item.value === language);
   const [isEmail, setIsEmail] = useState(false);
   const [showAccessModal, setShowAccessModal] = useState(false);
   const [accessModalContent, setAccessModalContent] = useState({ title: "Sign In Required", description: "You need a free account to unlock this feature. We need to know who to blame for the damage." });
@@ -201,6 +209,13 @@ export function InsultGenerator({
     if (!isActive) {
       posthog?.capture('insult_generation_blocked', { plan });
       setShowAccessModal(true);
+      return;
+    }
+
+    // Language pages can start on a premium selection before a guest signs in.
+    if (isSelectedLanguageLocked) {
+      posthog?.capture('feature_locked', { feature: 'language_premium' });
+      openAccessModal('language_premium');
       return;
     }
 
@@ -420,6 +435,7 @@ export function InsultGenerator({
           onClose={() => setShowAccessModal(false)}
           title={accessModalContent.title}
           description={accessModalContent.description}
+          returnTo={returnTo}
         />
       }
       {/* Tier Badge */}
@@ -711,7 +727,7 @@ export function InsultGenerator({
               </span>
               {!(isLoading || isSimulatingLoading) && (
                 <span className="text-[10px] sm:text-xs font-mono font-bold opacity-60 tracking-wider">
-                  {isEmail ? `(${CREDIT_COSTS.LONG_ROAST} CREDITS)` : areFeaturesLocked ? "FREE ALLOWANCE · NO SIGN-UP" : "UP TO 5 RESULTS · FREE ALLOWANCE FIRST"}
+                  {isEmail ? `(${CREDIT_COSTS.LONG_ROAST} CREDITS)` : isSelectedLanguageLocked ? "SIGN IN TO UNLOCK THIS LANGUAGE" : areFeaturesLocked ? "FREE ALLOWANCE · NO SIGN-UP" : "UP TO 5 RESULTS · FREE ALLOWANCE FIRST"}
                 </span>
               )}
             </span>
@@ -744,6 +760,7 @@ export function InsultGenerator({
                     text="Sign in for credits"
                     variant="login"
                     reason="limit"
+                    returnTo={returnTo}
                     className="w-full sm:w-auto text-center bg-black text-white px-6 py-3 font-black text-lg not-italic shadow-[2px_2px_0px_0px_rgba(255,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
                   />
                 </>

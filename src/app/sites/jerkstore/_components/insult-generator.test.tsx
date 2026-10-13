@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { InsultGenerator } from "./insult-generator";
 import { getStarterPrompt } from "../_content/starter-prompts";
+import { PREMIUM_LANGUAGES } from "../constants";
 
 const { submit, capture, fetchMock, hookOptions, hookState, matchMedia } = vi.hoisted(() => ({
   submit: vi.fn(),
@@ -23,7 +24,7 @@ vi.mock("posthog-js/react", () => ({
 vi.mock("./share-card", () => ({ ShareCard: () => null }));
 vi.mock("./login-button", () => ({ LoginButton: () => null }));
 vi.mock("./access-modal", () => ({
-  AccessModal: ({ title }: { title: string }) => <div role="dialog" aria-label={title} />,
+  AccessModal: ({ title, returnTo }: { title: string; returnTo?: string }) => <div role="dialog" aria-label={title} data-return-to={returnTo} />,
 }));
 
 const defaultProps = {
@@ -206,5 +207,48 @@ describe("Jerkstore starter prompt interaction", () => {
     expect(screen.getByRole("button", { name: "Nuclear heat: sign in to unlock", pressed: false })).toBeTruthy();
     expect(submit).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("Jerkstore language page interaction", () => {
+  it.each(PREMIUM_LANGUAGES.map(({ value }) => [value]))("preselects %s without generating on arrival", language => {
+    render(<InsultGenerator {...defaultProps} isHomePage={false} initialLanguage={language} />);
+
+    expect(screen.getByRole<HTMLSelectElement>("combobox", { name: "Language" }).value).toBe(language);
+    act(() => vi.advanceTimersByTime(30_000));
+    expect(submit).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each(["Unsupported", "spanish"])("falls back to English for an unsupported initial value: %s", initialLanguage => {
+    render(<InsultGenerator {...defaultProps} initialLanguage={initialLanguage} />);
+    expect(screen.getByRole<HTMLSelectElement>("combobox", { name: "Language" }).value).toBe("English");
+  });
+
+  it("gates a preselected fictional language for a guest and preserves its sign-in destination", () => {
+    render(<InsultGenerator {...defaultProps} areFeaturesLocked initialLanguage="Klingon"
+      initialTopic="My starship's meeting schedule" returnTo="/ai-insults/klingon" />);
+
+    expect(screen.getByText("SIGN IN TO UNLOCK THIS LANGUAGE")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Generate insults/i }));
+
+    expect(screen.getByRole("dialog", { name: "Speak in Tongues" }).getAttribute("data-return-to")).toBe("/ai-insults/klingon");
+    expect(submit).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("submits the canonical fictional language value after an authenticated visitor explicitly clicks Generate", () => {
+    render(<InsultGenerator {...defaultProps} initialLanguage="Sindarin Elvish"
+      initialTopic="My coworker's endless speeches" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Generate insults/i }));
+
+    expect(submit).toHaveBeenCalledExactlyOnceWith({
+      language: "Sindarin Elvish",
+      isEmail: false,
+      topic: "My coworker's endless speeches",
+      heatLevel: "mild",
+      useReasoning: false,
+    });
   });
 });

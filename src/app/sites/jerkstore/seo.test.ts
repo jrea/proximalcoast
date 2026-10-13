@@ -4,6 +4,9 @@ import { describe, expect, it } from "vitest";
 import { GET as jerkstoreRobots } from "./robots.txt/route";
 import { GET as sliceRobots } from "../slice/robots.txt/route";
 import sitemap from "./sitemap";
+import { LANGUAGE_PAGES } from "./_lib/language-pages";
+import { languagePath } from "./_lib/language-seo";
+import { PREMIUM_LANGUAGES } from "./constants";
 
 describe("subsite crawler routes", () => {
   it.each([
@@ -27,9 +30,20 @@ describe("subsite crawler routes", () => {
 
     expect(pages.map((page) => page.url).sort()).toEqual([
       "https://jerkstore.proximalcoast.com",
+      "https://jerkstore.proximalcoast.com/languages",
       "https://jerkstore.proximalcoast.com/privacy",
       "https://jerkstore.proximalcoast.com/terms",
-    ]);
+      ...LANGUAGE_PAGES.map(language => `https://jerkstore.proximalcoast.com${languagePath(language)}`),
+    ].sort());
     expect(pages.every((page) => page.lastModified === undefined)).toBe(true);
+    expect(new Set(pages.map(page => page.url)).size).toBe(pages.length);
+  });
+
+  it("includes a discoverable page for every supported language and creative mode", () => {
+    const languagePages = LANGUAGE_PAGES.map(language => language.value).sort();
+    const supportedLanguages = [...new Set(PREMIUM_LANGUAGES.map(language => language.value))].sort();
+
+    expect(languagePages).toEqual(supportedLanguages);
+    expect(LANGUAGE_PAGES.every(language => /^\/ai-insults\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(languagePath(language)))).toBe(true);
   });
 });

@@ -9,12 +9,14 @@ import { Logo } from "../_components/logo";
 import { getErrorMessage } from "@/lib/utils";
 
 import { useJerkstoreAnalytics } from "../_lib/analytics-client";
+import { authCallback, signInDestination } from "../_lib/auth-return";
 
 function SignInContent() {
   const posthog = useJerkstoreAnalytics();
   const router = useRouter();
   const searchParams = useSearchParams();
   const reason = searchParams.get("reason");
+  const destination = signInDestination(searchParams.get("returnTo"));
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,8 +43,8 @@ function SignInContent() {
     try {
       const { error } = await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/app?auth_result=login&auth_provider=google",
-        newUserCallbackURL: "/app?auth_result=signup&auth_provider=google",
+        callbackURL: authCallback(destination, "login", "google"),
+        newUserCallbackURL: authCallback(destination, "signup", "google"),
       });
       if (error) throw error;
     } catch (error) {
@@ -66,18 +68,18 @@ function SignInContent() {
           email,
           password,
           name: name || email.split("@")[0], // Default name if empty
-          callbackURL: "/app",
+          callbackURL: destination,
         });
         if (error) throw error;
       } else {
         const { error } = await authClient.signIn.email({
           email,
           password,
-          callbackURL: "/app",
+          callbackURL: destination,
         });
         if (error) throw error;
       }
-      router.push(`/app?auth_result=${type}&auth_provider=email`);
+      router.push(authCallback(destination, type, "email"));
     } catch (err: unknown) {
       const message = getErrorMessage(err, "Authentication failed. Try harder.");
       posthog?.capture('auth_error', { provider: 'email', type, category: 'authentication_failed' });

@@ -8,6 +8,7 @@ import { LiveTicker } from "./_components/live-ticker";
 import { BlurredRoast } from "./_components/blurred-roast";
 import { LandingGenerator } from "./_components/landing-generator";
 import { LandingNav } from "./_components/landing-nav";
+import { LanguageDirectory } from "./_components/language-directory";
 import { FREE_ROAST_LIMIT, CREDIT_COSTS } from "./constants";
 import { InsultCarousel } from "./_components/insult-carousel";
 import { jerkstoreFaqs } from "./_content/faq";
@@ -340,6 +341,8 @@ export default function MarketingPage() {
           <dl>{jerkstoreFaqs.map(faq => <div key={faq.question}><dt>{faq.question}</dt><dd>{faq.answer}</dd></div>)}</dl>
         </section>
 
+        <LanguageDirectory compact />
+
         {/* CTA */}
         <section className="bg-red-600 p-12 md:p-24 flex flex-col justify-center items-center text-center border-t-8 border-black">
           <h3 className="text-white text-4xl font-black uppercase mb-8">Ready to ruin a friendship?</h3>
@@ -350,7 +353,7 @@ export default function MarketingPage() {
 
       <footer className="bg-white text-black p-6 md:p-8 text-center border-t-8 border-black">
         <Logo className="justify-center mb-4" textClassName="text-3xl font-black uppercase italic" />
-        <nav aria-label="Jerkstore footer" className="flex justify-center gap-6 mb-6 font-mono text-xs underline"><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><a href="https://www.proximalcoast.com">Proximal Coast</a></nav>
+        <nav aria-label="Jerkstore footer" className="flex justify-center gap-6 mb-6 font-mono text-xs underline"><Link href="/languages">Languages</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><a href="https://www.proximalcoast.com">Proximal Coast</a></nav>
         <div className="max-w-4xl mx-auto font-mono uppercase font-bold text-neutral-400 text-[10px] leading-tight text-center sm:text-justify">
           <p className="mb-4"><BlurredRoast text="© 2026 Proximal Coast LLC. All rights reserved by the machine gods. Do not sue us. We have no money. We spent it all on high-quality insults and premium snacks. If you use this at work you will lose your job. It probably isn't a good job anyway. Maybe quit?" /></p>
           <p className="mb-2 text-neutral-600">⚠️ IMPORTANT SAFETY INFORMATION & SIDE EFFECTS ⚠️</p>

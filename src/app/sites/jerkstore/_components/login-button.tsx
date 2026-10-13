@@ -58,13 +58,15 @@ export function LoginButton({
   className = "",
   icon = false,
   variant = "default",
-  reason
+  reason,
+  returnTo,
 }: {
   text?: string;
   className?: string;
   icon?: boolean;
   variant?: "default" | "login";
   reason?: string;
+  returnTo?: string;
 }) {
   const router = useRouter();
   const { data: session } = authClient.useSession();
@@ -88,7 +90,7 @@ export function LoginButton({
         { from: 'landing_page_button', label: randomLabel || text },
         { transport: 'sendBeacon' }
       );
-      router.push("/app");
+      router.push(returnTo ?? "/app");
     } else {
       posthog?.capture(
         'login_clicked',
@@ -111,6 +113,9 @@ export function LoginButton({
       const signInUrl = new URL("/sign-in", window.location.origin);
       if (reason) {
         signInUrl.searchParams.set("reason", reason);
+      }
+      if (returnTo) {
+        signInUrl.searchParams.set("returnTo", returnTo);
       }
       router.push(signInUrl.toString());
     }

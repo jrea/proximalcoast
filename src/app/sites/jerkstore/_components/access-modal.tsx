@@ -11,12 +11,14 @@ export function AccessModal({
   onClose,
   isActive = false,
   onSuccess,
+  returnTo,
   title = "Sign In Required",
   description = "You need a free account to unlock this feature. We need to know who to blame for the damage."
 }: {
   onClose?: () => void,
   isActive?: boolean,
   onSuccess?: () => void,
+  returnTo?: string,
   title?: string,
   description?: string
 }) {
@@ -79,10 +81,11 @@ export function AccessModal({
             <div className="flex flex-col gap-4 max-w-xs mx-auto">
               <LoginButton
                 text="Create Free Account"
+                returnTo={returnTo}
                 className="w-full py-4 text-xl font-black uppercase bg-black text-white hover:bg-neutral-800 transition-all border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-2"
               />
               <p className="text-center text-xs font-mono font-bold text-neutral-400 uppercase">
-                Already have one? <LoginButton text="Log in" className="underline hover:text-black" />
+                Already have one? <LoginButton text="Log in" returnTo={returnTo} className="underline hover:text-black" />
               </p>
             </div>
 

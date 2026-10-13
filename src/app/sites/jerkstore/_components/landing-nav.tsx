@@ -21,6 +21,7 @@ export function LandingNav() {
       <a href="#examples" onClick={() => setExpanded(false)}>Wall of Shame</a>
       <a href="#pricing" onClick={() => setExpanded(false)}>Pay as you burn</a>
       <a href="#faq" onClick={() => setExpanded(false)}>FAQ</a>
+      <Link href="/languages" onClick={() => setExpanded(false)}>Languages</Link>
       <a href="/roasts">Your roasts</a>
       <LoginButton text="Login" icon variant="login" className={styles.loginButton} />
     </nav>

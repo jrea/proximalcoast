@@ -14,6 +14,19 @@ import { getPlanFromPriceId } from "@/lib/billing/plans";
  * mapping for) and only then falls back so a required column can be
  * written; subscription.updated writes no plan at all for unknown prices.
  */
+/**
+ * grantPurchasedCredits throws exactly one permanent error — a malformed
+ * receipt ("Invalid credit purchase receipt", thrown before any DB work).
+ * That one is safe to swallow: no retry will ever fix it. EVERY other error
+ * (DB down, transaction failure, P2025 for a deleted user, ...) must
+ * propagate to the route's outer handler, which acks permanent Prisma codes
+ * and returns 500 for transient failures so Stripe retries. Swallowing a
+ * transient failure here would return 200 and permanently lose a paid
+ * customer's credits.
+ */
+const isInvalidReceiptError = (error: unknown): boolean =>
+  error instanceof Error && error.message === "Invalid credit purchase receipt";
+
 const planForPriceId = (priceId: string): string => {
   const plan = getPlanFromPriceId(priceId);
   if (!plan) {
@@ -94,8 +107,11 @@ export async function POST(req: Request) {
             console.log(`[Credits] Duplicate fulfillment skipped for PaymentIntent ${paymentIntent.id}`);
           }
         } catch (grantError) {
-          // Invalid receipt data is permanent — log it and acknowledge the
-          // event instead of letting Stripe retry it forever.
+          // Only the malformed-receipt validation error is permanent —
+          // log it and acknowledge. Anything else is rethrown so the
+          // outer handler can ack/500 appropriately and Stripe retries
+          // transient failures instead of the credits being lost.
+          if (!isInvalidReceiptError(grantError)) throw grantError;
           console.error(`[Credits] Invalid credit purchase receipt on ${paymentIntent.id}:`, grantError);
         }
         if (isLedgerPurchase) {
@@ -127,6 +143,10 @@ export async function POST(req: Request) {
               ? `[Credits] Added ${creditsAmount} credits to user ${userId}`
               : `[Credits] Duplicate fulfillment skipped for PaymentIntent ${paymentIntentId}`);
           } catch (grantError) {
+            // Same rule as the PaymentIntent branch: swallow only the
+            // permanent malformed-receipt error; rethrow everything else
+            // for the outer handler so Stripe retries transient failures.
+            if (!isInvalidReceiptError(grantError)) throw grantError;
             console.error(`[Credits] Invalid credit purchase receipt on ${paymentIntentId}:`, grantError);
           }
         } else if (userId) {

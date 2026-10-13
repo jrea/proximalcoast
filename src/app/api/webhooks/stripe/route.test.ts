@@ -268,6 +268,54 @@ describe('POST /api/webhooks/stripe', () => {
     expect(prisma.jerkstore_credit_purchase.create).not.toHaveBeenCalled();
   });
 
+  it('returns 500 when a credit grant fails transiently on payment_intent.succeeded (Stripe must retry)', async () => {
+    // Only the malformed-receipt validation error may be swallowed. A DB
+    // failure inside grantPurchasedCredits has to propagate so the route
+    // returns 500 — otherwise the event is acked and the paid credits are
+    // lost forever.
+    (prisma.jerkstore_credit_purchase.create as any).mockRejectedValueOnce(new Error('database is down'));
+    const event = makeEvent('payment_intent.succeeded', {
+      id: 'pi_transient_fail',
+      metadata: { type: 'credits_purchase', userId: 'user_1', creditsAmount: '25' },
+    });
+    mockStripe.webhooks.constructEvent.mockReturnValueOnce(event);
+
+    const res = await POST(buildRequest(JSON.stringify(event)));
+
+    expect(res.status).toBe(500);
+  });
+
+  it('acknowledges (200) a payment_intent.succeeded whose receipt is permanently invalid', async () => {
+    // creditsAmount that is not a number makes grantPurchasedCredits throw
+    // its one permanent error ("Invalid credit purchase receipt") — the
+    // event can never succeed, so it is logged and acked, not retried.
+    const event = makeEvent('payment_intent.succeeded', {
+      id: 'pi_bad_receipt',
+      metadata: { type: 'credits_purchase', userId: 'user_1', creditsAmount: 'not-a-number' },
+    });
+    mockStripe.webhooks.constructEvent.mockReturnValueOnce(event);
+
+    const res = await POST(buildRequest(JSON.stringify(event)));
+
+    expect(res.status).toBe(200);
+    expect(prisma.jerkstore_credit_purchase.create).not.toHaveBeenCalled();
+  });
+
+  it('returns 500 when a credit grant fails transiently on checkout.session.completed', async () => {
+    (prisma.jerkstore_credit_purchase.create as any).mockRejectedValueOnce(new Error('database is down'));
+    const event = makeEvent('checkout.session.completed', {
+      mode: 'payment',
+      payment_status: 'paid',
+      payment_intent: 'pi_checkout_transient',
+      metadata: { userId: 'user_1', type: 'credits_purchase', creditsAmount: '25' },
+    });
+    mockStripe.webhooks.constructEvent.mockReturnValueOnce(event);
+
+    const res = await POST(buildRequest(JSON.stringify(event)));
+
+    expect(res.status).toBe(500);
+  });
+
   it('ignores one-time payment without userId metadata', async () => {
     const event = makeEvent('checkout.session.completed', {
       mode: 'payment',

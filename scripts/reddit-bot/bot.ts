@@ -168,7 +168,19 @@ telegram.on('message', async (msg) => {
     if (process.env.LIVE_POSTING === 'true') {
       const submission = await r.getSubmission(pending.redditPostId);
       await submission.reply(selectedRoast + "\n\n[Roasted by Jerkstore](https://jerkstore.proximalcoast.com)");
-      await telegram.sendMessage(chatId, `✅ **Posted to Reddit!**\n\n${selectedRoast}`, { parse_mode: 'Markdown' });
+      // The post has succeeded — record completion BEFORE confirming on
+      // Telegram, and make the confirmation best-effort. Previously a
+      // Telegram failure after a successful post fell into the outer
+      // catch, leaving the approval pending and the cooldown unset, so
+      // the same roast could be posted twice.
+      lastRoastTime = Date.now() / 1000;
+      pendingApprovals.delete(chatId);
+      try {
+        await telegram.sendMessage(chatId, `✅ **Posted to Reddit!**\n\n${selectedRoast}`, { parse_mode: 'Markdown' });
+      } catch (telegramError) {
+        console.error("Telegram confirmation failed after successful Reddit post:", telegramError);
+      }
+      return;
     } else {
       console.log(`[DRY RUN] Would post to ${pending.redditPostId}: ${selectedRoast}`);
       await telegram.sendMessage(chatId, `🧪 **Simulation only — NOT posted to Reddit** (set LIVE_POSTING=true to post for real)\n\n${selectedRoast}`, { parse_mode: 'Markdown' });

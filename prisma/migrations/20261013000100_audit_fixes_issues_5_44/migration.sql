@@ -135,3 +135,8 @@ ALTER TABLE "main"."user_subscription" ADD CONSTRAINT "user_subscription_upcomin
 
 -- bkd_document vocabulary.
 ALTER TABLE "main"."bkd_document" ADD CONSTRAINT "bkd_document_status_vocabulary" CHECK ("status" IN ('PENDING', 'SIGNED'));
+
+-- Review follow-up: index jerkstore_ip_tracking.updatedAt (matches the
+-- @@index([updatedAt]) added to the schema) so the retention prune that
+-- filters on it does not seq-scan the table.
+CREATE INDEX "jerkstore_ip_tracking_updatedAt_idx" ON "main"."jerkstore_ip_tracking"("updatedAt");

@@ -21,12 +21,25 @@ export async function getApiKeys() {
   const orgId = session.session.activeOrganizationId;
   const keys = await prisma.apiKey.findMany({
     where: {
-      OR: orgId
-        ? [
-            { userId: session.user.id },
-            { organizationId: orgId },
-          ]
-        : [{ userId: session.user.id }],
+      AND: [
+        {
+          OR: orgId
+            ? [
+                { userId: session.user.id },
+                { organizationId: orgId },
+              ]
+            : [{ userId: session.user.id }],
+        },
+        // Only usable keys are listed as active: revoked keys and expired
+        // keys must not be presented as if they still work.
+        { revokedAt: null },
+        {
+          OR: [
+            { expiresAt: null },
+            { expiresAt: { gt: new Date() } },
+          ],
+        },
+      ],
     },
     orderBy: { createdAt: 'desc' },
     select: {

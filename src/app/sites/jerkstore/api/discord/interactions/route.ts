@@ -227,10 +227,23 @@ export async function POST(req: NextRequest) {
       } catch (e) {
         console.error("AI Error", e);
         if (creditCharged) {
-          await prisma.user.update({
+          // The refund must not fail silently (it used to be swallowed by
+          // .catch(() => {}), permanently eating the user's credit).
+          // Retry once; if it still fails, log at error level with a
+          // greppable marker and everything needed to reconcile by hand.
+          const refund = () => prisma.user.update({
             where: { id: userId },
             data: { credits: { increment: 1 } }
-          }).catch(() => {});
+          });
+          try {
+            await refund();
+          } catch {
+            try {
+              await refund();
+            } catch (refundError) {
+              console.error(`[Credits][REFUND_FAILED] userId=${userId} discordUserId=${discordUserId} amount=1 reason=generation_failed`, refundError);
+            }
+          }
         }
         return jsonResponseHelper({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,

@@ -13,7 +13,9 @@
     "discord:register": "ts-node --skip-project src/app/sites/jerkstore/discord/register-commands.ts",
     "dev:stripe": "concurrently \"next dev\" \"pnpm stripe-listen\"",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:baseline": "prisma migrate resolve --applied 20261013000000_baseline_original_schema"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^3.0.24",

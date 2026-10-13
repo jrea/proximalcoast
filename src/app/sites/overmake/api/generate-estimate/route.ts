@@ -28,6 +28,11 @@ const DAILY_LIMITS: Record<string, number> = {
 const DEFAULT_DAILY_LIMIT = 50;
 const MAX_TASK_LENGTH = 2000;
 
+// Marker for "the reservation transaction counted a full quota" — kept
+// distinct from infrastructure errors so only real quota outcomes become
+// 429s (serialization contention maps to 429 separately, below).
+class QuotaExceededError extends Error {}
+
 export async function POST(req: Request) {
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -84,20 +89,61 @@ export async function POST(req: Request) {
     return new Response(`Your plan (${currentPlan.name}) limits you to Level ${maxLevel}. Upgrade to unlock Level ${level}.`, { status: 403 });
   }
 
-  // Daily quota, counted from persisted estimates (rolling 24h).
+  // Daily quota (rolling 24h), enforced ATOMICALLY: the old count-then-
+  // generate flow let concurrent requests all pass the same count check
+  // and each generate. Now the estimate row itself is created as the
+  // reservation, inside a Serializable transaction that counts first — a
+  // concurrent request either sees this row in its count or fails
+  // serialization. The stream's onFinish fills the reserved row in (so a
+  // generation still produces exactly ONE estimate row), and error paths
+  // delete it to release the slot.
   const dailyLimit = DAILY_LIMITS[planId] ?? DEFAULT_DAILY_LIMIT;
-  const usedToday = await prisma.overmake_estimate.count({
-    where: {
-      userId: session.user.id,
-      createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-    },
-  });
-  if (usedToday >= dailyLimit) {
-    return new Response(
-      `Daily estimate limit reached (${dailyLimit} per day on your plan). Try again tomorrow or upgrade.`,
-      { status: 429, headers: { "Retry-After": "3600" } }
-    );
+  const quotaResponse = () => new Response(
+    `Daily estimate limit reached (${dailyLimit} per day on your plan). Try again tomorrow or upgrade.`,
+    { status: 429, headers: { "Retry-After": "3600" } }
+  );
+  let reservationId: string;
+  try {
+    reservationId = await prisma.$transaction(async (tx) => {
+      const usedToday = await tx.overmake_estimate.count({
+        where: {
+          userId: session.user.id,
+          createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        },
+      });
+      if (usedToday >= dailyLimit) {
+        throw new QuotaExceededError();
+      }
+      const reservation = await tx.overmake_estimate.create({
+        data: {
+          task,
+          level,
+          // Placeholders — replaced by onFinish with the real output.
+          proposal: "",
+          bom: "[]",
+          userId: session.user.id
+        }
+      });
+      return reservation.id;
+    }, { isolationLevel: "Serializable" });
+  } catch (reservationError) {
+    if (reservationError instanceof QuotaExceededError) {
+      return quotaResponse();
+    }
+    // P2034: the transaction could not be serialized because a
+    // concurrent reservation touched the same rows — that IS quota
+    // contention, so answer 429 rather than 500.
+    if ((reservationError as { code?: unknown })?.code === "P2034") {
+      return quotaResponse();
+    }
+    throw reservationError;
   }
+
+  const releaseReservation = async () => {
+    await prisma.overmake_estimate.delete({ where: { id: reservationId } }).catch((releaseError) => {
+      console.error("[Overmake] Failed to release estimate reservation", reservationId, releaseError);
+    });
+  };
 
   const identity = GET_IDENTITY(level);
   const style = GET_STYLE(level);
@@ -113,48 +159,53 @@ ${style}
 ${CONSTRAINTS}
 `;
 
-  const result = await streamText({
-    model: insultModel, // Reusing the same model configuration as jerkstore for consistency
-    system: systemPrompt,
-    prompt: `Generate a detailed estimate/proposal for the task: "${task}" with an engineering complexity level of ${level}/10.`,
-    maxOutputTokens: 2048,
-    onFinish: async ({ text }) => {
-      try {
-        // Extract and parse FIRST, then persist exactly ONE row with the
-        // best representation. The old callback created a raw row, then
-        // a second parsed row (or a third fallback row) — every estimate
-        // was stored two or three times.
-        let cleanText = text || "";
-        const jsonStart = cleanText.indexOf('{');
-        const jsonEnd = cleanText.lastIndexOf('}');
-        if (jsonStart !== -1 && jsonEnd !== -1) {
-          cleanText = cleanText.substring(jsonStart, jsonEnd + 1);
-        }
-
-        let proposal = cleanText;
-        let bom = "[]";
+  let result;
+  try {
+    result = await streamText({
+      model: insultModel, // Reusing the same model configuration as jerkstore for consistency
+      system: systemPrompt,
+      prompt: `Generate a detailed estimate/proposal for the task: "${task}" with an engineering complexity level of ${level}/10.`,
+      maxOutputTokens: 2048,
+      onError: async () => {
+        // Generation failed/aborted: release the quota reservation so a
+        // failed call does not consume the user's daily slot.
+        await releaseReservation();
+      },
+      onFinish: async ({ text }) => {
         try {
-          const parsed = JSON.parse(cleanText);
-          proposal = parsed.proposal || cleanText;
-          bom = JSON.stringify(parsed.bom) || "[]";
-        } catch {
-          // Not valid JSON — keep the raw text as the proposal.
-        }
-
-        await prisma.overmake_estimate.create({
-          data: {
-            task,
-            level,
-            proposal,
-            bom,
-            userId: session.user.id
+          // Extract and parse FIRST, then fill in the ONE reserved row.
+          // (The pre-quota code created a raw row, then a second parsed
+          // row — every estimate was stored twice.)
+          let cleanText = text || "";
+          const jsonStart = cleanText.indexOf('{');
+          const jsonEnd = cleanText.lastIndexOf('}');
+          if (jsonStart !== -1 && jsonEnd !== -1) {
+            cleanText = cleanText.substring(jsonStart, jsonEnd + 1);
           }
-        });
-      } catch (dbError) {
-        console.error("[Overmake DB Error]", dbError);
+
+          let proposal = cleanText;
+          let bom = "[]";
+          try {
+            const parsed = JSON.parse(cleanText);
+            proposal = parsed.proposal || cleanText;
+            bom = JSON.stringify(parsed.bom) || "[]";
+          } catch {
+            // Not valid JSON — keep the raw text as the proposal.
+          }
+
+          await prisma.overmake_estimate.update({
+            where: { id: reservationId },
+            data: { proposal, bom }
+          });
+        } catch (dbError) {
+          console.error("[Overmake DB Error]", dbError);
+        }
       }
-    }
-  });
+    });
+  } catch (streamSetupError) {
+    await releaseReservation();
+    throw streamSetupError;
+  }
 
   return result.toTextStreamResponse();
 }

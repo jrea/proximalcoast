@@ -257,6 +257,8 @@ model jerkstore_ip_tracking {
   createdAt DateTime @default(now()) @db.Timestamp(6)
   updatedAt DateTime @updatedAt @db.Timestamp(6)
 
+  // The retention prune filters on updatedAt; without this it seq-scans.
+  @@index([updatedAt])
   @@schema("main")
 }
 

@@ -10,6 +10,31 @@ export class GenerationLimitError extends Error {
   }
 }
 
+const PRUNE_INTERVAL_MS = 10 * 60 * 1000;
+let lastPruneAt = 0;
+
+// Retention prune for the tracking table: rows used to live forever (one
+// permanent row per IP/guest/account, holding IP addresses indefinitely).
+// Rows untouched for 30 days carry no quota information anymore. This runs
+// OFF the request path — at most once per process per 10 minutes,
+// fire-and-forget after a successful reservation — instead of inside the
+// reservation transaction, where it added a full-table delete to every
+// generation's critical path. Failures are logged, never thrown.
+function scheduleRetentionPrune() {
+  const nowMs = Date.now();
+  if (nowMs - lastPruneAt < PRUNE_INTERVAL_MS) return;
+  lastPruneAt = nowMs;
+  void (async () => {
+    try {
+      await prisma.jerkstore_ip_tracking.deleteMany({
+        where: { updatedAt: { lt: new Date(nowMs - 30 * WINDOW_MS) } },
+      });
+    } catch (pruneError) {
+      console.error("[GenerationQuota] Retention prune failed:", pruneError);
+    }
+  })();
+}
+
 // Reservations share the existing quota table. Namespaced account/browser
 // keys prevent concurrent requests from spending the same free allowance.
 export async function reserveGeneration({ userId, isGuest, ip, isEmail }: {
@@ -18,15 +43,7 @@ export async function reserveGeneration({ userId, isGuest, ip, isEmail }: {
   const now = new Date();
   const cutoff = new Date(now.getTime() - WINDOW_MS);
   const keys = isGuest ? [`network:${ip}`, `guest:${userId}`] : [`account:${userId}`];
-  return prisma.$transaction(async (tx) => {
-    // Opportunistic retention prune: tracking rows used to live forever
-    // (one permanent row per IP/guest/account, holding IP addresses
-    // indefinitely). Rows whose window ended long ago carry no quota
-    // information anymore — delete them. The rows for `keys` are
-    // (re)created below if this call needs them.
-    await tx.jerkstore_ip_tracking.deleteMany({
-      where: { updatedAt: { lt: new Date(now.getTime() - 30 * WINDOW_MS) }, ip: { notIn: keys } },
-    });
+  const reservation = await prisma.$transaction(async (tx) => {
     const rows = [];
     for (const key of keys) {
       await tx.jerkstore_ip_tracking.upsert({ where: { ip: key }, update: {}, create: { ip: key, count: 0 } });
@@ -75,6 +92,8 @@ export async function reserveGeneration({ userId, isGuest, ip, isEmail }: {
     }
     return { userId, windows: rows.map((row) => ({ key: row.ip, startedAt: row.createdAt })), freeResults, paidCredits, resultCount };
   });
+  scheduleRetentionPrune();
+  return reservation;
 }
 
 export type GenerationReservation = Awaited<ReturnType<typeof reserveGeneration>>;

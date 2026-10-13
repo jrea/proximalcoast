@@ -30,6 +30,17 @@ function isAllowedHost(host: string): boolean {
   ) {
     return process.env.NODE_ENV !== "production";
   }
+  // Mirror the proxy's preview exception: on Vercel preview deployments,
+  // the deployment's own VERCEL_URL / VERCEL_BRANCH_URL hosts are trusted
+  // (auth callbacks must work on the exact preview host serving the build).
+  if (
+    process.env.VERCEL_ENV === "preview" &&
+    [process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL].some(
+      (previewHost) => previewHost?.toLowerCase() === hostname
+    )
+  ) {
+    return true;
+  }
   const rootDomain = (process.env.ROOT_DOMAIN || "proximalcoast.com")
     .split(":")[0]
     .toLowerCase();

@@ -46,11 +46,16 @@ describe("private roast history", () => {
     expect(prisma.jerkstore_insult.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: guestId } }));
   });
 
-  it("preserves an existing guest UUID cookie's history", async () => {
+  it("rejects a legacy bare-UUID guest cookie (it was a bearer credential, not a secret)", async () => {
+    // The UUID is the guest row's primary key and appears as userId on the
+    // guest's insults, so accepting it bare let anyone who learned one
+    // impersonate that guest. Only HMAC-signed cookies are valid now;
+    // legacy-cookie holders get a fresh signed identity on their next visit.
     context.cookie = guestId;
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: guestId, isGuest: true } as never);
-    await renderPage();
-    expect(prisma.jerkstore_insult.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: guestId } }));
+    expect(await renderPage()).toContain("No roasts here yet.");
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    expect(prisma.jerkstore_insult.findMany).not.toHaveBeenCalled();
   });
 
   it("does not expose a registered account through a guest cookie", async () => {

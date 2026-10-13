@@ -19,6 +19,14 @@ export async function reserveGeneration({ userId, isGuest, ip, isEmail }: {
   const cutoff = new Date(now.getTime() - WINDOW_MS);
   const keys = isGuest ? [`network:${ip}`, `guest:${userId}`] : [`account:${userId}`];
   return prisma.$transaction(async (tx) => {
+    // Opportunistic retention prune: tracking rows used to live forever
+    // (one permanent row per IP/guest/account, holding IP addresses
+    // indefinitely). Rows whose window ended long ago carry no quota
+    // information anymore — delete them. The rows for `keys` are
+    // (re)created below if this call needs them.
+    await tx.jerkstore_ip_tracking.deleteMany({
+      where: { updatedAt: { lt: new Date(now.getTime() - 30 * WINDOW_MS) }, ip: { notIn: keys } },
+    });
     const rows = [];
     for (const key of keys) {
       await tx.jerkstore_ip_tracking.upsert({ where: { ip: key }, update: {}, create: { ip: key, count: 0 } });

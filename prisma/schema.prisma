@@ -22,9 +22,10 @@ model account {
   password              String?
   createdAt             DateTime  @db.Timestamp(6)
   updatedAt             DateTime  @db.Timestamp(6)
-  user                  user      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user                  user      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([providerId, accountId])
+  @@index([userId])
   @@schema("main")
 }
 
@@ -39,8 +40,11 @@ model invitation {
   inviterId      String
   createdAt      DateTime     @db.Timestamp(6)
   updatedAt      DateTime?    @db.Timestamp(6)
-  user           user         @relation(fields: [inviterId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  organization   organization @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user           user         @relation(fields: [inviterId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  organization   organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organizationId])
+  @@index([inviterId])
 
   @@schema("main")
 }
@@ -52,8 +56,11 @@ model member {
   role           String
   createdAt      DateTime     @db.Timestamp(6)
   updatedAt      DateTime?    @db.Timestamp(6)
-  organization   organization @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  user           user         @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organization   organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user           user         @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organizationId])
+  @@index([userId])
 
   @@schema("main")
 }
@@ -70,6 +77,7 @@ model organization {
   member     member[]
   apiKeys    ApiKey[]
   bkd_documents bkd_document[]
+  activeSessions session[] @relation("SessionActiveOrganization")
 
   @@schema("main")
 }
@@ -84,7 +92,12 @@ model session {
   createdAt            DateTime @db.Timestamp(6)
   updatedAt            DateTime @db.Timestamp(6)
   activeOrganizationId String?
-  user                 user     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  // Was a bare scalar with no FK, so sessions could point at deleted or
+  // nonexistent organizations forever; now a real relation (SetNull).
+  activeOrganization   organization? @relation("SessionActiveOrganization", fields: [activeOrganizationId], references: [id], onDelete: SetNull)
+  user                 user     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId])
 
   @@schema("main")
 }
@@ -92,6 +105,10 @@ model session {
 model user {
   id            String       @id
   name          String
+  // Nullable BY DESIGN for guest accounts only (isGuest = true, created
+  // by the Jerkstore guest flow with no email). A DB CHECK constraint
+  // (see migrations) enforces: email IS NOT NULL OR is_guest = true.
+  // Do not "fix" this to required without breaking guest checkout.
   email         String?       @unique
   emailVerified Boolean
   image         String?
@@ -110,6 +127,7 @@ model user {
   apiKeys          ApiKey[]
   bkd_documents    bkd_document[]
   jerkstore_credit_purchases jerkstore_credit_purchase[]
+  stripe_session_claims stripe_session_claim[]
   preferences      Json?
   credits          Int      @default(3)
   phone            String?
@@ -122,8 +140,11 @@ model user_subscription {
   userId               String
   siteSlug             String   // e.g., "jerkstore"
   stripeSubscriptionId String   @unique
-  status               String   // active, trialing, canceled, etc.
-  plan                 String   @default("standard") // standard, elite, savage
+  // Vocabularies enforced by DB CHECK constraints (see migrations):
+  // status: every status Stripe can deliver; plan/upcomingPlan: the plan
+  // names from src/lib/billing/plans.ts. Update all three together.
+  status               String   // active, trialing, canceled, past_due, incomplete, incomplete_expired, unpaid, paused
+  plan                 String   @default("standard") // standard, elite, savage, trial, bushfix, diyer, succession
   upcomingPlan         String?  // Plan scheduling to switch to at period end
   cancelAtPeriodEnd    Boolean  @default(false)
   priceAmount          Int?     // Amount in cents
@@ -159,8 +180,15 @@ model ApiKey {
   organizationId String?
   organization   organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   lastUsedAt DateTime? @db.Timestamp(6)
+  // Lifecycle: keys expire (new keys default to +1 year at creation) and
+  // revocation is a state, not a deletion, so the audit trail survives.
+  // All verifiers go through src/lib/api-keys.ts (verifyApiKey).
+  expiresAt DateTime? @db.Timestamp(6)
+  revokedAt DateTime? @db.Timestamp(6)
   createdAt DateTime @default(now()) @db.Timestamp(6)
 
+  @@index([userId])
+  @@index([organizationId])
   @@schema("main")
 }
 
@@ -180,6 +208,7 @@ model jerkstore_insult {
   weight           Int      @default(0)
   safe_insult      jerkstore_insult_safe[]
 
+  @@index([userId])
   @@schema("main")
 }
 
@@ -190,8 +219,11 @@ model jerkstore_credit_purchase {
   userId String
   credits Int
   createdAt DateTime @default(now()) @db.Timestamp(6)
+  // NoAction is DELIBERATE here (unlike the auth models): receipts are
+  // the money ledger and must never be cascade-deleted with a user.
   user user @relation(fields: [userId], references: [id], onDelete: NoAction)
 
+  @@index([userId])
   @@schema("main")
 }
 
@@ -201,6 +233,7 @@ model jerkstore_insult_safe {
   insult    jerkstore_insult @relation(fields: [insultId], references: [id], onDelete: Cascade)
   createdAt DateTime         @default(now()) @db.Timestamp(6)
 
+  @@index([insultId])
   @@schema("main")
 }
 
@@ -214,6 +247,7 @@ model overmake_estimate {
   user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now()) @db.Timestamp(6)
 
+  @@index([userId])
   @@schema("main")
 }
 
@@ -231,10 +265,10 @@ model bkd_document {
   userId    String   // Required: Who uploaded it
   organizationId String   // Required: Who owns it
   filename  String
-  s3Key     String
-  status    String   // PENDING, SIGNED
+  s3Key     String   @unique
+  status    String   // PENDING, SIGNED (vocabulary enforced by DB CHECK in migrations)
   config    Json     // { x, y, width, height, page }
-  hash      String?  // Cryptographic SHA-256 integrity hash
+  hash      String?  @unique // Cryptographic SHA-256 integrity hash
   auditLog  Json?    // Historical lifecycle events
   signerEmail String? // Identified signer
   signerName  String? // Typed signature name
@@ -242,8 +276,26 @@ model bkd_document {
   createdAt DateTime @default(now())
   signedAt  DateTime?
 
-  user           user         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization   organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // Restrict, NOT Cascade: these rows are signing evidence (hash +
+  // auditLog) and the only index to the S3 objects. Deleting a user or
+  // org must be blocked until documents are explicitly archived —
+  // previously one user deletion wiped an org's signed documents.
+  user           user         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  organization   organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([organizationId])
+  @@schema("main")
+}
+
+// Single-use claims for BKD guest checkout session IDs. complete-account
+// inserts the session ID here before linking anything; the PK makes a
+// session ID usable exactly once, even under concurrent requests.
+model stripe_session_claim {
+  sessionId String   @id
+  userId    String
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@schema("main")
 }

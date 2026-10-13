@@ -78,9 +78,17 @@ export default async function proxy(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams.toString();
   const path = `${url.pathname}${searchParams.length > 0 ? `?${searchParams}` : ""}`;
 
-  // Routes that should be served from the main app even on subdomains
+  // Routes that should be served from the main app even on subdomains.
+  // Matching is on the pathname with a path-segment boundary: the old
+  // prefix match ran against pathname+query with no boundary, so
+  // /api/subscriptionXYZ, /api/portal-foo and /blogger were all treated
+  // as global routes and any future subsite route sharing a prefix would
+  // be silently shadowed.
   const GLOBAL_API_ROUTES = ["/api/auth", "/api/portal", "/api/webhooks", "/api/subscription", "/api/subscription-status", "/api/cancel-subscription", "/api/reactivate-subscription", "/api/update-subscription", "/api/cancel-downgrade", "/blog"];
-  if (GLOBAL_API_ROUTES.some(route => path.startsWith(route))) {
+  const isGlobalRoute = GLOBAL_API_ROUTES.some(
+    route => url.pathname === route || url.pathname.startsWith(`${route}/`)
+  );
+  if (isGlobalRoute) {
     return NextResponse.rewrite(new URL(path, req.url));
   }
 

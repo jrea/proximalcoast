@@ -12,10 +12,12 @@ export function guestCookieValue(id: string) {
 
 export function readGuestCookie(value: string | undefined) {
   if (!value || value.length > 200) return null;
-  // Existing guests received random UUID bearer cookies. Accept those only
-  // during transition; callers must still verify that the row is a guest.
-  // All newly issued cookies are signed, and account IDs are never guests.
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) return value;
+  // The legacy bare-UUID bearer format is NO LONGER accepted. It was kept
+  // "only during transition", but the UUID is the guest row's primary key
+  // (stored as userId on the guest's insults), so it was never a secret —
+  // anyone who learned one could impersonate that guest, burn their free
+  // quota and rate their insults. Only HMAC-signed cookies are valid now;
+  // guests holding an old cookie get a fresh signed identity next visit.
   const dot = value.lastIndexOf(".");
   if (dot < 1) return null;
   const id = value.slice(0, dot);

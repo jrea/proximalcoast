@@ -5,7 +5,11 @@ export const COMMANDS = [
     .setName('link')
     .setDescription('Link your Jerkstore account using your API key')
     .addStringOption(option =>
-      option.setName('key')
+      // The interactions handler reads the option named 'api_key'.
+      // This builder previously registered it as 'key', so Discord never
+      // delivered the value under the name the handler expects and
+      // /link could never succeed.
+      option.setName('api_key')
         .setDescription('Your Jerkstore API Key')
         .setRequired(true)
     ),
@@ -29,19 +33,8 @@ export const COMMANDS = [
           { name: 'Nuclear (Savage Only)', value: 'nuclear' }
         )
     ),
-  new SlashCommandBuilder()
-    .setName('signup')
-    .setDescription('Get a link to create a Jerkstore account'),
-  new SlashCommandBuilder()
-    .setName('config')
-    .setDescription('Configure your preferences')
-    .addStringOption(option =>
-      option.setName('default_style')
-        .setDescription('Set your default roast style')
-        .addChoices(
-          { name: 'Mild', value: 'mild' },
-          { name: 'Spicy', value: 'spicy' },
-          { name: 'Nuclear', value: 'nuclear' }
-        )
-    )
+  // 'signup' and 'config' were previously registered here but had no
+  // handler in the interactions route, so Discord users got a raw 400.
+  // They are deregistered until they are implemented; re-registering is
+  // a one-command step (pnpm discord:register) once handlers exist.
 ];

@@ -58,6 +58,10 @@ describe('POST /api/webhooks/stripe', () => {
     mockStripe.webhooks.constructEvent.mockImplementation((body: string) => JSON.parse(body));
 
     (prisma.user.update as any).mockResolvedValue({});
+    // Credit grants go through grantPurchasedCredits, which runs inside a
+    // transaction and writes a jerkstore_credit_purchase ledger receipt.
+    (prisma.$transaction as any).mockImplementation(async (cb: any) => cb(prisma));
+    (prisma.jerkstore_credit_purchase.create as any).mockResolvedValue({});
     (prisma.user.findUnique as any).mockResolvedValue({ name: 'Joe', email: 'joe@test.com', phone: null });
     (prisma.user_subscription.findUnique as any).mockResolvedValue(null);
     (prisma.user_subscription.update as any).mockResolvedValue({});
@@ -84,8 +88,12 @@ describe('POST /api/webhooks/stripe', () => {
 
   // --- payment_intent.succeeded ---
 
-  it('credits user on payment_intent.succeeded (credits_purchase)', async () => {
+  it('credits user on payment_intent.succeeded (credits_purchase) via the idempotent ledger', async () => {
+    // Even legacy purchases (no fulfillmentVersion metadata) are granted
+    // through grantPurchasedCredits — never a direct increment — so a
+    // Stripe redelivery of this event cannot grant the credits twice.
     const event = makeEvent('payment_intent.succeeded', {
+      id: 'pi_legacy_100',
       metadata: { type: 'credits_purchase', userId: 'user_1', creditsAmount: '100' },
     });
     mockStripe.webhooks.constructEvent.mockReturnValueOnce(event);
@@ -94,6 +102,9 @@ describe('POST /api/webhooks/stripe', () => {
     const res = await POST(req);
 
     expect(res.status).toBe(200);
+    expect(prisma.jerkstore_credit_purchase.create).toHaveBeenCalledWith({
+      data: { paymentIntentId: 'pi_legacy_100', userId: 'user_1', credits: 100 },
+    });
     expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
       where: { id: 'user_1' },
       data: { credits: { increment: 100 } },
@@ -102,6 +113,7 @@ describe('POST /api/webhooks/stripe', () => {
 
   it('saves the credit payment card as the customer default', async () => {
     const event = makeEvent('payment_intent.succeeded', {
+      id: 'pi_card_123',
       customer: 'cus_123',
       payment_method: 'pm_123',
       metadata: { type: 'credits_purchase', userId: 'user_1', creditsAmount: '100' },
@@ -174,10 +186,14 @@ describe('POST /api/webhooks/stripe', () => {
 
   // --- checkout.session.completed (one-time payment / credits) ---
 
-  it('adds 50 credits on checkout.session.completed one-time payment', async () => {
+  it('does NOT grant credits for a paid payment-mode session without verified credits_purchase metadata', async () => {
+    // The old code granted a flat +50 for ANY paid payment-mode session.
+    // A session is only a credit purchase when our own checkout routes set
+    // metadata.type = 'credits_purchase'.
     const event = makeEvent('checkout.session.completed', {
       mode: 'payment',
       payment_status: 'paid',
+      payment_intent: 'pi_unverified_session',
       metadata: { userId: 'user_1' },
     });
     mockStripe.webhooks.constructEvent.mockReturnValueOnce(event);
@@ -186,10 +202,70 @@ describe('POST /api/webhooks/stripe', () => {
     const res = await POST(req);
 
     expect(res.status).toBe(200);
+    expect(prisma.jerkstore_credit_purchase.create).not.toHaveBeenCalled();
+    const creditCalls = (prisma.user.update as any).mock.calls.filter((call: any) =>
+      call[0]?.data?.credits?.increment !== undefined
+    );
+    expect(creditCalls).toHaveLength(0);
+  });
+
+  it('grants checkout credits through the ledger for a verified credits_purchase session with a payment_intent', async () => {
+    const event = makeEvent('checkout.session.completed', {
+      mode: 'payment',
+      payment_status: 'paid',
+      payment_intent: 'pi_checkout_75',
+      metadata: { userId: 'user_1', type: 'credits_purchase', creditsAmount: '75' },
+    });
+    mockStripe.webhooks.constructEvent.mockReturnValueOnce(event);
+
+    const req = buildRequest(JSON.stringify(event));
+    const res = await POST(req);
+
+    expect(res.status).toBe(200);
+    expect(prisma.jerkstore_credit_purchase.create).toHaveBeenCalledWith({
+      data: { paymentIntentId: 'pi_checkout_75', userId: 'user_1', credits: 75 },
+    });
+    expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'user_1' },
+      data: { credits: { increment: 75 } },
+    }));
+  });
+
+  it('defaults to 50 credits through the ledger when a verified credits_purchase session has no creditsAmount', async () => {
+    const event = makeEvent('checkout.session.completed', {
+      mode: 'payment',
+      payment_status: 'paid',
+      payment_intent: 'pi_checkout_default',
+      metadata: { userId: 'user_1', type: 'credits_purchase' },
+    });
+    mockStripe.webhooks.constructEvent.mockReturnValueOnce(event);
+
+    const req = buildRequest(JSON.stringify(event));
+    const res = await POST(req);
+
+    expect(res.status).toBe(200);
+    expect(prisma.jerkstore_credit_purchase.create).toHaveBeenCalledWith({
+      data: { paymentIntentId: 'pi_checkout_default', userId: 'user_1', credits: 50 },
+    });
     expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
       where: { id: 'user_1' },
       data: { credits: { increment: 50 } },
     }));
+  });
+
+  it('ignores a verified credits_purchase session without a payment_intent (nothing to key the ledger on)', async () => {
+    const event = makeEvent('checkout.session.completed', {
+      mode: 'payment',
+      payment_status: 'paid',
+      metadata: { userId: 'user_1', type: 'credits_purchase', creditsAmount: '50' },
+    });
+    mockStripe.webhooks.constructEvent.mockReturnValueOnce(event);
+
+    const req = buildRequest(JSON.stringify(event));
+    const res = await POST(req);
+
+    expect(res.status).toBe(200);
+    expect(prisma.jerkstore_credit_purchase.create).not.toHaveBeenCalled();
   });
 
   it('ignores one-time payment without userId metadata', async () => {

@@ -129,6 +129,34 @@ export function ManageMembership({ initialSubscription }: { initialSubscription?
     );
   }
 
+  // No active membership: render an explicit empty state. Previously
+  // this fell through to the active-membership card below, which showed
+  // a fabricated plan ('Bushin'), a fabricated price ('$150'), an
+  // "Active Status" heading, and a Pause button whose API call could
+  // only fail — on the billing page, of all places.
+  if (!subscription || (subscription.status !== 'active' && subscription.status !== 'trialing')) {
+    return (
+      <div className="w-full space-y-8 bkd-shoji-enter relative z-20">
+        <div className="bkd-card-header">
+          <div className="text-center space-y-2 mb-6 md:mb-10">
+            <h2 className="bkd-h2 md:bkd-h1 uppercase tracking-[0.1em] md:tracking-[0.15em] text-balance">
+              No Active Membership
+            </h2>
+            <p className="bkd-mono text-[9px] md:text-[10px] opacity-50 mt-1 md:mt-2">
+              {subscription?.status === 'canceled' ? 'Membership Ended' : 'Not Enrolled'}
+            </p>
+          </div>
+          <p className="bkd-body text-center text-sm opacity-60 mb-8">
+            You don&apos;t have an active BKD membership right now.
+          </p>
+          <a href="/" className="bkd-btn-primary w-full block text-center relative overflow-hidden">
+            <span className="relative z-10">See Membership Options</span>
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full space-y-8 bkd-shoji-enter relative z-20">
       <div className="bkd-card-header active">
@@ -152,7 +180,7 @@ export function ManageMembership({ initialSubscription }: { initialSubscription?
                   currency: subscription.priceCurrency || 'USD',
                   maximumFractionDigits: 0
                 }).format(subscription.priceAmount / 100)
-                : '$150'}
+                : '—'}
             </span>
             <span className="bkd-mono text-[10px] opacity-50 uppercase tracking-widest">/ Month</span>
           </div>

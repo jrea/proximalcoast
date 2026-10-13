@@ -25,8 +25,11 @@ export async function GET(req: Request) {
           siteSlug,
         },
       },
+      // Never serialize the whole user row: it carries phone,
+      // stripeCustomerId, preferences and credits, and this route is
+      // reachable from every subsite via the cross-subdomain session.
       include: {
-        user: true
+        user: { select: { id: true, name: true, email: true, image: true } }
       }
     });
 
@@ -65,7 +68,7 @@ export async function GET(req: Request) {
               // We might want to update the plan too if it changed externally, but that's harder to map back without metadata or price lookups
             },
             include: {
-              user: true
+              user: { select: { id: true, name: true, email: true, image: true } }
             }
           });
         }

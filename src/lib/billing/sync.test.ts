@@ -61,23 +61,45 @@ describe('syncUserSubscription (billing/sync.ts)', () => {
     expect(result).toBeNull();
   });
 
-  it('finds customer by email when no stripeCustomerId on user', async () => {
+  it('links a customer discovered by email ONLY when its metadata.userId matches this user', async () => {
     (prisma.user.findUnique as any).mockResolvedValue({ ...USER, stripeCustomerId: null });
     mockStripe.customers.list.mockResolvedValue({
-      data: [{ id: 'cus_found_by_email' }],
+      data: [
+        { id: 'cus_someone_elses', metadata: { userId: 'a_different_user' } },
+        { id: 'cus_proven_owned', metadata: { userId: USER.id } },
+      ],
     });
 
     await syncUserSubscription(USER.id, 'bkd');
 
-    // Should save the discovered customerId
+    // Only the metadata-proven customer is saved — never the email-only one
     expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
       where: { id: USER.id },
-      data: { stripeCustomerId: 'cus_found_by_email' },
+      data: { stripeCustomerId: 'cus_proven_owned' },
     }));
-    // Should then list subscriptions for this customer
+    expect(prisma.user.update).not.toHaveBeenCalledWith(expect.objectContaining({
+      data: { stripeCustomerId: 'cus_someone_elses' },
+    }));
+    // Should then list subscriptions for the proven customer
     expect(mockStripe.subscriptions.list).toHaveBeenCalledWith(expect.objectContaining({
-      customer: 'cus_found_by_email',
+      customer: 'cus_proven_owned',
     }));
+  });
+
+  it('does NOT link a customer by email alone when no customer carries matching userId metadata', async () => {
+    (prisma.user.findUnique as any).mockResolvedValue({ ...USER, stripeCustomerId: null });
+    mockStripe.customers.list.mockResolvedValue({
+      data: [{ id: 'cus_email_only_match', metadata: {} }],
+    });
+
+    const result = await syncUserSubscription(USER.id, 'bkd');
+
+    // Email is not proof of ownership: no link, no subscription lookup, no sync
+    expect(result).toBeNull();
+    expect(prisma.user.update).not.toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ stripeCustomerId: expect.anything() }),
+    }));
+    expect(mockStripe.subscriptions.list).not.toHaveBeenCalled();
   });
 
   // --- Subscription matching ---

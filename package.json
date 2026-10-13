@@ -3,14 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"next dev\" \"pnpm stripe-listen\"",
+    "dev": "next dev",
     "preinstall": "npx only-allow pnpm",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
     "stripe-listen": "stripe listen --forward-to localhost:3000/api/webhooks/stripe",
-    "discord:register": "ts-node --skip-project src/app/sites/jerkstore/discord/register-commands.ts"
+    "discord:register": "ts-node --skip-project src/app/sites/jerkstore/discord/register-commands.ts",
+    "dev:stripe": "concurrently \"next dev\" \"pnpm stripe-listen\"",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^3.0.24",
@@ -42,8 +45,11 @@
     "radix-ui": "^1.6.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "rehype-sanitize": "^6.0.0",
+    "rehype-stringify": "^10.0.1",
     "remark": "^15.0.1",
     "remark-html": "^16.0.1",
+    "remark-rehype": "^11.1.2",
     "server-only": "^0.0.1",
     "sonner": "^2.0.7",
     "stripe": "^22.4.0",

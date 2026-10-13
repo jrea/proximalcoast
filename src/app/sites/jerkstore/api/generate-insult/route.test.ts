@@ -92,7 +92,10 @@ describe("Jerkstore generation boundary", () => {
     expect(prisma.user.create).not.toHaveBeenCalled();
   });
   it("accepts a valid key and uses its owner", async () => {
-    prisma.apiKey.findUnique.mockResolvedValue({ id: "key", userId: "bot-owner" });
+    // verifyApiKey (src/lib/api-keys.ts) selects the lifecycle fields too:
+    // a key is valid only when it is neither revoked nor expired.
+    prisma.apiKey.findUnique.mockResolvedValue({ id: "key", userId: "bot-owner", organizationId: null, expiresAt: null, revokedAt: null });
+    prisma.apiKey.update.mockResolvedValue({});
     expect((await POST(request(undefined, { authorization: "Bearer valid" }))).status).toBe(200);
     expect(reserveGeneration).toHaveBeenCalledWith(expect.objectContaining({ userId: "bot-owner", isGuest: false }));
   });

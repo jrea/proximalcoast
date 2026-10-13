@@ -2,32 +2,75 @@ import { authConfig } from "@/lib/auth";
 import { betterAuth } from "better-auth";
 import { NextRequest } from "next/server";
 
-export const GET = async (req: NextRequest) => {
-  const url = new URL(req.url);
+/**
+ * The auth handler needs a per-subdomain baseURL so social callbacks use
+ * the current site. Two hardening rules apply:
+ *  1. The Host header is only trusted when it is on the same allowlist
+ *     the proxy enforces (the root domain, its subsites, or local dev
+ *     hosts). Previously ANY Host value flowed into OAuth base-URL
+ *     construction — the proxy was the only thing standing in the way.
+ *  2. Auth instances are memoized per baseURL instead of rebuilding the
+ *     whole Better Auth instance (adapter + plugins) on every request.
+ */
+const SUBSITE_LABELS = new Set([
+  "jerkstore",
+  "bkd",
+  "backlinks",
+  "overmake",
+  "slice",
+  "www",
+]);
+
+function isAllowedHost(host: string): boolean {
+  const hostname = host.split(":")[0].toLowerCase();
+  if (
+    hostname === "localhost" ||
+    hostname === "lvh.me" ||
+    hostname.endsWith(".lvh.me")
+  ) {
+    return process.env.NODE_ENV !== "production";
+  }
+  const rootDomain = (process.env.ROOT_DOMAIN || "proximalcoast.com")
+    .split(":")[0]
+    .toLowerCase();
+  if (hostname === rootDomain) return true;
+  if (hostname.endsWith(`.${rootDomain}`)) {
+    const label = hostname.slice(0, -(rootDomain.length + 1));
+    return SUBSITE_LABELS.has(label);
+  }
+  return false;
+}
+
+function resolveBaseURL(req: NextRequest): string {
   const host = req.headers.get("host");
-  // Use the host header to determine the base URL dynamically.
-  // This ensures that social auth callbacks always use the current subdomain.
-  const protocol = url.protocol;
-  const baseURL = host ? `${protocol}//${host}` : process.env.BETTER_AUTH_URL;
+  if (host && isAllowedHost(host)) {
+    return `${new URL(req.url).protocol}//${host}`;
+  }
+  if (host) {
+    console.warn(`[Auth] Ignoring non-allowlisted Host header: ${host}`);
+  }
+  return process.env.BETTER_AUTH_URL || new URL(req.url).origin;
+}
 
-  const dynamicAuth = betterAuth({
-    ...authConfig,
-    baseURL: baseURL as string,
-  });
+function createAuth(baseURL: string) {
+  return betterAuth({ ...authConfig, baseURL });
+}
 
-  return dynamicAuth.handler(req);
-};
+type AuthInstance = ReturnType<typeof createAuth>;
 
-export const POST = async (req: NextRequest) => {
-  const url = new URL(req.url);
-  const host = req.headers.get("host");
-  const protocol = url.protocol;
-  const baseURL = host ? `${protocol}//${host}` : process.env.BETTER_AUTH_URL;
+const instances = new Map<string, AuthInstance>();
 
-  const dynamicAuth = betterAuth({
-    ...authConfig,
-    baseURL: baseURL as string,
-  });
+function authForBaseURL(baseURL: string): AuthInstance {
+  let instance = instances.get(baseURL);
+  if (!instance) {
+    instance = createAuth(baseURL);
+    instances.set(baseURL, instance);
+  }
+  return instance;
+}
 
-  return dynamicAuth.handler(req);
-};
+const handle = async (req: NextRequest) =>
+  authForBaseURL(resolveBaseURL(req)).handler(req);
+
+export const GET = handle;
+export const POST = handle;

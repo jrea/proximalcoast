@@ -1,5 +1,6 @@
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/db";
+import { getPlanFromPriceId } from "./plans";
 
 /**
  * Syncs a user's subscription from Stripe to our database if they are out of sync.
@@ -17,19 +18,27 @@ export async function syncUserSubscription(userId: string, siteSlug: string) {
 
     let customerId = user.stripeCustomerId;
 
-    // 2. If no customer ID locally, try to find one on Stripe by email
+    // 2. If no customer ID locally, a Stripe customer may be *discovered*
+    // by email, but it is only ever *linked* when its metadata proves it
+    // belongs to this user. Email alone is not proof: addresses are not
+    // verified at signup and Stripe allows duplicate customers per email,
+    // so the old limit-1 email claim let an unverified account take over
+    // another customer's subscriptions and payment methods.
     if (!customerId && user.email) {
       const customers = await stripe.customers.list({
         email: user.email,
-        limit: 1,
+        limit: 5,
       });
-      if (customers.data.length > 0) {
-        customerId = customers.data[0].id;
+      const owned = customers.data.find(c => c.metadata?.userId === userId);
+      if (owned) {
+        customerId = owned.id;
         // Save it for next time
         await prisma.user.update({
           where: { id: userId },
           data: { stripeCustomerId: customerId },
         });
+      } else if (customers.data.length > 0) {
+        console.warn(`[Sync] Found ${customers.data.length} Stripe customer(s) for user ${userId}'s email but none carries matching userId metadata — refusing to link by email alone.`);
       }
     }
 
@@ -49,9 +58,12 @@ export async function syncUserSubscription(userId: string, siteSlug: string) {
     // Priority: 1. Matches siteSlug in metadata, 2. Matches a Price ID associated with BKD
     const bkdPriceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_BKD;
 
-    // Find all potential matches
+    // Find all potential matches. A subscription belongs to a site by its
+    // metadata; the BKD price is only an additional signal when syncing
+    // BKD itself — previously it matched for every site, so a BKD
+    // subscription could be bound to any other site's row.
     const potentialMatches = allSubs.filter(s =>
-      s.metadata.siteSlug === siteSlug || s.items.data.some(item => item.price.id === bkdPriceId)
+      s.metadata.siteSlug === siteSlug || (siteSlug === "bkd" && s.items.data.some(item => item.price.id === bkdPriceId))
     );
 
     // Prioritize by status
@@ -84,6 +96,15 @@ export async function syncUserSubscription(userId: string, siteSlug: string) {
 
     const price = matchedSub.items.data[0].price;
 
+    // Derive the plan from the price on BOTH create and update — the old
+    // code hard-coded "standard" on create and never set plan on update,
+    // so paid plans were recorded wrong and never self-corrected.
+    const resolvedPlan = getPlanFromPriceId(price.id);
+    if (!resolvedPlan) {
+      console.error(`[Sync] Unknown Stripe price ID ${price.id} for subscription ${matchedSub.id} — keeping a fallback plan. Configure its NEXT_PUBLIC_STRIPE_PRICE_ID_* env var.`);
+    }
+    const plan = resolvedPlan ?? "standard";
+
     console.log(`[Sync] Found sub in Stripe for ${siteSlug}: ${matchedSub.id} (${matchedSub.status}), price: ${price.unit_amount}${price.currency}`);
 
     const updated = await prisma.user_subscription.upsert({
@@ -91,6 +112,7 @@ export async function syncUserSubscription(userId: string, siteSlug: string) {
       update: {
         stripeSubscriptionId: matchedSub.id,
         status: matchedSub.status,
+        plan,
         expiresAt,
         cancelAtPeriodEnd: matchedSub.cancel_at_period_end,
         priceAmount: price.unit_amount,
@@ -101,7 +123,7 @@ export async function syncUserSubscription(userId: string, siteSlug: string) {
         siteSlug: siteSlug,
         stripeSubscriptionId: matchedSub.id,
         status: matchedSub.status,
-        plan: "standard",
+        plan,
         expiresAt,
         cancelAtPeriodEnd: matchedSub.cancel_at_period_end,
         priceAmount: price.unit_amount,

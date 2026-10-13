@@ -15,6 +15,19 @@ import { SITE_SLUG, getPlanFromId } from "@overmake/constants";
 
 export const maxDuration = 60;
 
+// Per-user daily generation caps by plan. This endpoint previously had
+// NO quota of any kind: any authenticated account — including free
+// trial accounts — could make unlimited 60s / 2048-token paid-model
+// calls. Cost control belongs server-side, like Jerkstore's quota.
+const DAILY_LIMITS: Record<string, number> = {
+  trial: 5,
+  bushfix: 50,
+  diyer: 200,
+  succession: 500,
+};
+const DEFAULT_DAILY_LIMIT = 50;
+const MAX_TASK_LENGTH = 2000;
+
 export async function POST(req: Request) {
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -24,11 +37,22 @@ export async function POST(req: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const body = await req.json();
-  const { task, level } = body;
+  const body = await req.json().catch(() => null);
+  const { task, level } = body ?? {};
 
-  if (!task || typeof level !== 'number') {
-    return new Response("Missing task or level", { status: 400 });
+  // Validate BEFORE anything else: task must be a bounded string and
+  // level a real integer in range — previously `task` was unbounded and
+  // unvalidated and was interpolated straight into the SYSTEM prompt.
+  if (
+    typeof task !== 'string' ||
+    task.trim().length === 0 ||
+    task.length > MAX_TASK_LENGTH ||
+    typeof level !== 'number' ||
+    !Number.isInteger(level) ||
+    level < 1 ||
+    level > 10
+  ) {
+    return new Response("Invalid task or level", { status: 400 });
   }
 
   // Check for subscription
@@ -60,17 +84,33 @@ export async function POST(req: Request) {
     return new Response(`Your plan (${currentPlan.name}) limits you to Level ${maxLevel}. Upgrade to unlock Level ${level}.`, { status: 403 });
   }
 
+  // Daily quota, counted from persisted estimates (rolling 24h).
+  const dailyLimit = DAILY_LIMITS[planId] ?? DEFAULT_DAILY_LIMIT;
+  const usedToday = await prisma.overmake_estimate.count({
+    where: {
+      userId: session.user.id,
+      createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    },
+  });
+  if (usedToday >= dailyLimit) {
+    return new Response(
+      `Daily estimate limit reached (${dailyLimit} per day on your plan). Try again tomorrow or upgrade.`,
+      { status: 429, headers: { "Retry-After": "3600" } }
+    );
+  }
+
   const identity = GET_IDENTITY(level);
   const style = GET_STYLE(level);
 
+  // The system prompt contains ONLY server-controlled identity, style
+  // and constraints. The user's task text goes in the user prompt, where
+  // it cannot rewrite the system's instructions.
   const systemPrompt = `
 ${identity}
 
 ${style}
 
 ${CONSTRAINTS}
-
-Task to Estimate: "${task}"
 `;
 
   const result = await streamText({
@@ -80,11 +120,10 @@ Task to Estimate: "${task}"
     maxOutputTokens: 2048,
     onFinish: async ({ text }) => {
       try {
-        // Attempt to parse JSON to ensure it's valid before saving? 
-        // Or just save raw text. Given the constraints, we expect JSON.
-        // We'll save as string for now, parsing happen on frontend for display.
-
-        // We need to extract the JSON part if there is any extra text (though we instructed not to)
+        // Extract and parse FIRST, then persist exactly ONE row with the
+        // best representation. The old callback created a raw row, then
+        // a second parsed row (or a third fallback row) — every estimate
+        // was stored two or three times.
         let cleanText = text || "";
         const jsonStart = cleanText.indexOf('{');
         const jsonEnd = cleanText.lastIndexOf('}');
@@ -92,50 +131,25 @@ Task to Estimate: "${task}"
           cleanText = cleanText.substring(jsonStart, jsonEnd + 1);
         }
 
+        let proposal = cleanText;
+        let bom = "[]";
+        try {
+          const parsed = JSON.parse(cleanText);
+          proposal = parsed.proposal || cleanText;
+          bom = JSON.stringify(parsed.bom) || "[]";
+        } catch {
+          // Not valid JSON — keep the raw text as the proposal.
+        }
+
         await prisma.overmake_estimate.create({
           data: {
             task,
             level,
-            proposal: cleanText, // Storing the whole JSON blob in proposal for now, or we could split it.
-            // The schema has 'proposal' and 'bom'. 
-            // Let's rely on the frontend or a separate parsing step to split it if we want distinct columns,
-            // BUT the schema has 'bom' as a separate column.
-            // To fill the DB correctly, we should parse it here.
-            bom: "[]", // Default if parse fails
+            proposal,
+            bom,
             userId: session.user.id
           }
         });
-
-        // Re-update with parsed data if valid
-        if (jsonStart !== -1 && jsonEnd !== -1) {
-          try {
-            const parsed = JSON.parse(cleanText);
-            // Find the just created record? Or create it now?
-            // Better to create it now.
-            await prisma.overmake_estimate.create({
-              data: {
-                task,
-                level,
-                proposal: parsed.proposal || cleanText,
-                bom: JSON.stringify(parsed.bom) || "[]",
-                userId: session.user.id
-              }
-            });
-          } catch (e) {
-            console.error("Failed to parse AI response for DB save", e);
-            // Fallback save
-            await prisma.overmake_estimate.create({
-              data: {
-                task,
-                level,
-                proposal: text,
-                bom: "[]",
-                userId: session.user.id
-              }
-            });
-          }
-        }
-
       } catch (dbError) {
         console.error("[Overmake DB Error]", dbError);
       }

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { InteractionType, InteractionResponseType, verifyKey } from 'discord-interactions';
 import { prisma } from '@/lib/db';
+import { verifyApiKey } from '@/lib/api-keys';
 
 
 type DiscordOption = { name: string; value?: string };
@@ -46,15 +47,14 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // Hash key to find user
-      const hashedKey = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(apiKey)).then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join(''));
+      // Shared verifier (hashes, rejects revoked/expired keys, stamps
+      // lastUsedAt) — the same rules as every other API-key entry point.
+      const keyRecord = await verifyApiKey(apiKey);
+      const keyUser = keyRecord
+        ? await prisma.user.findUnique({ where: { id: keyRecord.userId } })
+        : null;
 
-      const keyRecord = await prisma.apiKey.findUnique({
-        where: { key: hashedKey },
-        include: { user: true }
-      });
-
-      if (!keyRecord || !keyRecord.user) {
+      if (!keyRecord || !keyUser) {
         return jsonResponseHelper({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: { content: "Invalid API Key." }
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
 
       return jsonResponseHelper({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: { content: `Successfully linked to **${keyRecord.user.username ?? 'User'}**! You can now use \`/roast\`.` }
+        data: { content: `Successfully linked to **${keyUser.username ?? 'User'}**! You can now use \`/roast\`.` }
       });
     }
 
@@ -166,16 +166,25 @@ export async function POST(req: NextRequest) {
         }
       });
 
+      // Over the free limit, the credit is charged BEFORE generation with
+      // a guarded update: the old check-then-decrement flow let parallel
+      // /roast calls all pass the same balance check and each decrement,
+      // driving credits negative. updateMany with credits >= 1 is atomic
+      // — exactly one concurrent caller can spend the last credit. The
+      // charge is refunded if generation fails.
+      let creditCharged = false;
       if (count >= LIMIT) {
-        // Check credits
-        const user = await prisma.user.findUnique({ where: { id: userId }, select: { credits: true } });
-        if ((user?.credits ?? 0) <= 0) {
+        const charged = await prisma.user.updateMany({
+          where: { id: userId, credits: { gte: 1 } },
+          data: { credits: { decrement: 1 } }
+        });
+        if (charged.count !== 1) {
           return jsonResponseHelper({
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
             data: { content: `🚫 Daily limit reached (${LIMIT}) and no credits! Buy more at the site.` }
           });
         }
-        // If credits > 0, we allow it and deduct below
+        creditCharged = true;
       }
 
       // 3. Generate Roast
@@ -197,7 +206,8 @@ export async function POST(req: NextRequest) {
         const tokensIn = result.usage.inputTokens ?? 0;
         const tokensOut = result.usage.outputTokens ?? 0;
 
-        // Save to DB
+        // Save to DB (the credit, if any, was already charged atomically
+        // before generation — there is no post-hoc decrement to race)
         await prisma.jerkstore_insult.create({
           data: {
             content: roast,
@@ -209,14 +219,6 @@ export async function POST(req: NextRequest) {
           }
         });
 
-        // Deduct Credit if over daily limit
-        if (count >= LIMIT) {
-          await prisma.user.update({
-            where: { id: userId },
-            data: { credits: { decrement: 1 } }
-          });
-        }
-
         return jsonResponseHelper({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: { content: `<@${discordUserId}> requested a roast of **${target}**:\n\n${roast}` }
@@ -224,6 +226,12 @@ export async function POST(req: NextRequest) {
 
       } catch (e) {
         console.error("AI Error", e);
+        if (creditCharged) {
+          await prisma.user.update({
+            where: { id: userId },
+            data: { credits: { increment: 1 } }
+          }).catch(() => {});
+        }
         return jsonResponseHelper({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: { content: "Brain freeze. Try again." }
@@ -232,5 +240,10 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return new NextResponse('Unknown Command', { status: 400 });
+  // Unknown commands get a proper Discord response, not a bare 400 that
+  // Discord renders as "The application did not respond".
+  return jsonResponseHelper({
+    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+    data: { content: "Unknown command. Available commands: `/link`, `/status`, `/roast`.", flags: 64 }
+  });
 }

@@ -1,8 +1,12 @@
 /**
  * One-time snapshot script.
  * Run: npx ts-node -e "require('dotenv').config({ path: '.env.local' })" scripts/snapshot-test-user.ts
- * Prints the real DB state for bkd@bkd.com so we can bake it into the central mock.
- * READ-ONLY. No mutations.
+ * Prints one user's DB state so it can be baked into the central mock.
+ * The email comes from SNAPSHOT_EMAIL (no default, and never a real
+ * person's address committed to the repo). READ-ONLY. No mutations.
+ * stripeCustomerId and phone are deliberately NOT selected anymore —
+ * snapshots end up in test fixtures, which must not contain real
+ * customer identifiers or contact details.
  */
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -17,7 +21,11 @@ async function main() {
   const adapter = new PrismaPg(pool);
   const prisma = new PrismaClient({ adapter });
 
-  const email = 'bkd@bkd.com';
+  const email = process.env.SNAPSHOT_EMAIL;
+  if (!email) {
+    console.error('Set SNAPSHOT_EMAIL to the user to snapshot.');
+    process.exit(1);
+  }
 
   const user = await prisma.user.findUnique({
     where: { email },
@@ -28,8 +36,6 @@ async function main() {
       username: true,
       isGuest: true,
       credits: true,
-      stripeCustomerId: true,
-      phone: true,
       emailVerified: true,
       createdAt: true,
       updatedAt: true,

@@ -2,7 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
 import { remark } from 'remark';
-import html from 'remark-html';
+import remarkRehype from 'remark-rehype';
+import rehypeSanitize from 'rehype-sanitize';
+import rehypeStringify from 'rehype-stringify';
 
 const postsDirectory = path.join(process.cwd(), 'src/content/posts');
 const archiveDirectory = path.join(postsDirectory, 'archive');
@@ -102,12 +104,29 @@ export async function getArchivePostData(id: string): Promise<PostData> {
 }
 
 async function getPostDataFromDirectory(directory: string, id: string): Promise<PostData> {
+  // The id comes from the route slug. Only ids that correspond to an
+  // actual post file in this directory may be read — previously the slug
+  // was joined straight into a filesystem path, so any .md file
+  // reachable by traversal could be rendered as a "post".
+  const knownIds = fs.readdirSync(directory)
+    .filter(fileName => fileName.endsWith('.md'))
+    .map(fileName => fileName.replace(/\.md$/, ''));
+  if (!knownIds.includes(id)) {
+    throw new Error(`Post not found: ${id}`);
+  }
+
   const fullPath = path.join(directory, `${id}.md`);
   const fileContents = fs.readFileSync(fullPath, 'utf8');
   const matterResult = matter(fileContents);
 
+  // Markdown is rendered to HTML through rehype-sanitize before it is
+  // injected via dangerouslySetInnerHTML: remark-html alone passes raw
+  // HTML, scripts and event handlers straight through (stored XSS the
+  // moment a post comes from anywhere but a repo committer).
   const processedContent = await remark()
-    .use(html)
+    .use(remarkRehype)
+    .use(rehypeSanitize)
+    .use(rehypeStringify)
     .process(matterResult.content);
   const contentHtml = processedContent.toString();
 

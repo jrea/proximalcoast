@@ -43,6 +43,17 @@ const telegram = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 // State Management
 let lastRoastTime = 0;
 const processedPosts = new Set<string>();
+// Bound the set: it used to grow forever in a long-running bot.
+// Keep the most recent 1,000 post IDs; older ones age out (they are
+// also filtered by BOT_START_TIME, so re-seeing one is harmless).
+const MAX_PROCESSED_POSTS = 1000;
+function rememberProcessed(id: string) {
+  processedPosts.add(id);
+  if (processedPosts.size > MAX_PROCESSED_POSTS) {
+    const oldest = processedPosts.values().next().value;
+    if (oldest !== undefined) processedPosts.delete(oldest);
+  }
+}
 
 interface PendingPost {
   redditPostId: string;
@@ -149,14 +160,19 @@ telegram.on('message', async (msg) => {
       return;
     }
 
-    // Actual Reddit Posting (Commended out for safety until confirmed)
-    /*
-    const submission = r.getSubmission(pending.redditPostId);
-    await submission.reply(selectedRoast + "\n\n[Roasted by Jerkstore](https://jerkstore.proximalcoast.com)");
-    */
-
-    // Simulation
-    await telegram.sendMessage(chatId, `✅ **Posted to Reddit!**\n\n${selectedRoast}`, { parse_mode: 'Markdown' });
+    // Posting is controlled by LIVE_POSTING. The old code had the real
+    // reply commented out but still sent "✅ Posted to Reddit!" — the
+    // operator believed roasts were live when nothing ever posted (and
+    // the cooldown was consumed anyway). Now the simulation is labelled
+    // as a simulation, and live mode actually posts before claiming so.
+    if (process.env.LIVE_POSTING === 'true') {
+      const submission = await r.getSubmission(pending.redditPostId);
+      await submission.reply(selectedRoast + "\n\n[Roasted by Jerkstore](https://jerkstore.proximalcoast.com)");
+      await telegram.sendMessage(chatId, `✅ **Posted to Reddit!**\n\n${selectedRoast}`, { parse_mode: 'Markdown' });
+    } else {
+      console.log(`[DRY RUN] Would post to ${pending.redditPostId}: ${selectedRoast}`);
+      await telegram.sendMessage(chatId, `🧪 **Simulation only — NOT posted to Reddit** (set LIVE_POSTING=true to post for real)\n\n${selectedRoast}`, { parse_mode: 'Markdown' });
+    }
 
     lastRoastTime = Date.now() / 1000;
     pendingApprovals.delete(chatId);
@@ -181,10 +197,10 @@ async function checkNewPosts() {
     for (const post of submissions) {
       if (post.created_utc < BOT_START_TIME) continue;
       if (processedPosts.has(post.id)) continue;
-      if (post.likes === true) { processedPosts.add(post.id); continue; }
+      if (post.likes === true) { rememberProcessed(post.id); continue; }
 
       console.log(`Found candidate: ${post.title}`);
-      processedPosts.add(post.id);
+      rememberProcessed(post.id);
 
       const context = `${post.title} ${post.selftext}`;
       const roasts = await getInsultCandidates(context);

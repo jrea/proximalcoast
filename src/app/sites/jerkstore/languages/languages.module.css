@@ -28,6 +28,12 @@
 .directory h2, .page h2 { font-size: clamp(25px, 3vw, 38px); line-height: 1.15; font-weight: 900; letter-spacing: -.035em; margin: 12px 0 16px; }
 .directory p, .directoryNote p { font-size: 16px; line-height: 1.7; max-width: 780px; }
 .textLink { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; text-decoration: underline; text-underline-offset: 4px; }
+.compactDirectory { padding: 32px 24px; }
+.compactDirectory .sectionHeading { margin-bottom: 16px; }
+.compactDirectory h2 { font-size: 22px; margin: 10px 0 0; }
+.compactList { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 0; }
+.compactList li a { display: inline-flex; align-items: center; padding: 6px 12px; background: #fff; border: 2px solid #111; font-weight: 700; font-size: 13px; }
+.compactList li a:hover { background: #fde047; }
 .groups { display: grid; gap: 32px; }
 .group h3 { font: 800 13px var(--font-geist-mono), monospace; text-transform: uppercase; padding-bottom: 12px; border-bottom: 3px solid #111; margin-bottom: 16px; }
 .languageList { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; list-style: none; padding: 0; }

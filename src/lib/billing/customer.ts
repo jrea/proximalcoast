@@ -34,13 +34,21 @@ export async function resolveStripeCustomerId(user: {
     }
   }
 
+  // A replacement creation must not reuse the original creation's
+  // idempotency key: if the stale customer was created with that key and
+  // later deleted, Stripe replays the original response and hands back
+  // the deleted customer. Namespace the replacement key by the stale ID
+  // instead — retries of the same heal still replay the same replacement.
+  const idempotencyKey = user.stripeCustomerId
+    ? `jerkstore-customer:${user.id}:replace:${user.stripeCustomerId}`
+    : `jerkstore-customer:${user.id}`;
   const customer = await stripe.customers.create(
     {
       email: user.email || undefined,
       name: user.name || undefined,
       metadata: { userId: user.id },
     },
-    { idempotencyKey: `jerkstore-customer:${user.id}` }
+    { idempotencyKey }
   );
   await prisma.user.update({
     where: { id: user.id },

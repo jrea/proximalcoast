@@ -49,7 +49,7 @@ describe('resolveStripeCustomerId', () => {
         name: USER.name,
         metadata: { userId: USER.id },
       }),
-      { idempotencyKey: `jerkstore-customer:${USER.id}` }
+      { idempotencyKey: `jerkstore-customer:${USER.id}:replace:${USER.stripeCustomerId}` }
     );
     expect(prisma.user.update).toHaveBeenCalledWith({
       where: { id: USER.id },
@@ -63,7 +63,10 @@ describe('resolveStripeCustomerId', () => {
     const id = await resolveStripeCustomerId(USER);
 
     expect(id).toBe('cus_new');
-    expect(mockStripe.customers.create).toHaveBeenCalledTimes(1);
+    expect(mockStripe.customers.create).toHaveBeenCalledWith(
+      expect.objectContaining({ metadata: { userId: USER.id } }),
+      { idempotencyKey: `jerkstore-customer:${USER.id}:replace:${USER.stripeCustomerId}` }
+    );
     expect(prisma.user.update).toHaveBeenCalledWith({
       where: { id: USER.id },
       data: { stripeCustomerId: 'cus_new' },
@@ -75,7 +78,10 @@ describe('resolveStripeCustomerId', () => {
 
     expect(id).toBe('cus_new');
     expect(mockStripe.customers.retrieve).not.toHaveBeenCalled();
-    expect(mockStripe.customers.create).toHaveBeenCalledTimes(1);
+    expect(mockStripe.customers.create).toHaveBeenCalledWith(
+      expect.objectContaining({ metadata: { userId: USER.id } }),
+      { idempotencyKey: `jerkstore-customer:${USER.id}` }
+    );
     expect(prisma.user.update).toHaveBeenCalledWith({
       where: { id: USER.id },
       data: { stripeCustomerId: 'cus_new' },

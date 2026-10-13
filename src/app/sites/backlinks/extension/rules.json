@@ -5,14 +5,24 @@
     "action": {
       "type": "removeHeaders",
       "responseHeaders": [
-        { "header": "x-frame-options" },
-        { "header": "content-security-policy" },
-        { "header": "frame-options" }
+        {
+          "header": "x-frame-options"
+        },
+        {
+          "header": "frame-options"
+        }
       ]
     },
     "condition": {
       "urlFilter": "|http*",
-      "resourceTypes": ["sub_frame"]
+      "resourceTypes": [
+        "sub_frame"
+      ],
+      "initiatorDomains": [
+        "backlinks.proximalcoast.com",
+        "lvh.me",
+        "localhost"
+      ]
     }
   }
 ]

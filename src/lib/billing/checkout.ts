@@ -49,18 +49,17 @@ async function getOrCreateStripeCustomer({
     limit: 5,
   });
 
-  // 3. Try to match by metadata userId
-  let customerToUse = existingCustomers.data.find(c => c.metadata?.userId === sessionUser.id);
-
-  if (!customerToUse) {
-    // 4. Fallback: Claim an "orphan" customer (same email, no userId metadata)
-    const orphan = existingCustomers.data.find(c => !c.metadata?.userId);
-    if (orphan) {
-      customerToUse = await stripe.customers.update(orphan.id, {
-        metadata: { userId: sessionUser.id, siteSlug },
-        name: user?.name || orphan.name || undefined,
-      });
-    }
+  // 3. Try to match by metadata userId — the ONLY proof that a Stripe
+  // customer belongs to this user. The previous "orphan claim" fallback
+  // adopted any same-email customer with no userId metadata; because
+  // signup emails are unverified and Stripe permits duplicate customers
+  // per email (guest checkouts create them), that let an account adopt
+  // another person's customer, subscriptions and payment methods.
+  // Unmatched same-email customers are left alone; a fresh customer is
+  // created below instead.
+  const customerToUse = existingCustomers.data.find(c => c.metadata?.userId === sessionUser.id);
+  if (!customerToUse && existingCustomers.data.length > 0) {
+    console.warn(`[Stripe] ${existingCustomers.data.length} customer(s) share user ${sessionUser.id}'s email but none is metadata-linked to them; creating a new customer instead of claiming one.`);
   }
 
   if (customerToUse) {

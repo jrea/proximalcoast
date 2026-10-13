@@ -48,6 +48,12 @@ const STRIPE_SUB = {
 
 describe('POST /api/update-subscription', () => {
   beforeEach(() => {
+    // Server-side plan allowlist (src/lib/billing/plans.ts): only price IDs
+    // configured through these env vars may ever be used for a plan change.
+    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_ELITE = 'price_elite';
+    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_FREE = 'price_free';
+    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_BKD = 'price_bkd';
+
     (auth.api.getSession as any).mockResolvedValue({ user: { id: DB_SUB.userId } });
 
     (prisma.user_subscription.findUnique as any).mockResolvedValue(DB_SUB);
@@ -78,19 +84,39 @@ describe('POST /api/update-subscription', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns 400 when priceId is missing', async () => {
+  it('returns 400 when neither planId nor priceId resolves to a configured plan', async () => {
     const res = await POST(makeRequest({ newPlanName: 'elite' }));
     expect(res.status).toBe(400);
   });
 
-  it('returns 400 when newPlanName is missing', async () => {
-    const res = await POST(makeRequest({ priceId: 'price_new' }));
+  it('returns 400 for a priceId that is not on the server-side allowlist', async () => {
+    // Any Stripe price in the account (archived, $0, another product's)
+    // must be rejected before any DB or Stripe subscription work happens.
+    const res = await POST(makeRequest({ priceId: 'price_new', newPlanName: 'elite' }));
     expect(res.status).toBe(400);
+    expect(prisma.user_subscription.findUnique).not.toHaveBeenCalled();
+    expect(mockStripe.subscriptions.retrieve).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when the supplied newPlanName disagrees with the price\'s server-derived plan', async () => {
+    const res = await POST(makeRequest({ priceId: 'price_elite', newPlanName: 'savage' }));
+    expect(res.status).toBe(400);
+    expect(mockStripe.subscriptions.retrieve).not.toHaveBeenCalled();
+  });
+
+  it('derives the plan server-side when newPlanName is omitted (it is never trusted from the request)', async () => {
+    // Allowlisted price, no plan name at all: the stored plan comes from
+    // the price → plan mapping in src/lib/billing/plans.ts.
+    const res = await POST(makeRequest({ priceId: 'price_elite', siteSlug: 'bkd' }));
+    expect(res.status).toBe(200);
+    expect(prisma.user_subscription.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ plan: 'elite' }),
+    }));
   });
 
   it('returns 404 when no subscription found', async () => {
     (prisma.user_subscription.findUnique as any).mockResolvedValue(null);
-    const res = await POST(makeRequest({ priceId: 'price_new', newPlanName: 'elite' }));
+    const res = await POST(makeRequest({ priceId: 'price_elite', newPlanName: 'elite' }));
     expect(res.status).toBe(404);
   });
 
@@ -99,7 +125,7 @@ describe('POST /api/update-subscription', () => {
       ...DB_SUB,
       stripeSubscriptionId: null,
     });
-    const res = await POST(makeRequest({ priceId: 'price_new', newPlanName: 'elite' }));
+    const res = await POST(makeRequest({ priceId: 'price_elite', newPlanName: 'elite' }));
     expect(res.status).toBe(404);
   });
 
@@ -145,14 +171,16 @@ describe('POST /api/update-subscription', () => {
     expect(mockStripe.subscriptionSchedules.update).toHaveBeenCalled();
   });
 
-  it('DOWNGRADE: sets upcomingPlan in local DB (not plan)', async () => {
+  it('DOWNGRADE: sets upcomingPlan in local DB (not plan), using the canonical free-tier name "trial"', async () => {
     mockStripe.prices.retrieve.mockResolvedValue({ unit_amount: 5000 });
 
     await POST(makeRequest({ priceId: 'price_free', newPlanName: 'free', siteSlug: 'bkd' }));
 
+    // Clients may say "free"; the stored canonical plan name is "trial"
+    // (see CANONICAL_PLAN in src/lib/billing/plans.ts).
     expect(prisma.user_subscription.update).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
-        upcomingPlan: 'free',
+        upcomingPlan: 'trial',
         cancelAtPeriodEnd: false,
       }),
     }));

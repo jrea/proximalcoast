@@ -91,6 +91,8 @@ export const FIXTURES = {
     name: 'Test Bot',
     userId: '0dSZw0Np8S3jiEStAVJhO6A1VktCJLNw',
     lastUsedAt: null as Date | null,
+    expiresAt: null as Date | null,
+    revokedAt: null as Date | null,
     createdAt: new Date(),
     user: {
       id: '0dSZw0Np8S3jiEStAVJhO6A1VktCJLNw',
@@ -150,7 +152,25 @@ export const prisma = {
     upsert: vi.fn(),
     update: vi.fn(),
     updateMany: vi.fn(),
+    deleteMany: vi.fn(),
     create: vi.fn(),
+  },
+
+  overmake_estimate: {
+    count: vi.fn(),
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+  },
+
+  stripe_session_claim: {
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
   },
 
   jerkstore_credit_purchase: {

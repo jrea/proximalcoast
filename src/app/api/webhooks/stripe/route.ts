@@ -6,13 +6,34 @@ import Stripe from "stripe";
 import type { Prisma } from "@prisma/client";
 import { CREDIT_FULFILLMENT_VERSION, grantPurchasedCredits } from "@/app/sites/jerkstore/_lib/credit-purchases";
 import { capturePurchaseConversion } from "@/app/sites/jerkstore/_lib/analytics-server";
+import { getPlanFromPriceId } from "@/lib/billing/plans";
 
-const getPlanFromPriceId = (priceId: string) => {
-  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_SAVAGE) return "savage";
-  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_ELITE) return "elite";
-  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_FREE) return "trial";
-  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_BKD) return "standard";
-  return "standard";
+/**
+ * Plan resolution never silently defaults. An unknown price ID is logged
+ * as an error (it means a price is being sold that the server has no plan
+ * mapping for) and only then falls back so a required column can be
+ * written; subscription.updated writes no plan at all for unknown prices.
+ */
+/**
+ * grantPurchasedCredits throws exactly one permanent error — a malformed
+ * receipt ("Invalid credit purchase receipt", thrown before any DB work).
+ * That one is safe to swallow: no retry will ever fix it. EVERY other error
+ * (DB down, transaction failure, P2025 for a deleted user, ...) must
+ * propagate to the route's outer handler, which acks permanent Prisma codes
+ * and returns 500 for transient failures so Stripe retries. Swallowing a
+ * transient failure here would return 200 and permanently lose a paid
+ * customer's credits.
+ */
+const isInvalidReceiptError = (error: unknown): boolean =>
+  error instanceof Error && error.message === "Invalid credit purchase receipt";
+
+const planForPriceId = (priceId: string): string => {
+  const plan = getPlanFromPriceId(priceId);
+  if (!plan) {
+    console.error(`[Webhook] Unknown Stripe price ID ${priceId} — no plan mapping configured; recording as "standard". Configure its NEXT_PUBLIC_STRIPE_PRICE_ID_* env var.`);
+    return "standard";
+  }
+  return plan;
 };
 
 export async function POST(req: Request) {
@@ -34,6 +55,7 @@ export async function POST(req: Request) {
 
   console.log(`🔔 Webhook received! Type: ${event.type}`);
 
+  try {
   switch (event.type) {
     case "payment_intent.succeeded": {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
@@ -45,7 +67,8 @@ export async function POST(req: Request) {
           where: { id: piUserId },
           data: { phone: piPhone }
         });
-        console.log(`[User] Updated phone for user ${piUserId}: ${piPhone}`);
+        // Never log the phone number itself — the user ID is enough to debug.
+        console.log(`[User] Updated phone for user ${piUserId}`);
       }
 
       const paymentMethodId = typeof paymentIntent.payment_method === "string"
@@ -64,23 +87,35 @@ export async function POST(req: Request) {
         }
       }
 
-      const usesCreditLedger = paymentIntent.metadata?.type === "credits_purchase" && paymentIntent.metadata?.siteSlug === "jerkstore" && paymentIntent.metadata?.fulfillmentVersion === CREDIT_FULFILLMENT_VERSION;
-      if (usesCreditLedger && piUserId) {
-        // The same receipt can arrive via checkout and repeated webhook events.
-        await grantPurchasedCredits(paymentIntent.id, piUserId, Number(paymentIntent.metadata.creditsAmount));
-        capturePurchaseConversion(paymentIntent, event.created);
-      } else if (paymentIntent.metadata?.type === "credits_purchase" && paymentIntent.metadata?.source !== "immediate") {
-        if (piUserId) {
-          const creditsToAdd = paymentIntent.metadata.creditsAmount ? parseInt(paymentIntent.metadata.creditsAmount) : 50;
-          await prisma.user.update({
-            where: { id: piUserId },
-            data: {
-              credits: {
-                increment: creditsToAdd
-              }
-            }
-          });
-          console.log(`[Credits] Added ${creditsToAdd} credits to user ${piUserId} via PaymentIntent webhook`);
+      // Every credit grant goes through the idempotent ledger, keyed by
+      // PaymentIntent ID — including legacy purchases created before the
+      // ledger existed. The previous legacy branch incremented credits
+      // directly, so every Stripe redelivery of this event granted the
+      // credits again. Ledger-version purchases are granted here even
+      // with source "immediate" (webhook recovery if the synchronous
+      // fulfillment was missed) — the ledger key makes a second grant
+      // impossible. Legacy "immediate" purchases were fulfilled by a
+      // direct increment in the checkout route and are skipped.
+      const isLedgerPurchase = paymentIntent.metadata?.fulfillmentVersion === CREDIT_FULFILLMENT_VERSION;
+      if (paymentIntent.metadata?.type === "credits_purchase" && piUserId && (isLedgerPurchase || paymentIntent.metadata?.source !== "immediate")) {
+        const creditsAmount = Number(paymentIntent.metadata.creditsAmount ?? 50);
+        try {
+          const granted = await grantPurchasedCredits(paymentIntent.id, piUserId, creditsAmount);
+          if (granted) {
+            console.log(`[Credits] Added ${creditsAmount} credits to user ${piUserId} via PaymentIntent webhook`);
+          } else {
+            console.log(`[Credits] Duplicate fulfillment skipped for PaymentIntent ${paymentIntent.id}`);
+          }
+        } catch (grantError) {
+          // Only the malformed-receipt validation error is permanent —
+          // log it and acknowledge. Anything else is rethrown so the
+          // outer handler can ack/500 appropriately and Stripe retries
+          // transient failures instead of the credits being lost.
+          if (!isInvalidReceiptError(grantError)) throw grantError;
+          console.error(`[Credits] Invalid credit purchase receipt on ${paymentIntent.id}:`, grantError);
+        }
+        if (isLedgerPurchase) {
+          capturePurchaseConversion(paymentIntent, event.created);
         }
       }
       break;
@@ -91,22 +126,31 @@ export async function POST(req: Request) {
       // Initial subscription setup
       const session = event.data.object as Stripe.Checkout.Session;
       if (session.mode === "payment" && session.payment_status === "paid") {
-        // One-time payment (Credits)
+        // One-time payment. Credits are granted ONLY when the session is
+        // verifiably a credit purchase (metadata type set by our own
+        // checkout routes) and always through the idempotent ledger keyed
+        // by the PaymentIntent — the previous code granted a flat 50
+        // credits for ANY paid payment-mode session, on every redelivery.
         const userId = session.metadata?.userId;
-        if (userId) {
-          // Verify it's the credits pack (optional but good practice)
-          // For now, we assume any one-time payment is for credits
-          // Or check line_items if needed.
-
-          await prisma.user.update({
-            where: { id: userId },
-            data: {
-              credits: {
-                increment: 50
-              }
-            }
-          });
-          console.log(`[Credits] Added 50 credits to user ${userId}`);
+        const paymentIntentId = typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : session.payment_intent?.id;
+        if (userId && paymentIntentId && session.metadata?.type === "credits_purchase") {
+          const creditsAmount = Number(session.metadata.creditsAmount ?? 50);
+          try {
+            const granted = await grantPurchasedCredits(paymentIntentId, userId, creditsAmount);
+            console.log(granted
+              ? `[Credits] Added ${creditsAmount} credits to user ${userId}`
+              : `[Credits] Duplicate fulfillment skipped for PaymentIntent ${paymentIntentId}`);
+          } catch (grantError) {
+            // Same rule as the PaymentIntent branch: swallow only the
+            // permanent malformed-receipt error; rethrow everything else
+            // for the outer handler so Stripe retries transient failures.
+            if (!isInvalidReceiptError(grantError)) throw grantError;
+            console.error(`[Credits] Invalid credit purchase receipt on ${paymentIntentId}:`, grantError);
+          }
+        } else if (userId) {
+          console.log(`[Webhook] Ignoring paid payment-mode checkout session ${session.id}: not a verified credit purchase`);
         }
       } else if (session.mode === "subscription") {
         const subscriptionId = typeof session.subscription === "string"
@@ -115,7 +159,7 @@ export async function POST(req: Request) {
         if (!subscriptionId) break;
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         const priceId = subscription.items.data[0].price.id;
-        const plan = getPlanFromPriceId(priceId);
+        const plan = planForPriceId(priceId);
 
         const userId = session.metadata?.userId || subscription.metadata?.userId;
         const siteSlug = session.metadata?.siteSlug || subscription.metadata?.siteSlug || "jerkstore";
@@ -224,7 +268,7 @@ export async function POST(req: Request) {
           : invoiceSubscription.id;
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         const priceId = subscription.items.data[0].price.id;
-        const plan = getPlanFromPriceId(priceId);
+        const plan = planForPriceId(priceId);
 
         const userId = subscription.metadata?.userId || invoice.metadata?.userId;
         const siteSlug = subscription.metadata?.siteSlug || invoice.metadata?.siteSlug || "jerkstore";
@@ -242,7 +286,7 @@ export async function POST(req: Request) {
               where: { id: userId },
               data: { phone: invoicePhone }
             });
-            console.log(`[User] Updated phone from invoice for user ${userId}: ${invoicePhone}`);
+            console.log(`[User] Updated phone from invoice for user ${userId}`);
           }
 
           const price = subscription.items.data[0].price;
@@ -295,7 +339,12 @@ export async function POST(req: Request) {
       const userId = subscription.metadata?.userId;
       const siteSlug = subscription.metadata?.siteSlug || "jerkstore";
       const updatedPriceId = subscription.items.data[0]?.price?.id;
+      // Unknown price: leave the stored plan untouched (and say so loudly)
+      // instead of silently overwriting it with a default.
       const updatedPlan = updatedPriceId ? getPlanFromPriceId(updatedPriceId) : undefined;
+      if (updatedPriceId && !updatedPlan) {
+        console.error(`[Webhook] Unknown Stripe price ID ${updatedPriceId} on subscription ${updatedId} — stored plan left unchanged. Configure its NEXT_PUBLIC_STRIPE_PRICE_ID_* env var.`);
+      }
 
       const periodEnd = subscription.items.data[0]?.current_period_end;
       const expiresAt = periodEnd
@@ -415,6 +464,20 @@ export async function POST(req: Request) {
 
     default:
       console.log(`Unhandled event type ${event.type}`);
+  }
+  } catch (err) {
+    // Permanent failures (the referenced user is gone, or the Stripe
+    // customer is already linked to a different user) can never succeed on
+    // retry — acknowledge them so one bad event does not become a Stripe
+    // retry storm, and log loudly with the event ID for reconciliation.
+    // Everything else is treated as transient: 500, Stripe retries.
+    const code = (err as { code?: unknown })?.code;
+    if (code === "P2025" || code === "P2002") {
+      console.error(`[Webhook] Permanent failure processing event ${event.id} (${event.type}), code ${code} — acknowledging without retry:`, err);
+      return NextResponse.json({ received: true });
+    }
+    console.error(`[Webhook] Transient failure processing event ${event.id} (${event.type}) — returning 500 for retry:`, err);
+    return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });

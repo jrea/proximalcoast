@@ -2,10 +2,20 @@
 
 console.log("🪄 Magic Agent Active");
 
+// The ONLY origins allowed to drive this agent. Previously any page (or
+// any frame in any page) could post AUTOFILL_FORM and have forms filled
+// AND auto-submitted with an attacker-chosen payload — this script runs
+// on <all_urls>.
+const TRUSTED_PARENT_ORIGINS = [
+  "https://backlinks.proximalcoast.com",
+  "http://lvh.me:3000",
+  "http://backlinks.lvh.me:3000",
+  "http://localhost:3000",
+];
+
 // Listen for messages from the parent window (the Backlinks app)
 window.addEventListener("message", (event) => {
-  // Security check: In production, verify event.origin
-  // For now, we assume local development or trusted self-hosted env
+  if (!TRUSTED_PARENT_ORIGINS.includes(event.origin)) return;
   if (event.data?.type === "AUTOFILL_FORM") {
     console.log("🪄 Received Data:", event.data.payload);
     fillForm(event.data.payload);
@@ -49,20 +59,15 @@ function fillForm(data) {
 
   if (filledCount > 0) {
     console.log(`🪄 Filled ${filledCount} fields.`);
-    
-    // Attempt Auto-Submit after a short delay to let things settle
-    setTimeout(() => {
-        const submitBtn = findSubmitButton();
-        if (submitBtn) {
-            console.log("🪄 Found submit button, clicking...", submitBtn);
-            submitBtn.click();
-            // We assume success? Ideally we check for success message, but for MVP we signal parent
-            // We might want to wait for navigation or a "Thank you" text
-            notifyParentSuccess();
-        } else {
-            console.log("🪄 No submit button found. Manual submission required.");
-        }
-    }, 1000);
+    // NO auto-submit. Submitting a form is the consequential step, and
+    // it stays with the user: highlight the submit button so it is one
+    // obvious click away, and tell the parent app the form is ready.
+    const submitBtn = findSubmitButton();
+    if (submitBtn) {
+      submitBtn.style.outline = "3px solid #38b2ac";
+      submitBtn.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+    notifyParentReady();
   }
 }
 
@@ -100,7 +105,10 @@ function findLabelForInput(input) {
     return ""; 
 }
 
-function notifyParentSuccess() {
-    // Send message back to parent
-    window.parent.postMessage({ type: 'MAGIC_SUBMISSION_COMPLETE', url: window.location.href }, '*');
+function notifyParentReady() {
+    // Tell the parent app the form is filled and ready for the USER to
+    // submit. Targeted at trusted origins only — never '*'.
+    for (const origin of TRUSTED_PARENT_ORIGINS) {
+      window.parent.postMessage({ type: 'MAGIC_FORM_READY', url: window.location.href }, origin);
+    }
 }

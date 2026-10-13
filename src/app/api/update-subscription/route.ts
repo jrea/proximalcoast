@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/db";
+import { resolvePlanChange } from "@/lib/billing/plans";
 
 export async function POST(req: Request) {
   const session = await auth.api.getSession({
@@ -13,11 +14,20 @@ export async function POST(req: Request) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const { priceId, newPlanName, siteSlug = "jerkstore" } = await req.json().catch(() => ({}));
+  const body = await req.json().catch(() => ({}));
+  const { siteSlug = "jerkstore" } = body;
 
-  if (!priceId || !newPlanName) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  // The target plan is resolved server-side: clients may name a plan
+  // (preferred) or a priceId, but a priceId is only honored when it is
+  // one of the configured plan prices, and the stored plan name is always
+  // derived from it — never trusted from the request. Previously any
+  // Stripe price in the account (archived, $0, another product's) and any
+  // plan string could be written here.
+  const resolved = resolvePlanChange(body);
+  if (!resolved) {
+    return NextResponse.json({ error: "Unknown or unconfigured plan" }, { status: 400 });
   }
+  const { priceId, plan: newPlanName } = resolved;
 
   try {
     const subscription = await prisma.user_subscription.findUnique({
@@ -162,9 +172,12 @@ export async function POST(req: Request) {
       );
     }
 
+    // Never reflect raw Stripe error text or Stripe's HTTP status to the
+    // client: details stay in the server log above, and statuses come from
+    // a fixed map.
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal Error" },
-      { status: typeof stripeError.statusCode === "number" ? stripeError.statusCode : 500 }
+      { error: "Internal Server Error" },
+      { status: stripeError.statusCode === 404 ? 404 : 500 }
     );
   }
 }

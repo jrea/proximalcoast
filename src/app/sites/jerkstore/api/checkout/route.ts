@@ -62,7 +62,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Jerkstore Checkout Error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal Server Error" },
+      { error: "Internal Server Error" },
       { status: 500 }
     );
   }

@@ -84,9 +84,12 @@ export async function POST(req: Request) {
       );
     }
 
+    // Never reflect raw Stripe error text or Stripe's HTTP status to the
+    // client: details stay in the server log above, and statuses come from
+    // a fixed map.
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal Server Error" },
-      { status: typeof stripeError.statusCode === "number" ? stripeError.statusCode : 500 }
+      { error: "Internal Server Error" },
+      { status: stripeError.statusCode === 404 ? 404 : 500 }
     );
   }
 }

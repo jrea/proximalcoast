@@ -1,7 +1,7 @@
 import { generateText, streamText, Output } from "ai";
 import { z } from "zod";
 import { after } from "next/server";
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { isIP } from "node:net";
 import { cookies } from "next/headers";
 import { auth } from "@/lib/auth";
@@ -11,6 +11,7 @@ import { moderateText } from "../../_lib/openai";
 import { generateJerkName } from "../../_lib/username-generator";
 import { GUEST_COOKIE, guestCookieValue, readGuestCookie } from "../../_lib/guest-identity";
 import { GenerationLimitError, reserveGeneration, refundGeneration, type GenerationReservation } from "../../_lib/generation-quota";
+import { verifyApiKey } from "@/lib/api-keys";
 import { STANDARD_LANGUAGES, PREMIUM_LANGUAGES } from "../../constants";
 import { NUCLEAR_IDENTITY, SPICY_IDENTITY, MILD_IDENTITY } from "../../prompts/identity";
 import { NUCLEAR_STYLE, SPICY_STYLE, MILD_STYLE } from "../../prompts/style";
@@ -56,11 +57,12 @@ export async function POST(req: Request) {
     if (authorization) {
       const key = /^Bearer ([^\s]+)$/.exec(authorization)?.[1];
       if (!key) return fail("Invalid API key.", 401);
-      const record = await prisma.apiKey.findUnique({ where: { key: createHash("sha256").update(key).digest("hex") } });
+      // Shared verifier: rejects revoked/expired keys and stamps
+      // lastUsedAt, identically on every entry point.
+      const record = await verifyApiKey(key);
       if (!record) return fail("Invalid API key.", 401);
       userId = record.userId;
       isGuest = false;
-      await prisma.apiKey.update({ where: { id: record.id }, data: { lastUsedAt: new Date() } });
     } else {
       const session = await auth.api.getSession({ headers: req.headers });
       if (session) { userId = session.user.id; isGuest = false; }

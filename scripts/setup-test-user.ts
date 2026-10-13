@@ -14,6 +14,11 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
+// This script grants a real savage subscription and creates an API key.
+// It must never run against a production-pointing .env.local by accident.
+import { assertLocalDatabase } from './_env-guard';
+assertLocalDatabase('setup-test-user');
+
 const connectionString = process.env.DATABASE_URL;
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
@@ -79,12 +84,13 @@ async function main() {
       }
     });
 
+    // Never print the raw key to stdout (terminal logs get saved/shared).
+    // It is written to a gitignored local file instead.
+    const fs = await import('fs');
+    fs.writeFileSync(path.resolve(__dirname, '../.test-api-key.local'), rawKey + "\n", { mode: 0o600 });
     console.log("\n✅ API Key Created Successfully!");
-    console.log("------------------------------------------------");
-    console.log(`Key: ${rawKey}`);
-    console.log("------------------------------------------------");
-    console.log("Use this key in scripts/test-api.sh or your .env file.");
-    console.log(`\nExample:\n./scripts/test-api.sh ${rawKey}`);
+    console.log(`Key written to .test-api-key.local (ends …${rawKey.slice(-4)}). It will not be printed.`);
+    console.log("Use it via: API_KEY=$(cat .test-api-key.local) ./scripts/test-api.sh");
 
   } catch (error) {
     console.error("Setup Error:", error);

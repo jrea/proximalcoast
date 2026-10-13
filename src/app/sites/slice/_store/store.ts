@@ -154,7 +154,14 @@ export const useRefocusStore = create<PlayerState>((set, get) => ({
         width: width > height ? 1280 : 720,
         height: width > height ? 720 : 1280,
         targetSizeMB: 4.8,
-        bitrate: Math.floor((4.8 * 8 * 1024) / duration) - 128,
+        bitrate:
+          // Guard the math: for videos longer than ~5 minutes the raw
+          // formula goes zero/negative, and duration 0 (metadata not yet
+          // loaded) made it Infinity. Clamp to a sane floor and keep the
+          // default when duration is unknown.
+          Number.isFinite(duration) && duration > 0
+            ? Math.max(100, Math.floor((4.8 * 8 * 1024) / duration) - 128)
+            : 5000,
       }
     });
   },

@@ -227,7 +227,7 @@ export function BillingContent({ creditBalance, initialPaymentMethod }: BillingC
   };
 
   return (
-    <div className="min-h-screen bg-neutral-100 p-4 sm:p-8 font-sans selection:bg-red-600 selection:text-white relative overflow-x-hidden">
+    <div className="min-h-screen bg-neutral-100 p-4 relative overflow-x-hidden">
       <style>{`
         @keyframes stink-drift {
           0% { transform: translateY(0) translateX(0); opacity: 0; }

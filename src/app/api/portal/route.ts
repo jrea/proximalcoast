@@ -3,6 +3,7 @@ import { stripe } from "@/lib/stripe";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
+import { resolveStripeCustomerId } from "@/lib/billing/customer";
 
 export async function POST(req: Request) {
   const sessionUser = await auth.api.getSession({
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
   try {
     const user = await prisma.user.findUnique({
       where: { id: sessionUser.user.id },
-      select: { stripeCustomerId: true },
+      select: { id: true, email: true, name: true, stripeCustomerId: true },
     });
 
     if (!user?.stripeCustomerId) {
@@ -62,8 +63,12 @@ export async function POST(req: Request) {
       }
     }
 
+    // Heal a stale stored customer ID (e.g. created under the opposite
+    // Stripe mode) instead of letting Stripe throw on the portal call.
+    const customerId = await resolveStripeCustomerId(user);
+
     const session = await stripe.billingPortal.sessions.create({
-      customer: user.stripeCustomerId,
+      customer: customerId,
       return_url: returnUrl,
     });
 

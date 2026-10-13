@@ -34,7 +34,7 @@ export default async function SettingsPage() {
           </div>
 
           <div className="text-sm text-neutral-500 italic">
-            Need help? Yell at us on <a href="https://twitter.com/chieftrashofcr" className="underline hover:text-black">Twitter</a>.
+            Need help? Yell at us on <a href="https://twitter.com/proximalcoast" className="underline hover:text-black">Twitter</a>.
           </div>
         </div>
       </main>

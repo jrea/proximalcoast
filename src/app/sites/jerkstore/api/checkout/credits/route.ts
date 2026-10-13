@@ -7,6 +7,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { CREDIT_PACKAGES_MAP } from "../../../constants";
 import { CREDIT_FULFILLMENT_VERSION, grantPurchasedCredits } from "../../../_lib/credit-purchases";
+import { resolveStripeCustomerId } from "@/lib/billing/customer";
 
 const PurchaseSchema = z.object({ packageId: z.enum(["pkg_basic", "pkg_pro", "pkg_elite"]).default("pkg_basic"), requestId: z.string().uuid().optional() });
 const privateHeaders = { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" };
@@ -25,12 +26,7 @@ export async function POST(req: Request) {
     const idempotencyKey = `jerkstore:${session.user.id}:${packageId}:${requestId}`;
     const user = await prisma.user.findUnique({ where: { id: session.user.id } });
     if (!user) return json({ error: "User not found" }, 404);
-    let customerId = user.stripeCustomerId;
-    if (!customerId) {
-      const customer = await stripe.customers.create({ email: user.email || undefined, name: user.name || undefined, metadata: { userId: user.id } }, { idempotencyKey: `jerkstore-customer:${user.id}` });
-      customerId = customer.id;
-      await prisma.user.update({ where: { id: user.id }, data: { stripeCustomerId: customerId } });
-    }
+    const customerId = await resolveStripeCustomerId(user);
     const metadata = { userId: user.id, siteSlug: "jerkstore", type: "credits_purchase", creditsAmount: selected.credits.toString(), packageId, fulfillmentVersion: CREDIT_FULFILLMENT_VERSION };
     const customer = await stripe.customers.retrieve(customerId);
     const paymentMethod = "deleted" in customer ? null : customer.invoice_settings?.default_payment_method;
@@ -55,7 +51,12 @@ export async function POST(req: Request) {
     const intent = await stripe.paymentIntents.create({ amount: selected.amount, currency: "usd", customer: customerId, setup_future_usage: "off_session", metadata, description: selected.name, automatic_payment_methods: { enabled: true } }, { idempotencyKey: `${idempotencyKey}:checkout` });
     return json({ clientSecret: intent.client_secret, amount: selected.amount, credits: selected.credits });
   } catch (error) {
-    console.error("Jerkstore checkout unavailable", { code: (error as { code?: string; name?: string }).code ?? (error as Error).name });
+    console.error("Jerkstore checkout unavailable", {
+      code: (error as { code?: string }).code,
+      type: (error as { type?: string }).type,
+      name: (error as Error).name,
+      message: (error as Error).message,
+    });
     return json({ error: "Checkout is temporarily unavailable. Check your balance before buying again. Contact support if a charge is missing credits." }, 503);
   }
 }

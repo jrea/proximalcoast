@@ -29,9 +29,34 @@ export const metadata: Metadata = {
   },
 };
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://www.proximalcoast.com/#organization",
+      name: "Proximal Coast",
+      url: "https://www.proximalcoast.com/",
+      sameAs: ["https://x.com/proximalcoast"],
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://www.proximalcoast.com/#website",
+      name: "Proximal Coast",
+      url: "https://www.proximalcoast.com/",
+      publisher: { "@id": "https://www.proximalcoast.com/#organization" },
+      inLanguage: "en",
+    },
+  ],
+};
+
 export default function Home() {
   return (
     <main className={styles.site}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+      />
       <a href="#projects" className={styles.skipLink}>Skip to Proximatic</a>
       <div className={styles.grid} aria-hidden="true" />
       <div className={styles.content}>

@@ -25,7 +25,7 @@ describe("subsite crawler routes", () => {
     expect(body).not.toMatch(/^Disallow: \/(?:_next|app|billing|sign-in|access|debug-cards)/m);
   });
 
-  it("lists only Jerkstore's canonical public pages without fabricated revision dates", () => {
+  it("lists only Jerkstore's canonical public pages with a generation-date lastModified", () => {
     const pages = sitemap();
 
     expect(pages.map((page) => page.url).sort()).toEqual([
@@ -35,7 +35,11 @@ describe("subsite crawler routes", () => {
       "https://jerkstore.proximalcoast.com/terms",
       ...LANGUAGE_PAGES.map(language => `https://jerkstore.proximalcoast.com${languagePath(language)}`),
     ].sort());
-    expect(pages.every((page) => page.lastModified === undefined)).toBe(true);
+    // Issue #52: entries carry lastModified. The source tracks no per-page
+    // revision dates, so the sitemap uses its generation date (refreshed on
+    // every deploy) rather than claiming per-page edit history.
+    expect(pages.every((page) => page.lastModified instanceof Date)).toBe(true);
+    expect(new Set(pages.map(page => page.lastModified)).size).toBe(1);
     expect(new Set(pages.map(page => page.url)).size).toBe(pages.length);
   });
 

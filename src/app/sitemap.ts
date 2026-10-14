@@ -36,7 +36,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
   ])
 
-  const routes = ['', '/blog', '/blog/archive'].map((route) => ({
+  const routes = ['', '/blog', '/blog/archive', '/games'].map((route) => ({
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
     changeFrequency: 'weekly' as const,

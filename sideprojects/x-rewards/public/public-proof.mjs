@@ -1,3 +1,4 @@
-export function topProof(rows){
-  return rows.reduce((best,row)=>Number.isFinite(row.payoutUsd)&&row.payoutUsd>0&&(!best||row.payoutUsd>best.payoutUsd)?row:best,null);
+const dollars=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
+export function verifiedRateLabel(range){
+  return !range?null:dollars.format(range.min)+'–'+dollars.format(range.max);
 }

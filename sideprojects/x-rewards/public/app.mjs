@@ -1,4 +1,4 @@
-import {topProof} from './public-proof.mjs';
+import {verifiedRateLabel} from './public-proof.mjs';
 import { dollarsPerThousand,rangeFor,estimate,joinPayoutProofs,benchmarkObservations,formatCalculatorInput } from './metrics.mjs';
 const $=(id)=>document.getElementById(id);
 const integer=new Intl.NumberFormat('en-US',{maximumFractionDigits:0});
@@ -16,7 +16,7 @@ function link(text,url){
 }
 function creatorLink(handle){
   if(!/^[a-z0-9_]{1,15}$/i.test(handle)||/^(?:unknown|redacted|anonymous|removed|deleted)$/i.test(handle))return tag('span',handle||'Unknown');
-  return link('@'+handle,'https://x.com/'+handle);
+  const profile=link('@'+handle,'https://x.com/'+handle);profile.className='creator-profile';return profile;
 }
 const periods={rolling14:'Prior 14 days, exact dates unstated',reported_cycle:'Creator’s period; exact dates unstated',approximate:'Approximate; exact dates unstated'};
 const labels={verified:'Verified',total:'Total',premium:'Premium (creator wording)'};
@@ -131,7 +131,7 @@ function renderTotals(data){
 const wholeDollars=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
 function calculate(data){
   const form=$('calc'), value=$('calc-value'), result=$('estimate-output');
-  const benchmark=rangeFor(data.benchmark,'verified');
+  const benchmark=data.verifiedRange;
   $('hero-evidence').textContent=benchmark
     ? benchmark.sampleCount+' payout windows · '+benchmark.creatorCount+' creators · X Analytics verified impressions.'
     : 'No screenshot-verified payout windows are available.';
@@ -171,9 +171,10 @@ async function load(){
     const data=await r.json();
     data.benchmark=benchmarkObservations(data.observations,data.payouts,data.proofs?.rows||[]);
     $('data-mode').textContent=data.dataSource==='database'?'Live database':'Archive snapshot · live database not connected';
-    if($('top-proof-value')){
-      const best=topProof(data.proofs?.rows||[]);
-      if(best){$('top-proof-value').textContent=dollars.format(best.payoutUsd);$('top-proof-value').hidden=false;$('top-proof-note').hidden=false;}
+    data.verifiedRange=rangeFor(data.benchmark,'verified');
+    if($('payout-range-value')&&data.verifiedRange){
+      $('payout-range-value').textContent=verifiedRateLabel(data.verifiedRange);
+      $('payout-range-value').parentElement.hidden=false;
     }
     if($('total-payouts'))renderTotals(data);
     if($('same-window'))$('same-window').append(compareRows(data,true));

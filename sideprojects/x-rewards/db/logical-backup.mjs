@@ -5,7 +5,7 @@ import {randomBytes,createHash} from 'node:crypto';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import pg from 'pg';
 
-const tables=['payouts','impression_observations','historical_context','submission_queue','submission_limits','ingestion_runs','ingestion_events'];
+const tables=['payouts','impression_observations','historical_context','submission_queue','submission_limits','ingestion_runs','ingestion_events','public_proofs'];
 const dsn=process.env.X_REWARDS_BACKUP_DATABASE_URL;
 if(!dsn)throw Error('Inject the backup credential securely first.');
 const url=new URL(dsn), restore=process.argv[2]==='--verify-scratch';
@@ -24,7 +24,7 @@ try{
    await client.query('BEGIN');
    const {rows:[existing]}=await client.query("select to_regnamespace('x_rewards') as present");
    if(existing.present)throw Error('Validation target already has x_rewards schema.');
-   for(const sql of ['001_initial.sql','queue.sql','ingestion.sql']){
+   for(const sql of ['001_initial.sql','queue.sql','ingestion.sql','003_public_proofs.sql']){
     const source=await readFile(new URL('./'+sql,import.meta.url),'utf8').catch(err=>err.code==='ENOENT'?null:Promise.reject(err));
     if(source)await client.query(source);
    }

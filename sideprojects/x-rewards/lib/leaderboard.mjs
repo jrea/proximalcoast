@@ -1,5 +1,5 @@
 import {readFile} from 'node:fs/promises';
-import {loadSnapshot} from './data.mjs';
+import {loadData} from './data.mjs';
 
 const key=(creator,cycle)=>creator.toLowerCase()+':'+cycle;
 const media=(url,creator)=>{
@@ -20,20 +20,26 @@ export function buildLeaderboard(approvals,observations,cycle=''){
   }
   qualified.sort((a,b)=>b.cycle.localeCompare(a.cycle)||b.payoutUsd-a.payoutUsd||a.creator.localeCompare(b.creator));
   const cycles=[...new Set(observations.filter(r=>r.kind==='exact'&&r.metric==='verified').map(r=>r.cycle))].sort().reverse();
+  const lastReviewedOn=approvals.map(a=>a.publishedOn).filter(x=>typeof x==='string').sort().at(-1)??'2026-11-23';
   const chosen=cycle||null;
   const selected=qualified.filter(row=>!chosen||row.cycle===chosen).sort((a,b)=>b.payoutUsd-a.payoutUsd||b.cycle.localeCompare(a.cycle)||a.creator.localeCompare(b.creator));
   const rows=selected.slice(0,chosen?undefined:5).map((row,index,all)=>({...row,rank:all.findIndex(v=>v.payoutUsd===row.payoutUsd)+1}));
-  return {cycle:chosen,cycles,rows,lastReviewedOn:'2026-11-23'};
+  return {cycle:chosen,cycles,rows,lastReviewedOn};
 }
-let saved;
-export async function leaderboard(cycle){
-  saved??=Promise.all([readFile(new URL('../data/leaderboard.json',import.meta.url),'utf8'),loadSnapshot()]);
-  const [raw,{observations}]=await saved;
-  return buildLeaderboard(JSON.parse(raw),observations,cycle);
+let manifest;
+async function proofInputs(data){
+  if(data.approvals)return data.approvals;
+  manifest??=readFile(new URL('../data/leaderboard.json',import.meta.url),'utf8').then(JSON.parse);
+  return manifest;
 }
-export async function allPublicProofs(){
-  const {cycles,lastReviewedOn}=await leaderboard();
-  const pages=await Promise.all(cycles.map(cycle=>leaderboard(cycle)));
+export async function leaderboard(cycle,snapshot){
+  const data=snapshot??await loadData();
+  return buildLeaderboard(await proofInputs(data),data.observations,cycle);
+}
+export async function allPublicProofs(snapshot){
+  const data=snapshot??await loadData();
+  const {cycles,lastReviewedOn}=await leaderboard('',data);
+  const pages=await Promise.all(cycles.map(cycle=>leaderboard(cycle,data)));
   return {rows:pages.flatMap(page=>page.rows),lastReviewedOn};
 }
 export const csvLeaderboard=rows=>['rank,creator,payout_cycle,payout_usd,verified_impressions,window_start,window_end,payout_proof,impressions_proof',

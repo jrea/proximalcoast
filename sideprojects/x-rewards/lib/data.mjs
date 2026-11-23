@@ -52,9 +52,10 @@ export async function loadData(){
     const {rows:payouts}=await client.query(`select creator_handle,payout_cycle::text,payout_usd::text,source_post_url,source_post_utc,coalesce(source_post_views::text,'') as source_post_views,coalesce(creator_follower_snapshot::text,'') as creator_follower_snapshot,coalesce(followers_observed_date::text,'') as followers_observed_date,receipt_media_url,supporting_source_url,evidence_type from x_rewards.payouts order by payout_cycle,lower(creator_handle)`);
     const {rows:observations}=await client.query(`select p.creator_handle creator,i.payout_cycle::text cycle,p.payout_usd::float8 as "payoutUsd", i.metric,i.impression_count::float8 count,i.analytics_start::text start,i.analytics_end::text end,i.observation_kind kind,i.source_url source from x_rewards.impression_observations i join x_rewards.payouts p using (creator_key,payout_cycle) order by i.payout_cycle,p.creator_key,i.metric`);
     const {rows:historical}=await client.query(`select creator_handle creator,label,payout_usd::float8 as "payoutUsd",metric,impression_count::float8 count,'historical' kind,source_url source from x_rewards.historical_context order by creator_handle`);
+    const {rows:approvals}=await client.query(`select p.creator_handle creator, a.payout_cycle::text cycle, p.payout_usd::float8 as "payoutUsd", i.impression_count::float8 as "verifiedImpressions", i.analytics_start::text start, i.analytics_end::text "end", a.payout_proof as "payoutProof", a.impressions_proof as "impressionsProof", a.published_on::text as "publishedOn", 'approved' decision from x_rewards.public_proofs a join x_rewards.payouts p using (creator_key,payout_cycle) join x_rewards.impression_observations i using (creator_key,payout_cycle) where i.metric='verified' and i.observation_kind='exact' order by a.payout_cycle,a.creator_key`);
     validateObservations(observations,payouts);
     await client.query('COMMIT');
-    return {payouts,observations,historical,dataSource:'database'};
+    return {payouts,observations,historical,approvals,dataSource:'database'};
   } catch(err) {await client.query('ROLLBACK').catch(()=>{});throw err;}
   finally{client.release();}
 }

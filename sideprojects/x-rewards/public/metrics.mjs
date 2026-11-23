@@ -33,3 +33,18 @@ export function joinPayoutProofs(payouts,proofs){
     return {...row, proof:proof?.payoutUsd===Number(row.payout_usd)?proof:null};
   });
 }
+
+export function benchmarkObservations(observations,payouts,proofs){
+  const eligible=joinPayoutProofs(payouts,proofs).filter(r=>r.proof);
+  const index=new Map(eligible.map(r=>[disclosureKey(r.creator_handle,r.payout_cycle),r.proof]));
+  return observations.filter(o=>{
+    const p=index.get(disclosureKey(o.creator,o.cycle));
+    return p&&o.kind==='exact'&&o.metric==='verified'&&o.count===p.verifiedImpressions&&o.start===p.start&&o.end===p.end&&o.payoutUsd===p.payoutUsd;
+  });
+}
+export function formatCalculatorInput(text,decimal=false){
+  const clean=text.replace(/[\s,\$]/g,'');
+  if(!/^(?:\d{0,13})(?:\.\d{0,2})?$/.test(clean)||(!decimal&&clean.includes('.')))return null;
+  const [integer,cents]=clean.split('.');
+  return integer.replace(/\B(?=(\d{3})+(?!\d))/g,',')+(cents===undefined?'':'.'+cents);
+}

@@ -1,8 +1,7 @@
-import { dollarsPerThousand,rangeFor,estimate,joinPayoutProofs } from './metrics.mjs';
+import { dollarsPerThousand,rangeFor,estimate,joinPayoutProofs,benchmarkObservations,formatCalculatorInput } from './metrics.mjs';
 const $=(id)=>document.getElementById(id);
 const integer=new Intl.NumberFormat('en-US',{maximumFractionDigits:0});
 const dollars=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
-const compact=new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:2});
 const fmtDate=(s)=>new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'}).format(new Date(s+'T00:00:00Z'));
 const rate=(n)=>n<0.01?'$'+n.toFixed(4):dollars.format(n);
 function tag(name,text,style){
@@ -19,7 +18,9 @@ const labels={verified:'Verified',total:'Total',premium:'Premium (creator wordin
 function compareRows(data,strict){
   const frag=document.createDocumentFragment();
   const map=new Map();
-  for(const row of data.observations.filter(o=>(o.kind==='exact')===strict)){
+  const joined=new Map((data.proofs?.rows||[]).map(r=>[r.creator.toLowerCase()+':'+r.cycle,r]));
+  const benchmarkKeys=new Set(data.benchmark.map(o=>o.creator.toLowerCase()+':'+o.cycle+':'+o.metric));
+  for(const row of data.observations.filter(o=>benchmarkKeys.has(o.creator.toLowerCase()+':'+o.cycle+':'+o.metric)===strict)){
     const k=row.creator.toLowerCase()+':'+row.cycle;
     if(!map.has(k))map.set(k,{...row,views:{},links:{}});
     const r=map.get(k);
@@ -33,12 +34,15 @@ function compareRows(data,strict){
   }
   for(const d of [...map.values()].sort((a,b)=>(b.cycle??'').localeCompare(a.cycle??'')||a.creator.localeCompare(b.creator))){
     const tr=tag('tr'), who=tag('th');who.scope='row';
-    who.append(link('@'+d.creator,Object.values(d.links)[0]),tag('span',d.cycle?fmtDate(d.cycle)+' payout':d.label,'sub'));
+    const reviewed=joined.get(d.creator.toLowerCase()+':'+d.cycle);
+    who.append(link('@'+d.creator,strict&&reviewed?reviewed.payoutProof:Object.values(d.links)[0]));
+    if(strict&&reviewed){const verified=tag('span',' ✓ Verified');verified.title='Payout and verified impressions screenshots match this cycle';who.append(verified);}
+    who.append(tag('span',d.cycle?fmtDate(d.cycle)+' payout':d.label,'sub'));
     const duration=d.kind==='exact'?fmtDate(d.start)+' – '+fmtDate(d.end):periods[d.kind]??(d.kind==='historical'?'Creator retrospective':'No matching analytics disclosed');
     tr.append(who,tag('td',duration,'window'),tag('td',dollars.format(d.payoutUsd),'numeric'));
     for(const metric of ['verified','total',...(strict?[]:['premium'])]){
       const x=d.views[metric], td=tag('td',undefined,'numeric');
-      if(x)td.append(link((x.kind==='approximate'?'~':'')+integer.format(x.count),x.source),tag('span',rate(dollarsPerThousand(x))+' / 1K','sub'));
+      if(x)td.append(link((x.kind==='approximate'?'~':'')+integer.format(x.count),strict&&reviewed?reviewed.impressionsProof:x.source),tag('span',rate(dollarsPerThousand(x))+' / 1K','sub'));
       else td.append(tag('span','—','missing'));
       tr.append(td);
     }
@@ -60,8 +64,8 @@ function paintPayouts(data){
   if(data.proofs?.lastReviewedOn)$('review-status').textContent='Last reviewed '+fmtDate(data.proofs.lastReviewedOn)+'.';
   function badge(proof){
     const panel=tag('details',undefined,'proof-badge'), badge=tag('summary','✓');
-    badge.setAttribute('aria-label','Payout and verified impressions confirmed. Show proof.');
-    badge.title='Payout and verified impressions confirmed';
+    badge.setAttribute('aria-label','Verified. Show payout and impressions screenshots.');
+    badge.title='Verified: payout and impressions screenshots match this cycle';
     const evidence=tag('div',undefined,'proof-links');
     evidence.append(tag('span',integer.format(proof.verifiedImpressions)+' verified impressions'),link('Payout screenshot',proof.payoutProof),link('Impressions screenshot',proof.impressionsProof));
     panel.append(badge,evidence);return panel;
@@ -115,7 +119,7 @@ function renderTotals(data){
   $('sample-note').textContent='Top 10% uses the '+integer.format(cut)+' largest payouts in this sample.';
 }
 function paintHero(data){
-  const summary=rangeFor(data.observations,'verified');
+  const summary=rangeFor(data.benchmark,'verified');
   if(!summary){
     $('hero-rate').textContent='—';
     $('hero-evidence').textContent='No exact verified payout windows are available.';
@@ -124,31 +128,43 @@ function paintHero(data){
   $('hero-rate').textContent=summary.max<1 && summary.min>=.01
     ? Math.round(summary.min*100)+'–'+Math.round(summary.max*100)+'¢'
     : rate(summary.min)+'–'+rate(summary.max);
-  $('hero-evidence').textContent='Observed in '+summary.sampleCount+' payout windows from '+summary.creatorCount+' creators. Public post views aren’t verified impressions.';
+  $('hero-evidence').textContent='Based on '+summary.sampleCount+' screenshot-verified payout windows from '+summary.creatorCount+' creators. Public post views aren’t verified impressions.';
 }
 const wholeDollars=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
 function calculate(data){
   const form=$('calc'), unit=$('metric'), mode=$('direction'), value=$('calc-value'), handle=$('calc-handle'), valLabel=$('calc-value-label');
   const result=$('estimate-output');
-  let inputDirection=mode.value;
+  let inputDirection=mode.value,lastValue=value.value;
+  value.addEventListener('input',()=>{
+    const before=value.value, at=value.selectionStart??before.length;
+    const offset=before.slice(0,at).replace(/[\s,\$]/g,'').length;
+    const formatted=formatCalculatorInput(before,mode.value==='impressions');
+    if(formatted===null){value.value=lastValue;return;}
+    if(formatted!==before){
+      value.value=formatted;let caret=0,seen=0;
+      while(caret<formatted.length&&seen<offset){if(formatted[caret]!==',')seen++;caret++;}
+      value.setSelectionRange(caret,caret);
+    }
+    lastValue=formatted;
+  });
   function update(){
     if(inputDirection!==mode.value){
       inputDirection=mode.value;
-      value.value=mode.value==='payout'?'1000000':'2700';
-      value.min=mode.value==='payout'?'1':'0.01';value.step=mode.value==='payout'?'1':'0.01';
+      value.value=mode.value==='payout'?'1,000,000':'2,700';
+      lastValue=value.value;value.inputMode=mode.value==='payout'?'numeric':'decimal';
       valLabel.textContent=mode.value==='payout'?'Impressions in one payout period':'Target payout (USD)';
     }
     try {
-      const s=rangeFor(data.observations,unit.value,handle.value);
+      const s=rangeFor(data.benchmark,unit.value,handle.value);
       if(!s){result.replaceChildren(tag('p','No exact-window comparisons are available for this metric.','estimate-invalid'));return;}
-      const n=Number(value.value);
+      const n=Number(value.value.replaceAll(',',''));
       const guess=estimate(s,n,mode.value);
       const money=mode.value==='payout';
       const cash=guess.low<10?dollars:wholeDollars;
-      const format=(x)=>money?cash.format(x):compact.format(x);
+      const format=(x)=>money?cash.format(x):integer.format(x);
       const metric=labels[unit.value].toLowerCase();
       $('calc-title').textContent=money
-        ? 'If I got '+compact.format(n)+' '+metric+' impressions, what would I get?'
+        ? 'If I got '+integer.format(n)+' '+metric+' impressions, what would I get?'
         : 'How many '+metric+' impressions for '+dollars.format(n)+'?';
       result.replaceChildren(tag('strong',format(guess.low)+'–'+format(guess.high)+(money?'':' impressions'),'estimate-number'),
         tag('span','About '+format(guess.mid)+(money?'':' impressions')+' at the median observed rate.','result-line'));
@@ -168,6 +184,7 @@ async function load(){
   try {
     const r=await fetch('/api/data');if(!r.ok)throw Error();
     const data=await r.json();
+    data.benchmark=benchmarkObservations(data.observations,data.payouts,data.proofs?.rows||[]);
     $('data-mode').textContent=data.dataSource==='database'?'Live database':'Archive snapshot · live database not connected';
     if($('hero-rate'))paintHero(data);
     if($('total-payouts'))renderTotals(data);

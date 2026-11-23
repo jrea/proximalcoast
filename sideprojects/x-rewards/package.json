@@ -4,6 +4,6 @@
   "type": "module",
   "private": true,
   "engines": { "node": "22.x" },
-  "scripts": { "dev": "node server.mjs", "test": "node --test", "db:sync": "node db/sync.mjs" },
+  "scripts": { "dev": "node server.mjs", "test": "node --test", "proofs:validate": "node tools/validate-proofs.mjs", "db:sync": "node db/sync.mjs" },
   "dependencies": { "csv-parse": "^6.1.0", "pg": "^8.22.0" }
 }

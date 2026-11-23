@@ -8,14 +8,14 @@ const media=(url,creator)=>{
 };
 export function buildLeaderboard(approvals,observations,cycle=''){
   const exact=new Map(observations.filter(r=>r.kind==='exact'&&r.metric==='verified').map(r=>[key(r.creator,r.cycle),r]));
-  const seen=new Set(), qualified=[];
+  const seen=new Set(), mediaByRole=[new Set(),new Set()], qualified=[];
   for(const a of approvals){
     const id=key(a.creator,a.cycle), row=exact.get(id);
-    if(!row||seen.has(id)||a.decision!=='approved'||a.payoutProof===a.impressionsProof||
+    if(!row||!/^\d{4}-\d{2}-\d{2}$/.test(a.cycle)||!Number.isSafeInteger(a.verifiedImpressions)||a.verifiedImpressions<=0||!Number.isFinite(a.payoutUsd)||a.payoutUsd<=0||seen.has(id)||mediaByRole[1].has(a.impressionsProof)||mediaByRole[1].has(a.payoutProof)||mediaByRole[0].has(a.impressionsProof)||a.decision!=='approved'||a.payoutProof===a.impressionsProof||
        !media(a.payoutProof,a.creator)||!media(a.impressionsProof,a.creator)||
        a.verifiedImpressions!==row.count||a.payoutUsd!==row.payoutUsd||
        a.start!==row.start||a.end!==row.end) throw Error('Invalid or duplicate approved leaderboard proof.');
-    seen.add(id);
+    seen.add(id);mediaByRole[0].add(a.payoutProof);mediaByRole[1].add(a.impressionsProof);
     qualified.push({creator:row.creator,cycle:row.cycle,payoutUsd:row.payoutUsd,verifiedImpressions:row.count,start:row.start,end:row.end,payoutProof:a.payoutProof,impressionsProof:a.impressionsProof});
   }
   qualified.sort((a,b)=>b.cycle.localeCompare(a.cycle)||b.payoutUsd-a.payoutUsd||a.creator.localeCompare(b.creator));

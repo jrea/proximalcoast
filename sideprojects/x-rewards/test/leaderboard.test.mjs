@@ -58,3 +58,27 @@ test('badge attaches only to the exact creator, payout cycle and amount',async()
   const ledger=[row,{...row,payout_cycle:'2026-11-06'},{...row,creator_handle:'AnotherHandle'},{...row,payout_usd:'120.31'}];
   assert.deepEqual(joinPayoutProofs(ledger,[proof]).map(r=>!!r.proof),[true,false,false,false]);
 });
+
+import {benchmarkObservations,formatCalculatorInput,rangeFor} from '../public/metrics.mjs';
+import {allPublicProofs} from '../lib/leaderboard.mjs';
+test('benchmark excludes dated observations without both approved screenshot proofs',async()=>{
+  const {rows}=await allPublicProofs();
+  const {payouts}=await loadSnapshot();
+  const cohort=benchmarkObservations(observations,payouts,rows);
+  const result=rangeFor(cohort,'verified');
+  assert.equal(result.sampleCount,7);
+  assert.equal(result.creatorCount,4);
+  assert.equal(Math.round(result.min*100),45);
+  assert.equal(Math.round(result.max*100),80);
+  assert.equal(Math.round(result.median*1000),670);
+  assert.ok(!cohort.some(o=>o.creator==='yoppy_cyber'&&o.cycle==='2026-11-20'));
+  assert.equal(rangeFor(cohort,'total'),null);
+});
+test('calculator groups whole and decimal inputs safely',()=>{
+  assert.equal(formatCalculatorInput('1000000'),'1,000,000');
+  assert.equal(formatCalculatorInput('$2,500.75',true),'2,500.75');
+  assert.equal(formatCalculatorInput('1,005.00',true),'1,005.00');
+  assert.equal(formatCalculatorInput('1,005.'),null);
+  assert.equal(formatCalculatorInput('21e3'),null);
+  assert.equal(formatCalculatorInput(''), '');
+});

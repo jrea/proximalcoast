@@ -23,8 +23,8 @@
     <div class="board-controls"><label>Search creator<input type="search" id="payout-search" placeholder="@handle"></label>
     <label>Payout cycle<select id="payout-cycle"><option value="">All payout cycles</option></select></label>
     <label>Sort<select id="payout-sort"><option value="high">Payout: highest first</option><option value="low">Payout: lowest first</option><option value="recent">Newest cycle</option></select></label>
-    <label class="proof-filter"><input type="checkbox" id="payout-verified"> Both screenshots</label></div>
-    <p class="note board-caption"><span>✓ Payout and verified impressions confirmed for that cycle.</span><span id="review-status"></span><span id="queue-status"></span></p>
+    <label class="proof-filter"><input type="checkbox" id="payout-verified"> Verified</label></div>
+    <p class="note board-caption"><span>✓ Verified means both screenshots match that payout cycle.</span><span id="review-status"></span><span id="queue-status"></span></p>
     <div id="payout-wrap" class="table-scroll board-table" hidden><table><thead><tr><th scope="col">Creator</th><th scope="col" class="numeric">Payout</th><th scope="col">Cycle</th><th scope="col">Source</th></tr></thead><tbody id="payout-rows"></tbody></table></div>
     <div class="board-caption foot"><p id="payout-status" class="note" role="status" style="margin:0">Loading payouts…</p><button id="payout-prev" class="secondary" disabled>Previous</button><button id="payout-next" class="secondary" disabled>Next</button><a href="/payouts.csv">CSV</a><a href="/receipts">Data &amp; sources</a></div>
   </section>
@@ -33,25 +33,25 @@
     <div class="hero-story">
       <h2 id="hero-title" class="hero-question">What does X actually pay?</h2>
       <div class="rate-block">
-        <strong id="hero-rate" class="hero-rate">43–80¢</strong>
+        <strong id="hero-rate" class="hero-rate">45–80¢</strong>
         <span class="rate-unit">per 1,000 reported verified impressions</span>
-        <p id="hero-evidence" class="note">Observed in 8 payout windows from 4 creators. Public post views aren’t verified impressions.</p>
+        <p id="hero-evidence" class="note">Based on 7 screenshot-verified payout windows from 4 creators. Public post views aren’t verified impressions.</p>
       </div>
     </div>
     <section id="calculator" class="hero-calculator" aria-labelledby="calc-title">
       <p class="eyebrow">Payout calculator</p>
-      <h2 id="calc-title">If I got 1M verified impressions, what would I get?</h2>
+      <h2 id="calc-title">If I got 1,000,000 verified impressions, what would I get?</h2>
       <div id="estimate-output" aria-live="polite">
-        <strong class="estimate-number">$431–$796</strong>
-        <span class="result-line">About $652 at the median observed rate.</span>
+        <strong class="estimate-number">$445–$796</strong>
+        <span class="result-line">About $670 at the median observed rate.</span>
       </div>
       <form id="calc">
-        <label class="calc-impressions"><span id="calc-value-label">Impressions in one payout period</span><input id="calc-value" required type="number" min="1" step="1" value="1000000" inputmode="numeric"></label>
+        <label class="calc-impressions"><span id="calc-value-label">Impressions in one payout period</span><input id="calc-value" required type="text" value="1,000,000" inputmode="numeric" autocomplete="off" maxlength="20"></label>
         <button type="submit">Calculate</button>
         <details class="calc-options"><summary>Change metric or calculate in reverse</summary>
           <div class="calc-fields">
             <label>Calculate<select id="direction"><option value="payout">Payout from impressions</option><option value="impressions">Impressions for a payout</option></select></label>
-            <label>Impression type<select id="metric"><option value="verified">Verified impressions</option><option value="total">Total impressions</option></select></label>
+            <label>Impression type<select id="metric"><option value="verified">Verified impressions</option><option value="total" disabled>Total impressions (no verified sample)</option></select></label>
             <label>Creator handle (optional)<input id="calc-handle" placeholder="@handle" maxlength="16" autocomplete="off"></label>
           </div>
         </details>

@@ -102,7 +102,10 @@ function paintPayouts(data){
   next.addEventListener('click',()=>{if(!next.disabled){page++;update();}});
   update();
   fetch('/api/submissions',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(state=>{
-    if(state&&Number.isInteger(state.pendingCount))$('queue-status').textContent=integer.format(state.pendingCount)+' pending review.';
+    if(state&&Number.isInteger(state.pendingCount)){
+      const processed=state.lastProcessedAt?fmtDate(state.lastProcessedAt.slice(0,10)):'no batches processed yet';
+      $('queue-status').textContent=integer.format(state.pendingCount)+' pending · '+processed+'.';
+    }
   }).catch(()=>{});
 }
 function renderTotals(data){

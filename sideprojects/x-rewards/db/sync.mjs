@@ -5,7 +5,8 @@ const dsn=process.env.X_REWARDS_ADMIN_DATABASE_URL;
 if (!dsn) throw Error('Set X_REWARDS_ADMIN_DATABASE_URL in the process environment.');
 const url=new URL(dsn);
 const remote=url.hostname.endsWith('.thenile.dev');
-if (remote && decodeURIComponent(url.pathname)!=='/meatspace') throw Error('Remote sync is limited to the approved meatspace database.');
+const databaseName=decodeURIComponent(url.pathname.slice(1));
+if (remote && databaseName!=='meatspace' && !(databaseName==='x_creator'&&url.hostname===process.env.X_REWARDS_NILE_HOST)) throw Error('Remote sync is limited to the approved meatspace database.');
 const snapshot=await loadSnapshot();
 const client=new pg.Client({connectionString:dsn,ssl:remote?{rejectUnauthorized:true}:undefined,connectionTimeoutMillis:6000,statement_timeout:10000});
 const write=async(table,columns,rows,types,keyColumns)=>{
@@ -23,7 +24,7 @@ try{
   await client.connect();
   const {rows:[db]}=await client.query('SELECT current_database() db');
   const target=remote?url.hostname.split('.')[0]:decodeURIComponent(url.pathname.slice(1));
-  if(db.db!==target && (!remote||db.db!=='meatspace')) throw Error('Connected to an unexpected database.');
+  if(db.db!==target && (!remote||db.db!==databaseName)) throw Error('Connected to an unexpected database.');
   await client.query('BEGIN');
   for (const name of ['001_initial.sql','002_rydawg_screenshot_count.sql']) {
     await client.query(await fs.readFile(new URL('./'+name,import.meta.url),'utf8'));

@@ -50,3 +50,11 @@ test('submission input canonicalizes X status IDs without accepting arbitrary co
   assert.throws(()=>validateSubmission({payoutUrl:canonical.url,impressionsUrl:canonical.url,optIn:false}));
   assert.deepEqual(queueStatus,{accepting:false,pendingCount:null});
 });
+
+import {joinPayoutProofs} from '../public/metrics.mjs';
+test('badge attaches only to the exact creator, payout cycle and amount',async()=>{
+  const [{rows:[proof]}]=await Promise.all([leaderboard('2026-11-20')]);
+  const row={creator_handle:'ryDAWG42',payout_cycle:'2026-11-20',payout_usd:'120.30'};
+  const ledger=[row,{...row,payout_cycle:'2026-11-06'},{...row,creator_handle:'AnotherHandle'},{...row,payout_usd:'120.31'}];
+  assert.deepEqual(joinPayoutProofs(ledger,[proof]).map(r=>!!r.proof),[true,false,false,false]);
+});

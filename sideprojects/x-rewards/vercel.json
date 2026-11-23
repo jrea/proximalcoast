@@ -21,7 +21,7 @@
     },
     {
       "source": "/leaderboard",
-      "destination": "/leaderboard.html"
+      "destination": "/index.html"
     },
     {
       "source": "/leaderboard.csv",

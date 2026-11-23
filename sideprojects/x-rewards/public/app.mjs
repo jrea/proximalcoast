@@ -1,4 +1,4 @@
-import { dollarsPerThousand,rangeFor,estimate } from './metrics.mjs';
+import { dollarsPerThousand,rangeFor,estimate,joinPayoutProofs } from './metrics.mjs';
 const $=(id)=>document.getElementById(id);
 const integer=new Intl.NumberFormat('en-US',{maximumFractionDigits:0});
 const dollars=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
@@ -47,22 +47,38 @@ function compareRows(data,strict){
   return frag;
 }
 function paintPayouts(data){
-  const q=$('payout-search'), by=$('payout-cycle'), sort=$('payout-sort'), out=$('payout-status'), tbody=$('payout-rows'), prev=$('payout-prev'), next=$('payout-next');
-  const size=25;
+  const q=$('payout-search'), by=$('payout-cycle'), sort=$('payout-sort'), verified=$('payout-verified');
+  const out=$('payout-status'), tbody=$('payout-rows'), prev=$('payout-prev'), next=$('payout-next');
+  const ledger=joinPayoutProofs(data.payouts,data.proofs?.rows||[]);
+  const size=5;
   let page=0;
-  for(const cycle of [...new Set(data.payouts.map(r=>r.payout_cycle))].sort().reverse()){
-    const op=tag('option',fmtDate(cycle));op.value=cycle;by.append(op);
+  const cycles=[...new Set(ledger.map(r=>r.payout_cycle))].sort().reverse();
+  for(const cycle of cycles){const op=tag('option',fmtDate(cycle));op.value=cycle;by.append(op);}
+  const parameters=new URLSearchParams(location.search);
+  if(cycles.includes(parameters.get('cycle')))by.value=parameters.get('cycle');
+  if(parameters.get('verified')==='1')verified.checked=true;
+  if(data.proofs?.lastReviewedOn)$('review-status').textContent='Last reviewed '+fmtDate(data.proofs.lastReviewedOn)+'.';
+  function badge(proof){
+    const panel=tag('details',undefined,'proof-badge'), badge=tag('summary','✓');
+    badge.setAttribute('aria-label','Payout and verified impressions confirmed. Show proof.');
+    badge.title='Payout and verified impressions confirmed';
+    const evidence=tag('div',undefined,'proof-links');
+    evidence.append(tag('span',integer.format(proof.verifiedImpressions)+' verified impressions'),link('Payout screenshot',proof.payoutProof),link('Impressions screenshot',proof.impressionsProof));
+    panel.append(badge,evidence);return panel;
   }
   function update(){
     const key=q.value.trim().toLowerCase().replace(/^@/,'');
-    const rows=data.payouts.filter(r=>r.creator_handle.toLowerCase().includes(key) && (!by.value||r.payout_cycle===by.value));
+    const rows=ledger.filter(r=>r.creator_handle.toLowerCase().includes(key)&&(!by.value||r.payout_cycle===by.value)&&(!verified.checked||r.proof));
     const direction=sort.value==='high'?-1:sort.value==='low'?1:0;
     rows.sort((a,b)=>direction*(Number(a.payout_usd)-Number(b.payout_usd))||b.payout_cycle.localeCompare(a.payout_cycle)||a.creator_handle.localeCompare(b.creator_handle));
     const start=page*size,end=Math.min(start+size,rows.length),frag=document.createDocumentFragment();
     for(const r of rows.slice(start,end)){
-      const tr=tag('tr'), source=tag('td');
-      source.append(link('Disclosure',r.source_post_url));
-      tr.append(tag('td','@'+r.creator_handle),tag('td',dollars.format(r.payout_usd),'numeric'),tag('td',fmtDate(r.payout_cycle)),source,tag('td',r.source_post_views?integer.format(r.source_post_views):'—','numeric'),tag('td',r.creator_follower_snapshot?integer.format(r.creator_follower_snapshot):'—','numeric'));
+      const tr=tag('tr'), source=tag('td'), th=tag('th');th.scope='row';
+      const handle=tag('div',undefined,'who');handle.append(tag('span','@'+r.creator_handle));
+      if(r.proof)handle.append(badge(r.proof));
+      th.append(handle);source.append(link('X post',r.source_post_url));
+      source.firstChild.setAttribute('aria-label','X disclosure by @'+r.creator_handle+' · '+fmtDate(r.payout_cycle));
+      tr.append(th,tag('td',dollars.format(r.payout_usd),'numeric'),tag('td',fmtDate(r.payout_cycle)),source);
       frag.append(tr);
     }
     tbody.replaceChildren(frag);
@@ -70,10 +86,19 @@ function paintPayouts(data){
     $('payout-wrap').hidden=!rows.length;
     prev.disabled=page===0;next.disabled=end>=rows.length;
   }
-  for(const x of [q,by,sort])x.addEventListener(x===q?'input':'change',()=>{page=0;update();});
+  function syncFilters(){
+    const url=new URL(location.href);
+    if(by.value)url.searchParams.set('cycle',by.value);else url.searchParams.delete('cycle');
+    if(verified.checked)url.searchParams.set('verified','1');else url.searchParams.delete('verified');
+    history.replaceState(null,'',url);
+  }
+  for(const x of [q,by,sort,verified])x.addEventListener(x===q?'input':'change',()=>{page=0;if(x===by||x===verified)syncFilters();update();});
   prev.addEventListener('click',()=>{if(page>0){page--;update();}});
   next.addEventListener('click',()=>{if(!next.disabled){page++;update();}});
   update();
+  fetch('/api/submissions',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(state=>{
+    if(state&&Number.isInteger(state.pendingCount))$('queue-status').textContent=integer.format(state.pendingCount)+' pending review.';
+  }).catch(()=>{});
 }
 function renderTotals(data){
   const amounts=data.payouts.map(r=>Number(r.payout_usd)).sort((a,b)=>a-b);
@@ -141,7 +166,7 @@ function calculate(data){
 }
 async function load(){
   try {
-    const r=await fetch('./api/data');if(!r.ok)throw Error();
+    const r=await fetch('/api/data');if(!r.ok)throw Error();
     const data=await r.json();
     $('data-mode').textContent=data.dataSource==='database'?'Live database':'Archive snapshot · live database not connected';
     if($('hero-rate'))paintHero(data);
@@ -156,24 +181,4 @@ async function load(){
     if($('calc'))$('calc').hidden=true;
   }
 }
-async function loadHomeBoard(){
-  const status=$('home-board-status'), list=$('home-board-rows');
-  if(!status)return;
-  try{
-    const r=await fetch('/api/leaderboard');
-    if(!r.ok)throw Error();
-    const {cycle,rows}=await r.json();
-    status.textContent=(rows.length?'Largest payouts with both screenshots confirmed.':'No entries with both screenshots confirmed yet.');
-    for(const row of rows.slice(0,5)){
-      const item=tag('li');
-      const detail=tag('a',row.rank+'. @'+row.creator);
-      detail.href='/leaderboard?cycle='+encodeURIComponent(row.cycle);
-      const label=tag('div');label.append(detail,tag('span',fmtDate(row.cycle),'sub'));
-      item.append(label,tag('strong',dollars.format(row.payoutUsd)));
-      list.append(item);
-    }
-    list.hidden=!rows.length;
-  }catch{status.textContent='Leaderboard temporarily unavailable.';}
-}
-loadHomeBoard();
 load();

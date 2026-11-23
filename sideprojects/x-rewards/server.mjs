@@ -4,7 +4,7 @@ import data from './api/data.mjs';
 import payouts from './api/payouts.mjs';
 import leaderboard from './api/leaderboard.mjs';
 import submissions from './api/submissions.mjs';
-const assets={'/submit.css':['submit.css','text/css; charset=utf-8'],'/submit.mjs':['submit.mjs','text/javascript'],'/receipts':['receipts.html','text/html; charset=utf-8'],'/leaderboard':['leaderboard.html','text/html; charset=utf-8'],'/leaderboard.mjs':['leaderboard.mjs','text/javascript'],'/':['index.html','text/html; charset=utf-8'],'/metrics.mjs':['metrics.mjs','text/javascript'],'/app.mjs':['app.mjs','text/javascript'],'/methodology.txt':['methodology.txt','text/plain; charset=utf-8']};
+const assets={'/submit.css':['submit.css','text/css; charset=utf-8'],'/submit.mjs':['submit.mjs','text/javascript'],'/receipts':['receipts.html','text/html; charset=utf-8'],'/leaderboard':['index.html','text/html; charset=utf-8'],'/':['index.html','text/html; charset=utf-8'],'/metrics.mjs':['metrics.mjs','text/javascript'],'/app.mjs':['app.mjs','text/javascript'],'/methodology.txt':['methodology.txt','text/plain; charset=utf-8']};
 createServer(async(req,res)=>{
   res.status=(code)=>(res.statusCode=code,res);
   res.json=(obj)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify(obj));};

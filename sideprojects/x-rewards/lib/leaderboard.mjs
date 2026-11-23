@@ -31,5 +31,10 @@ export async function leaderboard(cycle){
   const [raw,{observations}]=await saved;
   return buildLeaderboard(JSON.parse(raw),observations,cycle);
 }
+export async function allPublicProofs(){
+  const {cycles,lastReviewedOn}=await leaderboard();
+  const pages=await Promise.all(cycles.map(cycle=>leaderboard(cycle)));
+  return {rows:pages.flatMap(page=>page.rows),lastReviewedOn};
+}
 export const csvLeaderboard=rows=>['rank,creator,payout_cycle,payout_usd,verified_impressions,window_start,window_end,payout_proof,impressions_proof',
  ...rows.map(r=>[r.rank,r.creator,r.cycle,r.payoutUsd.toFixed(2),r.verifiedImpressions,r.start,r.end,r.payoutProof,r.impressionsProof].join(','))].join('\r\n')+'\r\n';

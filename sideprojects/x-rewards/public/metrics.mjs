@@ -24,3 +24,12 @@ export function estimate(range,value,direction){
   if(direction==='impressions')return {low:value/range.max*1000,mid:value/range.median*1000,high:value/range.min*1000};
   throw Error('Choose a calculation direction.');
 }
+
+const disclosureKey=(creator,cycle)=>creator.toLowerCase()+':'+cycle;
+export function joinPayoutProofs(payouts,proofs){
+  const evidence=new Map(proofs.map(proof=>[disclosureKey(proof.creator,proof.cycle),proof]));
+  return payouts.map(row=>{
+    const proof=evidence.get(disclosureKey(row.creator_handle,row.payout_cycle));
+    return {...row, proof:proof?.payoutUsd===Number(row.payout_usd)?proof:null};
+  });
+}

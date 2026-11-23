@@ -5,10 +5,10 @@ import {rangeFor,estimate} from '../public/metrics.mjs';
 const snapshot=await loadSnapshot();
 const approx=(actual,expected)=>assert.ok(Math.abs(actual-expected)<.000001,[actual,expected].join(' ≠ '));
 test('canonical archive remains independently reproducible',()=>{
- assert.equal(snapshot.payouts.length,464);
- assert.equal(new Set(snapshot.payouts.map(x=>x.creator_handle.toLowerCase()+':'+x.payout_cycle)).size,464);
+ assert.equal(snapshot.payouts.length,465);
+ assert.equal(new Set(snapshot.payouts.map(x=>x.creator_handle.toLowerCase()+':'+x.payout_cycle)).size,465);
  assert.equal(snapshot.observations.length,19);
- assert.equal(csvText(snapshot.payouts).trimEnd().split('\r\n').length,465);
+ assert.equal(csvText(snapshot.payouts).trimEnd().split('\r\n').length,snapshot.payouts.length+1);
 });
 test('verified range uses only audited exact-window observations',()=>{
  const rate=rangeFor(snapshot.observations,'verified');

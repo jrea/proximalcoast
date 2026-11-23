@@ -1,0 +1,17 @@
+[
+  {
+    "creator": "ashleyschendel",
+    "cycle": "2026-11-20",
+    "reviewedOcrLine": true,
+    "currency": "USD",
+    "scope": "mixed",
+    "amountCents": 12375,
+    "receiptTotalCents": 72375,
+    "excluded": [
+      {"program": "Grok Bot template rewards", "cycle": "2026-11-10", "amountCents": 30000},
+      {"program": "Grok Bot template rewards", "cycle": "2026-11-23", "amountCents": 30000}
+    ],
+    "payoutProof": "https://x.com/ashleyschendel/status/2124949578537669025/photo/1",
+    "creatorContext": "https://x.com/ashleyschendel/status/2124949578537669025"
+  }
+]

@@ -1,3 +1,4 @@
+import {assertOcrReceipt} from './ocr-receipt.mjs';
 import {approvedProof,storeApprovedProof} from './approved-proof.mjs';
 import {normalizeStatus} from './submissions.mjs';
 // Call only inside a transaction. Caller owns COMMIT/ROLLBACK.
@@ -9,6 +10,6 @@ export async function applyReviewBatch(client,batch){
      const p=normalizeStatus(d.payoutUrl).statusId,i=normalizeStatus(d.impressionsUrl).statusId;
      const result=await client.query("update x_rewards.submission_queue set status=$1,processed_at=now(),reviewer=$2 where payout_status=$3 and impressions_status=$4 and status='pending'",[d.status,batch.reviewer,p,i]);
      if(result.rowCount!==1)throw Error('A reviewed entry is not pending; batch rolled back.');
-     if(d.status==='approved')await storeApprovedProof(client,approvedProof(d.proof,p,i));
+     if(d.status==='approved'){const proof=approvedProof(d.proof,p,i);assertOcrReceipt(d.proof.receipt,proof.cycle,proof.amountCents);await storeApprovedProof(client,proof);}
    }
 }

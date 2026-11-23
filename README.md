@@ -2,17 +2,18 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+Use Node.js 26 LTS (the local patch is pinned in `.nvmrc`) and the version
+of pnpm pinned in `package.json`. Install Corepack first if it is not available:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+nvm use
+corepack pnpm install --frozen-lockfile
+corepack pnpm dev
 ```
+
+Vercel selects Node 26 from `engines.node` and manages its security patch
+releases. The production-equivalent build command is
+`corepack pnpm run build --webpack`.
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 

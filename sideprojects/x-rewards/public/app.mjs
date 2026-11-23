@@ -1,3 +1,4 @@
+import {topProof} from './public-proof.mjs';
 import { dollarsPerThousand,rangeFor,estimate,joinPayoutProofs,benchmarkObservations,formatCalculatorInput } from './metrics.mjs';
 const $=(id)=>document.getElementById(id);
 const integer=new Intl.NumberFormat('en-US',{maximumFractionDigits:0});
@@ -161,6 +162,10 @@ async function load(){
     const data=await r.json();
     data.benchmark=benchmarkObservations(data.observations,data.payouts,data.proofs?.rows||[]);
     $('data-mode').textContent=data.dataSource==='database'?'Live database':'Archive snapshot · live database not connected';
+    if($('top-proof-value')){
+      const best=topProof(data.proofs?.rows||[]);
+      if(best){$('top-proof-value').textContent=dollars.format(best.payoutUsd);$('top-proof-value').hidden=false;$('top-proof-note').hidden=false;}
+    }
     if($('total-payouts'))renderTotals(data);
     if($('same-window'))$('same-window').append(compareRows(data,true));
     if($('context-window'))$('context-window').append(compareRows(data,false));

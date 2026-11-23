@@ -4,11 +4,13 @@ import data from './api/data.mjs';
 import payouts from './api/payouts.mjs';
 import leaderboard from './api/leaderboard.mjs';
 import submissions from './api/submissions.mjs';
-const assets={'/submit.css':['submit.css','text/css; charset=utf-8'],'/submit.mjs':['submit.mjs','text/javascript'],'/receipts':['receipts.html','text/html; charset=utf-8'],'/leaderboard':['index.html','text/html; charset=utf-8'],'/':['index.html','text/html; charset=utf-8'],'/metrics.mjs':['metrics.mjs','text/javascript'],'/app.mjs':['app.mjs','text/javascript'],'/methodology.txt':['methodology.txt','text/plain; charset=utf-8']};
+import og from './api/og.mjs';
+const assets={'/favicon.svg':['favicon.svg','image/svg+xml'],'/public-proof.mjs':['public-proof.mjs','text/javascript'],'/submit.css':['submit.css','text/css; charset=utf-8'],'/submit.mjs':['submit.mjs','text/javascript'],'/receipts':['receipts.html','text/html; charset=utf-8'],'/leaderboard':['index.html','text/html; charset=utf-8'],'/':['index.html','text/html; charset=utf-8'],'/metrics.mjs':['metrics.mjs','text/javascript'],'/app.mjs':['app.mjs','text/javascript'],'/methodology.txt':['methodology.txt','text/plain; charset=utf-8']};
 createServer(async(req,res)=>{
   res.status=(code)=>(res.statusCode=code,res);
   res.json=(obj)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify(obj));};
   const path=new URL(req.url,'http://localhost').pathname;
+  if(path==='/og.png'||path==='/api/og')return og(req,res);
   if(path==='/api/submissions')return submissions(req,res);
   if(path==='/api/leaderboard'||path==='/leaderboard.csv')return leaderboard(req,res);
   if(path==='/api/data')return data(req,res);

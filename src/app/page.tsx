@@ -102,7 +102,7 @@ export default function Home() {
             <a href="https://x-rewards.proximalcoast.com/" className={styles.rewardsProject}>
               <span className={styles.toolCategory}>Creator payout research</span>
               <h3><svg width="30" height="31" viewBox="0 0 1200 1227" fill="currentColor" aria-hidden="true"><path d="M714.163 519.284L1160.89 0H1055.03L667.137 450.887L357.328 0H0L468.492 681.821L0 1226.37H105.866L515.491 750.218L842.672 1226.37H1200L714.137 519.284H714.163ZM569.165 687.828L521.697 619.934L144.011 79.6944H306.615L611.412 515.685L658.88 583.579L1055.08 1150.3H892.476L569.165 687.854V687.828Z" /></svg> X Creator Rewards</h3>
-              <p>Explore reported X payouts and estimate what verified impressions may be worth.</p>
+              <p>X actually pays: $0.45–$0.80 per 1,000 verified impressions in our sample.</p>
               <span className={styles.toolCta}>Open X Creator Rewards <ArrowUpRight size={18} aria-hidden="true" /></span>
             </a>
             <a href="https://jerkstore.proximalcoast.com" className={styles.jerkstoreProject}>

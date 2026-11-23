@@ -21,3 +21,7 @@ Configure only `X_REWARDS_DATABASE_URL` in the dedicated Vercel project's server
 ## Updating the dataset
 
 Add sourced public payouts and reviewed, same-cycle observations to the local seed. Keep exact verified, exact total, approximate windows, and disclosure-post views separate. Run tests and update pinned corpus totals when deliberately expanding the sample; sync the seed, then publish the app from this directory (not the repository root). The dedicated Vercel project owns only the requested subdomain. Rebuild snapshots after updates until the scoped database runtime is configured.
+
+## Git deployments
+
+The dedicated Vercel project is linked to the existing `jrea/proximalcoast` repository. Production tracks `codex/x-creator-rewards-2026-11-23` with root directory `sideprojects/x-rewards`. Push the reviewed app or data change to that branch; do not push to the apex's production branch. Vercel deploys the version-controlled archive snapshot automatically. Refresh the Nile backup separately with the local sync command above. This design keeps the website publishing even when the database is unavailable and never gives Vercel the Nile writer secret.

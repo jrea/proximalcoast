@@ -12,12 +12,12 @@ export default async function handler(req,res){
     const [{rows},{observations,payouts}]=await Promise.all([allPublicProofs(),loadSnapshot()]);
     const range=rangeFor(benchmarkObservations(observations,payouts,rows),'verified');
     if(!range){res.setHeader('Cache-Control','no-store');res.status(503).end();return;}
-    const value=range.max<1 ? Math.round(range.min*100)+'–'+Math.round(range.max*100)+'¢' : money.format(range.min)+'–'+money.format(range.max);
-    const art=el('div',{display:'flex',width:'100%',height:'100%',flexDirection:'column',justifyContent:'center',padding:'64px 80px',background:'#07121d',color:'#f0f7ff'},[
+    const value=money.format(range.min)+'–'+money.format(range.max);
+    const art=el('div',{display:'flex',width:'100%',height:'100%',flexDirection:'column',justifyContent:'center',padding:'64px 80px',background:'#050505',color:'#f0f7ff'},[
       el('div',{display:'flex',alignItems:'center',gap:16,marginBottom:12},[logo,el('span',{fontSize:27,color:'#90d1ff',letterSpacing:3},'CREATOR REWARDS')]),
       el('span',{fontSize:66,fontWeight:800,marginBottom:3},'X actually pays.'),
-      el('span',{fontSize:190,fontWeight:900,color:'#56baff',lineHeight:1.03},value),
-      el('span',{fontSize:31,color:'#f0f7ff',marginTop:16},'per 1,000 verified impressions'),
+      el('span',{fontSize:value.length>14?112:150,fontWeight:900,color:'#56baff',lineHeight:1.03},value),
+      el('span',{fontSize:37,color:'#f0f7ff',marginTop:16},'per 1,000 verified impressions'),
       el('span',{fontSize:23,color:'#90d1ff',marginTop:22},'x-rewards.proximalcoast.com')
     ]);
     const img=new ImageResponse(art,{width:1200,height:630});

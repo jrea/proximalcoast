@@ -1,0 +1,16 @@
+import { createServer } from 'node:http';
+import { readFile } from 'node:fs/promises';
+import data from './api/data.mjs';
+import payouts from './api/payouts.mjs';
+const assets={'/':['index.html','text/html; charset=utf-8'],'/metrics.mjs':['metrics.mjs','text/javascript'],'/app.mjs':['app.mjs','text/javascript'],'/methodology.txt':['methodology.txt','text/plain; charset=utf-8']};
+createServer(async(req,res)=>{
+  res.status=(code)=>(res.statusCode=code,res);
+  res.json=(obj)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify(obj));};
+  const path=new URL(req.url,'http://localhost').pathname;
+  if(path==='/api/data')return data(req,res);
+  if(path==='/payouts.csv'||path==='/api/payouts')return payouts(req,res);
+  if(!assets[path])return res.status(404).end();
+  if(!['GET','HEAD'].includes(req.method))return res.status(405).end();
+  try{const [file,type]=assets[path];const bytes=await readFile(new URL('./public/'+file,import.meta.url));res.setHeader('Content-Type',type);res.end(req.method==='HEAD'?undefined:bytes);}
+  catch{res.status(500).end();}
+}).listen(Number(process.env.PORT||4312),'127.0.0.1');

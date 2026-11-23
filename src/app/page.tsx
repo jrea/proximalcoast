@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, CalendarCheck, FileText, Scissors, Users } from "lucide-react";
+import { ArrowUpRight, CalendarCheck, ChartNoAxesColumnIncreasing, FileText, Scissors, Users } from "lucide-react";
 
 import { ForeseeableMisuseCard } from "./_components/foreseeable-misuse-card";
 import { HorrorSurvivalCard } from "./_components/horror-survival-card";
@@ -9,7 +9,7 @@ import { SixDofCard } from "./_components/sixdof-card";
 import { Logo as JerkstoreLogo } from "./sites/jerkstore/_components/logo";
 import styles from "./home.module.css";
 
-const description = "Proximatic is our active project: AI shift scheduling for event crews and volunteers. Explore side projects Jerkstore and Slice, and our abandoned game archive.";
+const description = "Proximatic is our active project: AI shift scheduling for event crews and volunteers. Explore Jerkstore, Slice, X Creator Rewards, and our abandoned game archive.";
 
 export const metadata: Metadata = {
   title: "Proximal Coast | Software & Projects",
@@ -96,7 +96,7 @@ export default function Home() {
         <section id="side-projects" className={styles.sideProjectsSection} aria-labelledby="side-projects-title">
           <div className={styles.sectionHeading}>
             <h2 id="side-projects-title">Side projects</h2>
-            <span>A couple of other things we made</span>
+            <span>Other things we made</span>
           </div>
           <div className={styles.toolsGrid}>
             <a href="https://jerkstore.proximalcoast.com" className={styles.jerkstoreProject}>
@@ -110,6 +110,12 @@ export default function Home() {
               <h3><Scissors size={36} strokeWidth={1.5} aria-hidden="true" /> Slice <span aria-hidden="true">{"//"}</span></h3>
               <p>A browser-based pan and zoom video editor. Add keyframed motion and music to your footage.</p>
               <span className={styles.toolCta}>Open Slice <ArrowUpRight size={18} aria-hidden="true" /></span>
+            </a>
+            <a href="https://x-rewards.proximalcoast.com/" className={styles.rewardsProject}>
+              <span className={styles.toolCategory}>Creator payout research</span>
+              <h3><ChartNoAxesColumnIncreasing size={32} strokeWidth={1.6} aria-hidden="true" /> X Creator Rewards</h3>
+              <p>Explore reported X payouts and estimate what verified impressions may be worth.</p>
+              <span className={styles.toolCta}>Open X Creator Rewards <ArrowUpRight size={18} aria-hidden="true" /></span>
             </a>
           </div>
         </section>

@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import pg from 'pg';
+import {dedicatedTarget} from './dedicated-database.mjs';
 import { parse } from 'csv-parse/sync';
 
 export const columns=['creator_handle','payout_cycle','payout_usd','source_post_url','source_post_utc','source_post_views','creator_follower_snapshot','followers_observed_date','receipt_media_url','supporting_source_url','evidence_type'];
@@ -41,8 +42,10 @@ export async function loadSnapshot(){
 }
 let pool;
 export async function loadData(){
-  if(!process.env.X_REWARDS_DATABASE_URL) return loadSnapshot();
-  if(!pool)pool=new pg.Pool({connectionString:process.env.X_REWARDS_DATABASE_URL,ssl:{rejectUnauthorized:true},max:4,connectionTimeoutMillis:4000,statement_timeout:5000,query_timeout:6500});
+  const dsn=process.env.X_REWARDS_DATABASE_URL||process.env.X_REWARDS_QUEUE_DATABASE_URL;
+  if(!dsn)return loadSnapshot();
+  if(process.env.VERCEL||!process.env.X_REWARDS_DATABASE_URL)dedicatedTarget(dsn,process.env.X_REWARDS_NILE_HOST);
+  if(!pool)pool=new pg.Pool({connectionString:dsn,ssl:{rejectUnauthorized:true},max:4,connectionTimeoutMillis:4000,statement_timeout:5000,query_timeout:6500});
   const client=await pool.connect();
   try {
     await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');

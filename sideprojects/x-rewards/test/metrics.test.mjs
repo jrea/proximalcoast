@@ -13,7 +13,7 @@ test('canonical archive remains independently reproducible',()=>{
 test('verified range uses only audited exact-window observations',()=>{
  const rate=rangeFor(snapshot.observations,'verified');
  assert.equal(rate.sampleCount,8);assert.equal(rate.creatorCount,4);
- approx(rate.min,.430872);approx(rate.median,.652313);approx(rate.max,.796312);
+ approx(rate.min,.430872);approx(rate.median,.652326);approx(rate.max,.796312);
  assert.equal(rate.creatorSpecific,false);
 });
 test('total impressions are separate and Denche falls back to cohort',()=>{

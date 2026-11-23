@@ -25,7 +25,9 @@ try{
   const target=remote?url.hostname.split('.')[0]:decodeURIComponent(url.pathname.slice(1));
   if(db.db!==target && (!remote||db.db!=='meatspace')) throw Error('Connected to an unexpected database.');
   await client.query('BEGIN');
-  await client.query(await fs.readFile(new URL('./001_initial.sql',import.meta.url),'utf8'));
+  for (const name of ['001_initial.sql','002_rydawg_screenshot_count.sql']) {
+    await client.query(await fs.readFile(new URL('./'+name,import.meta.url),'utf8'));
+  }
   await write('payouts',
     ['creator_key','creator_handle','payout_cycle','payout_usd','source_post_url','source_post_utc','source_post_views','creator_follower_snapshot','followers_observed_date','receipt_media_url','supporting_source_url','evidence_type'],
     sqlRows(snapshot.payouts),['text','text','date','numeric','text','text','bigint','bigint','date','text','text','text'],[0,2]);

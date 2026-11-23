@@ -4,8 +4,32 @@
   "installCommand": "npm ci --omit=dev",
   "outputDirectory": "public",
   "functions": {
-    "api/data.mjs": { "includeFiles": "data/**" },
-    "api/payouts.mjs": { "includeFiles": "data/**" }
+    "api/data.mjs": {
+      "includeFiles": "data/**"
+    },
+    "api/payouts.mjs": {
+      "includeFiles": "data/**"
+    },
+    "api/leaderboard.mjs": {
+      "includeFiles": "data/**"
+    }
   },
-  "rewrites": [{ "source": "/payouts.csv", "destination": "/api/payouts" }]
+  "rewrites": [
+    {
+      "source": "/payouts.csv",
+      "destination": "/api/payouts"
+    },
+    {
+      "source": "/leaderboard",
+      "destination": "/leaderboard.html"
+    },
+    {
+      "source": "/leaderboard.csv",
+      "destination": "/api/leaderboard?format=csv"
+    },
+    {
+      "source": "/receipts",
+      "destination": "/receipts.html"
+    }
+  ]
 }

@@ -144,12 +144,35 @@ async function load(){
     const r=await fetch('./api/data');if(!r.ok)throw Error();
     const data=await r.json();
     $('data-mode').textContent=data.dataSource==='database'?'Live database':'Archive snapshot · live database not connected';
-    paintHero(data);renderTotals(data);
-    $('same-window').append(compareRows(data,true));$('context-window').append(compareRows(data,false));
-    paintPayouts(data);calculate(data);$('dashboard').hidden=false;
+    if($('hero-rate'))paintHero(data);
+    if($('total-payouts'))renderTotals(data);
+    if($('same-window'))$('same-window').append(compareRows(data,true));
+    if($('context-window'))$('context-window').append(compareRows(data,false));
+    if($('payout-rows'))paintPayouts(data);
+    if($('calc'))calculate(data);
+    $('dashboard').hidden=false;
   } catch {
     $('data-mode').textContent='Saved snapshot · calculator temporarily unavailable';
-    $('calc').hidden=true;
+    if($('calc'))$('calc').hidden=true;
   }
 }
+async function loadHomeBoard(){
+  const status=$('home-board-status'), list=$('home-board-rows');
+  if(!status)return;
+  try{
+    const r=await fetch('/api/leaderboard');
+    if(!r.ok)throw Error();
+    const {cycle,rows}=await r.json();
+    status.textContent=(cycle?fmtDate(cycle)+' payout cycle. ':'')+(rows.length?'Ranked by confirmed payout.':'No entries with both screenshots confirmed for this cycle yet.');
+    for(const row of rows.slice(0,5)){
+      const item=tag('li');
+      const detail=tag('a',row.rank+'. @'+row.creator);
+      detail.href='/leaderboard?cycle='+encodeURIComponent(row.cycle);
+      item.append(detail,tag('strong',dollars.format(row.payoutUsd)));
+      list.append(item);
+    }
+    list.hidden=!rows.length;
+  }catch{status.textContent='Leaderboard temporarily unavailable.';}
+}
+loadHomeBoard();
 load();

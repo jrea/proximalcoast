@@ -2,11 +2,15 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import data from './api/data.mjs';
 import payouts from './api/payouts.mjs';
-const assets={'/':['index.html','text/html; charset=utf-8'],'/metrics.mjs':['metrics.mjs','text/javascript'],'/app.mjs':['app.mjs','text/javascript'],'/methodology.txt':['methodology.txt','text/plain; charset=utf-8']};
+import leaderboard from './api/leaderboard.mjs';
+import submissions from './api/submissions.mjs';
+const assets={'/receipts':['receipts.html','text/html; charset=utf-8'],'/leaderboard':['leaderboard.html','text/html; charset=utf-8'],'/leaderboard.mjs':['leaderboard.mjs','text/javascript'],'/':['index.html','text/html; charset=utf-8'],'/metrics.mjs':['metrics.mjs','text/javascript'],'/app.mjs':['app.mjs','text/javascript'],'/methodology.txt':['methodology.txt','text/plain; charset=utf-8']};
 createServer(async(req,res)=>{
   res.status=(code)=>(res.statusCode=code,res);
   res.json=(obj)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify(obj));};
   const path=new URL(req.url,'http://localhost').pathname;
+  if(path==='/api/submissions')return submissions(req,res);
+  if(path==='/api/leaderboard'||path==='/leaderboard.csv')return leaderboard(req,res);
   if(path==='/api/data')return data(req,res);
   if(path==='/payouts.csv'||path==='/api/payouts')return payouts(req,res);
   if(!assets[path])return res.status(404).end();

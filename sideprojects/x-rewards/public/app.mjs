@@ -14,6 +14,10 @@ function tag(name,text,style){
 function link(text,url){
   const a=tag('a',text);a.href=url;a.target='_blank';a.rel='noopener noreferrer';return a;
 }
+function creatorLink(handle){
+  if(!/^[a-z0-9_]{1,15}$/i.test(handle)||/^(?:unknown|redacted|anonymous|removed|deleted)$/i.test(handle))return tag('span',handle||'Unknown');
+  return link('@'+handle,'https://x.com/'+handle);
+}
 const periods={rolling14:'Prior 14 days, exact dates unstated',reported_cycle:'Creator’s period; exact dates unstated',approximate:'Approximate; exact dates unstated'};
 const labels={verified:'Verified',total:'Total',premium:'Premium (creator wording)'};
 function compareRows(data,strict){
@@ -36,14 +40,16 @@ function compareRows(data,strict){
   for(const d of [...map.values()].sort((a,b)=>(b.cycle??'').localeCompare(a.cycle??'')||a.creator.localeCompare(b.creator))){
     const tr=tag('tr'), who=tag('th');who.scope='row';
     const reviewed=joined.get(d.creator.toLowerCase()+':'+d.cycle);
-    who.append(link('@'+d.creator,strict&&reviewed?reviewed.payoutProof:Object.values(d.links)[0]));
+    who.append(creatorLink(d.creator));
     if(strict&&reviewed){const verified=tag('span',' ✓ Verified');verified.title='Payout and verified impressions screenshots match this cycle';who.append(verified);}
     who.append(tag('span',d.cycle?fmtDate(d.cycle)+' payout':d.label,'sub'));
     const duration=d.kind==='exact'?fmtDate(d.start)+' – '+fmtDate(d.end):periods[d.kind]??(d.kind==='historical'?'Creator retrospective':'No matching analytics disclosed');
-    tr.append(who,tag('td',duration,'window'),tag('td',dollars.format(d.payoutUsd),'numeric'));
+    const amount=tag('td',undefined,'numeric'), payoutSource=reviewed?.payoutProof||(d.kind==='no_count'?d.links.none:null);
+    amount.append(payoutSource?link(dollars.format(d.payoutUsd),payoutSource):tag('span',dollars.format(d.payoutUsd)));
+    tr.append(who,tag('td',duration,'window'),amount);
     for(const metric of ['verified','total',...(strict?[]:['premium'])]){
       const x=d.views[metric], td=tag('td',undefined,'numeric');
-      if(x)td.append(link((x.kind==='approximate'?'~':'')+integer.format(x.count),strict&&reviewed?reviewed.impressionsProof:x.source),tag('span',rate(dollarsPerThousand(x))+' / 1K','sub'));
+      if(x)td.append(link((x.kind==='approximate'?'~':'')+integer.format(x.count),strict&&reviewed&&metric==='verified'?reviewed.impressionsProof:x.source),tag('span',rate(dollarsPerThousand(x))+' / 1K','sub'));
       else td.append(tag('span','—','missing'));
       tr.append(td);
     }
@@ -79,7 +85,7 @@ function paintPayouts(data){
     const start=page*size,end=Math.min(start+size,rows.length),frag=document.createDocumentFragment();
     for(const r of rows.slice(start,end)){
       const tr=tag('tr'), source=tag('td'), th=tag('th');th.scope='row';
-      const handle=tag('div',undefined,'who');handle.append(tag('span','@'+r.creator_handle));
+      const handle=tag('div',undefined,'who');handle.append(creatorLink(r.creator_handle));
       if(r.proof)handle.append(badge(r.proof));
       th.append(handle);source.append(link('X post',r.source_post_url));
       source.firstChild.setAttribute('aria-label','X disclosure by @'+r.creator_handle+' · '+fmtDate(r.payout_cycle));

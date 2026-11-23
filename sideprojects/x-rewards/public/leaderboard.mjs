@@ -26,20 +26,21 @@ async function load(cycle='',invalid=false){
     chosen=board.cycle||'';
     if(board.lastReviewedOn)$('review-status').textContent='Last leaderboard review: '+fmt(board.lastReviewedOn)+'.';
     urls(chosen);
-    select.replaceChildren(...board.cycles.map(x=>{const o=el('option',fmt(x));o.value=x;return o;}));
+    const all=el('option','Top 5 · All cycles');all.value='';
+    select.replaceChildren(all,...board.cycles.map(x=>{const o=el('option',fmt(x));o.value=x;return o;}));
     select.disabled=!board.cycles.length;select.value=chosen;share.disabled=false;
     status.textContent=(invalid?'Unknown cycle. Showing the default cycle. ':'')+(board.rows.length?number.format(board.rows.length)+' proof-reviewed '+(board.rows.length===1?'entry.':'entries.'):'No entries with both screenshots confirmed for this cycle yet.');
     $('rows').replaceChildren(...board.rows.map(r=>{
       const tr=el('tr'), th=el('th',r.rank+'. @'+r.creator);th.scope='row';
       const refs=cell(undefined,'Public proof','proofs');refs.append(proof('Payout screenshot',r.payoutProof),proof('Impressions screenshot',r.impressionsProof));
-      tr.append(th,cell(usd.format(r.payoutUsd),'Payout','numeric payout'),cell(number.format(r.verifiedImpressions),'Verified impressions','numeric'),cell(fmt(r.start)+' – '+fmt(r.end),'Analytics dates'),refs);
+      tr.append(th,cell(usd.format(r.payoutUsd),'Payout','numeric payout'),cell(number.format(r.verifiedImpressions),'Verified impressions','numeric'),cell(fmt(r.cycle),'Payout cycle'),cell(fmt(r.start)+' – '+fmt(r.end),'Analytics dates'),refs);
       return tr;
     }));
     $('table').hidden=!board.rows.length;
   }catch{if(run===serial)status.textContent='Couldn’t load the leaderboard. Try again in a moment.';}
 }
 select.addEventListener('change',()=>{
-  const next=new URL(location.href);next.searchParams.set('cycle',select.value);history.replaceState(null,'',next);
+  const next=new URL(location.href);if(select.value)next.searchParams.set('cycle',select.value);else next.searchParams.delete('cycle');history.replaceState(null,'',next);
   $('share-status').hidden=true;
   load(select.value);
 });

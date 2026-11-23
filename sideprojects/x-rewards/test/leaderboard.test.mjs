@@ -27,6 +27,7 @@ test('rank is per payout cycle and exports only normalized fields',async()=>{
   assert.deepEqual((await leaderboard('2026-10-09')).rows.map(r=>r.creator),['yoppy_cyber']);
   assert.deepEqual((await leaderboard('2026-11-20')).rows.map(r=>r.creator),['RyDawg42']);
   const all=await leaderboard();
+  assert.deepEqual(all.rows.map(r=>r.payoutUsd),[576.49,322.88,214.61,212.71,138.72]);
   assert.equal((await Promise.all(all.cycles.map(x=>leaderboard(x)))).flatMap(x=>x.rows).length,7);
 });
 test('ranks by payout descending, not verified impressions',()=>{
@@ -37,11 +38,15 @@ test('ranks by payout descending, not verified impressions',()=>{
   assert.deepEqual(result.rows.map(x=>x.payoutUsd),[966,64.2]);
 });
 
-import {normalizeStatus,queueStatus} from '../lib/submissions.mjs';
+import {normalizeStatus,queueStatus,validateSubmission} from '../lib/submissions.mjs';
 test('submission input canonicalizes X status IDs without accepting arbitrary content',()=>{
   const canonical={statusId:'2103555413698613582',url:'https://x.com/i/web/status/2103555413698613582'};
   assert.deepEqual(normalizeStatus('https://x.com/ofBleuMoon/status/2103555413698613582?s=46'),canonical);
   assert.deepEqual(normalizeStatus('https://twitter.com/ofBleuMoon/status/2103555413698613582/photo/1'),canonical);
   for(const bad of ['https://x.com.evil/name/status/2103555413698613582','https://x.com/abc',' https://x.com/u/status/2103555413698613582 https://evil.test','http://x.com/u/status/2103555413698613582',{},'https://x.com/@u/status/2103555413698613582'])assert.throws(()=>normalizeStatus(bad));
+  const submission=validateSubmission({payoutUrl:canonical.url,impressionsUrl:canonical.url,optIn:true});
+  assert.equal(submission.dedupeKey,'2103555413698613582:2103555413698613582');
+  assert.throws(()=>validateSubmission({payoutUrl:canonical.url,impressionsUrl:'https://example.com/',username:'unexpected'}));
+  assert.throws(()=>validateSubmission({payoutUrl:canonical.url,impressionsUrl:canonical.url,optIn:false}));
   assert.deepEqual(queueStatus,{accepting:false,pendingCount:null});
 });

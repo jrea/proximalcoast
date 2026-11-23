@@ -20,8 +20,9 @@ export function buildLeaderboard(approvals,observations,cycle=''){
   }
   qualified.sort((a,b)=>b.cycle.localeCompare(a.cycle)||b.payoutUsd-a.payoutUsd||a.creator.localeCompare(b.creator));
   const cycles=[...new Set(observations.filter(r=>r.kind==='exact'&&r.metric==='verified').map(r=>r.cycle))].sort().reverse();
-  const chosen=cycle||qualified[0]?.cycle||cycles[0]||null;
-  const rows=qualified.filter(row=>row.cycle===chosen).map((row,index,all)=>({...row,rank:all.findIndex(v=>v.payoutUsd===row.payoutUsd)+1}));
+  const chosen=cycle||null;
+  const selected=qualified.filter(row=>!chosen||row.cycle===chosen).sort((a,b)=>b.payoutUsd-a.payoutUsd||b.cycle.localeCompare(a.cycle)||a.creator.localeCompare(b.creator));
+  const rows=selected.slice(0,chosen?undefined:5).map((row,index,all)=>({...row,rank:all.findIndex(v=>v.payoutUsd===row.payoutUsd)+1}));
   return {cycle:chosen,cycles,rows,lastReviewedOn:'2026-11-23'};
 }
 let saved;

@@ -163,12 +163,13 @@ async function loadHomeBoard(){
     const r=await fetch('/api/leaderboard');
     if(!r.ok)throw Error();
     const {cycle,rows}=await r.json();
-    status.textContent=(cycle?fmtDate(cycle)+' payout cycle. ':'')+(rows.length?'Ranked by confirmed payout.':'No entries with both screenshots confirmed for this cycle yet.');
+    status.textContent=(rows.length?'Largest payouts with both screenshots confirmed.':'No entries with both screenshots confirmed yet.');
     for(const row of rows.slice(0,5)){
       const item=tag('li');
       const detail=tag('a',row.rank+'. @'+row.creator);
       detail.href='/leaderboard?cycle='+encodeURIComponent(row.cycle);
-      item.append(detail,tag('strong',dollars.format(row.payoutUsd)));
+      const label=tag('div');label.append(detail,tag('span',fmtDate(row.cycle),'sub'));
+      item.append(label,tag('strong',dollars.format(row.payoutUsd)));
       list.append(item);
     }
     list.hidden=!rows.length;

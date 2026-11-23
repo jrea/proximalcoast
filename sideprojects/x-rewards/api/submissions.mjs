@@ -1,4 +1,4 @@
-import {normalizeStatus,queueStatus} from '../lib/submissions.mjs';
+import {validateSubmission,queueStatus} from '../lib/submissions.mjs';
 export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   if(req.method==='GET'){res.status(200).json(queueStatus);return;}
@@ -13,8 +13,7 @@ export default async function handler(req,res){
       body=Buffer.concat(chunks).toString('utf8');
     }
     if(typeof body==='string')body=JSON.parse(body);
-    if(!body||Object.keys(body).length!==1||!Object.hasOwn(body,'url'))throw Error();
-    normalizeStatus(body.url);
-  }catch{res.status(400).json({error:'Send one public X post URL as the url field.'});return;}
+    validateSubmission(body);
+  }catch{res.status(400).json({error:'Send payoutUrl and impressionsUrl as public X post URLs, with optIn: true.'});return;}
   res.status(503).json({error:'Submission queue is not open. Nothing was saved.'});
 }

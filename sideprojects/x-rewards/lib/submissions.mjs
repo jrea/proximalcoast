@@ -6,3 +6,9 @@ export function normalizeStatus(input){
 }
 // No durable intake was provisioned. Never acknowledge, count or retain unprocessed submissions.
 export const queueStatus={accepting:false,pendingCount:null};
+
+export function validateSubmission(body){
+  if(!body||Object.keys(body).length!==3||body.optIn!==true||!Object.hasOwn(body,'payoutUrl')||!Object.hasOwn(body,'impressionsUrl'))throw Error('Send both X post URLs and opt in to public listing.');
+  const payout=normalizeStatus(body.payoutUrl), impressions=normalizeStatus(body.impressionsUrl);
+  return {payout,impressions,dedupeKey:payout.statusId+':'+impressions.statusId};
+}

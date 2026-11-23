@@ -1,0 +1,10 @@
+#submit-payout-dialog{width:min(550px,calc(100% - 28px));max-height:calc(100dvh - 32px);padding:clamp(14px,4vw,26px);background:#10161d;color:#f1f5f9;border:1px solid #37516a;border-radius:12px}
+#submit-payout-dialog::backdrop{background:#030608c7}
+#submit-payout-dialog h2{margin:0 0 8px}
+#submit-payout-dialog p{color:#b6c3ce;line-height:1.42;margin:0 0 14px}
+#submit-payout-dialog #submit-links{display:grid;grid-template-columns:1fr;gap:12px}
+#submit-payout-dialog .submit-consent{display:flex;align-items:start;gap:7px}
+#submit-payout-dialog input[type=checkbox]{flex:none;width:1em;margin-top:.22em}
+#submit-payout-dialog .actions{display:flex;flex-wrap:wrap;gap:8px}
+#submit-payout-dialog [data-close-submit]{background:transparent;color:#f1f5f9;border-color:#37516a}
+#submit-button:disabled{opacity:.56;cursor:not-allowed}

@@ -118,27 +118,18 @@ function renderTotals(data){
   $('sample-share').textContent=(share*100).toFixed(1)+'%';
   $('sample-note').textContent='Top 10% uses the '+integer.format(cut)+' largest payouts in this sample.';
 }
-function paintHero(data){
-  const summary=rangeFor(data.benchmark,'verified');
-  if(!summary){
-    $('hero-rate').textContent='—';
-    $('hero-evidence').textContent='No exact verified payout windows are available.';
-    return;
-  }
-  $('hero-rate').textContent=summary.max<1 && summary.min>=.01
-    ? Math.round(summary.min*100)+'–'+Math.round(summary.max*100)+'¢'
-    : rate(summary.min)+'–'+rate(summary.max);
-  $('hero-evidence').textContent=summary.sampleCount+' payout windows · '+summary.creatorCount+' creators · X Analytics verified impressions.';
-}
 const wholeDollars=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
 function calculate(data){
-  const form=$('calc'), unit=$('metric'), mode=$('direction'), value=$('calc-value'), handle=$('calc-handle'), valLabel=$('calc-value-label');
-  const result=$('estimate-output');
-  let inputDirection=mode.value,lastValue=value.value;
+  const form=$('calc'), value=$('calc-value'), result=$('estimate-output');
+  const benchmark=rangeFor(data.benchmark,'verified');
+  $('hero-evidence').textContent=benchmark
+    ? benchmark.sampleCount+' payout windows · '+benchmark.creatorCount+' creators · X Analytics verified impressions.'
+    : 'No screenshot-verified payout windows are available.';
+  let lastValue=value.value;
   value.addEventListener('input',()=>{
     const before=value.value, at=value.selectionStart??before.length;
     const offset=before.slice(0,at).replace(/[\s,\$]/g,'').length;
-    const formatted=formatCalculatorInput(before,mode.value==='impressions');
+    const formatted=formatCalculatorInput(before);
     if(formatted===null){value.value=lastValue;return;}
     if(formatted!==before){
       value.value=formatted;let caret=0,seen=0;
@@ -146,39 +137,23 @@ function calculate(data){
       value.setSelectionRange(caret,caret);
     }
     lastValue=formatted;
+    result.replaceChildren();result.hidden=true;
   });
-  function update(){
-    if(inputDirection!==mode.value){
-      inputDirection=mode.value;
-      value.value=mode.value==='payout'?'1,000,000':'2,700';
-      lastValue=value.value;value.inputMode=mode.value==='payout'?'numeric':'decimal';
-      valLabel.textContent=mode.value==='payout'?'Impressions in one payout period':'Target payout (USD)';
-    }
-    try {
-      const s=rangeFor(data.benchmark,unit.value,handle.value);
-      if(!s){result.replaceChildren(tag('p','No exact-window comparisons are available for this metric.','estimate-invalid'));return;}
-      const n=Number(value.value.replaceAll(',',''));
-      const guess=estimate(s,n,mode.value);
-      const money=mode.value==='payout';
+  form.addEventListener('submit',(e)=>{
+    e.preventDefault();
+    result.hidden=false;
+    if(!benchmark){result.replaceChildren(tag('p','No screenshot-verified payout windows are available.','estimate-invalid'));return;}
+    try{
+      const formatted=formatCalculatorInput(value.value);
+      if(formatted===null)throw Error('Enter a whole number of verified impressions.');
+      value.value=formatted;lastValue=formatted;
+      const n=Number(formatted.replaceAll(',','')), guess=estimate(benchmark,n,'payout');
       const cash=guess.low<10?dollars:wholeDollars;
-      const format=(x)=>money?cash.format(x):integer.format(x);
-      const metric=labels[unit.value].toLowerCase();
-      $('calc-title').textContent=money
-        ? 'Estimated payout at '+integer.format(n)+' '+metric+' impressions'
-        : 'How many '+metric+' impressions for '+dollars.format(n)+'?';
-      result.replaceChildren(tag('strong',format(guess.low)+'–'+format(guess.high)+(money?'':' impressions'),'estimate-number'),
-        tag('span','About '+format(guess.mid)+(money?'':' impressions')+' at the median observed rate.','result-line'));
-      if(handle.value.trim()||unit.value!=='verified'){
-        const context=s.creatorSpecific?'Uses this creator’s matched payout windows.':
-          handle.value.trim()?'Not enough matches for this handle. Using the overall sample.':'Total and verified rates use different samples.';
-        result.append(tag('span',context+' '+s.sampleCount+' '+metric+' samples from '+s.creatorCount+' '+(s.creatorCount===1?'creator':'creators')+'. Observed '+rate(s.min)+'–'+rate(s.max)+' per 1,000.','result-line cohort-note'));
-      }
-    } catch(e){result.replaceChildren(tag('p',e.message,'estimate-invalid'));}
-
-  }
-  form.addEventListener('submit',(e)=>{e.preventDefault();update();});
-  mode.addEventListener('change',update);unit.addEventListener('change',update);
-  update();
+      result.replaceChildren(tag('span','Estimated payout at '+integer.format(n)+' verified impressions','result-line'),
+        tag('strong',cash.format(guess.low)+'–'+cash.format(guess.high),'estimate-number'),
+        tag('span','Median estimate: '+cash.format(guess.mid)+' · Observed '+rate(benchmark.min)+'–'+rate(benchmark.max)+' per 1,000','result-line'));
+    }catch(err){result.replaceChildren(tag('p',err.message,'estimate-invalid'));}
+  });
 }
 async function load(){
   try {
@@ -186,7 +161,6 @@ async function load(){
     const data=await r.json();
     data.benchmark=benchmarkObservations(data.observations,data.payouts,data.proofs?.rows||[]);
     $('data-mode').textContent=data.dataSource==='database'?'Live database':'Archive snapshot · live database not connected';
-    if($('hero-rate'))paintHero(data);
     if($('total-payouts'))renderTotals(data);
     if($('same-window'))$('same-window').append(compareRows(data,true));
     if($('context-window'))$('context-window').append(compareRows(data,false));

@@ -128,7 +128,7 @@ function paintHero(data){
   $('hero-rate').textContent=summary.max<1 && summary.min>=.01
     ? Math.round(summary.min*100)+'–'+Math.round(summary.max*100)+'¢'
     : rate(summary.min)+'–'+rate(summary.max);
-  $('hero-evidence').textContent='Based on '+summary.sampleCount+' screenshot-verified payout windows from '+summary.creatorCount+' creators. Public post views aren’t verified impressions.';
+  $('hero-evidence').textContent=summary.sampleCount+' payout windows · '+summary.creatorCount+' creators · X Analytics verified impressions.';
 }
 const wholeDollars=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
 function calculate(data){
@@ -164,7 +164,7 @@ function calculate(data){
       const format=(x)=>money?cash.format(x):integer.format(x);
       const metric=labels[unit.value].toLowerCase();
       $('calc-title').textContent=money
-        ? 'If I got '+integer.format(n)+' '+metric+' impressions, what would I get?'
+        ? 'Estimated payout at '+integer.format(n)+' '+metric+' impressions'
         : 'How many '+metric+' impressions for '+dollars.format(n)+'?';
       result.replaceChildren(tag('strong',format(guess.low)+'–'+format(guess.high)+(money?'':' impressions'),'estimate-number'),
         tag('span','About '+format(guess.mid)+(money?'':' impressions')+' at the median observed rate.','result-line'));

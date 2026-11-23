@@ -725,7 +725,7 @@
 .sliceProject:hover { border-color: #69d7df; }
 .rewardsProject { grid-column: 1 / -1; background: #0c1117; color: #f2f8ff; }
 .rewardsProject h3 { font-size: clamp(1.65rem, 4vw, 2.5rem); }
-.rewardsProject h3 svg { flex-shrink: 0; color: #61b9ff; }
+.rewardsProject h3 svg { flex-shrink: 0; }
 .rewardsProject p { color: #aebdd0; }
 .rewardsProject:hover { border-color: #61b9ff; }
 .gamesSection { padding: 5rem 0; scroll-margin-top: 1rem; }

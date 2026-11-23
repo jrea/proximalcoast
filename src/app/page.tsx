@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, CalendarCheck, ChartNoAxesColumnIncreasing, FileText, Scissors, Users } from "lucide-react";
+import { ArrowUpRight, CalendarCheck, FileText, Scissors, Users } from "lucide-react";
 
 import { ForeseeableMisuseCard } from "./_components/foreseeable-misuse-card";
 import { HorrorSurvivalCard } from "./_components/horror-survival-card";
@@ -99,6 +99,12 @@ export default function Home() {
             <span>Other things we made</span>
           </div>
           <div className={styles.toolsGrid}>
+            <a href="https://x-rewards.proximalcoast.com/" className={styles.rewardsProject}>
+              <span className={styles.toolCategory}>Creator payout research</span>
+              <h3><svg width="30" height="31" viewBox="0 0 1200 1227" fill="currentColor" aria-hidden="true"><path d="M714.163 519.284L1160.89 0H1055.03L667.137 450.887L357.328 0H0L468.492 681.821L0 1226.37H105.866L515.491 750.218L842.672 1226.37H1200L714.137 519.284H714.163ZM569.165 687.828L521.697 619.934L144.011 79.6944H306.615L611.412 515.685L658.88 583.579L1055.08 1150.3H892.476L569.165 687.854V687.828Z" /></svg> X Creator Rewards</h3>
+              <p>Explore reported X payouts and estimate what verified impressions may be worth.</p>
+              <span className={styles.toolCta}>Open X Creator Rewards <ArrowUpRight size={18} aria-hidden="true" /></span>
+            </a>
             <a href="https://jerkstore.proximalcoast.com" className={styles.jerkstoreProject}>
               <span className={styles.toolCategory}>A little less polite</span>
               <h3><span className={styles.visuallyHidden}>Jerkstore</span><span aria-hidden="true"><JerkstoreLogo variant="feature" /></span></h3>
@@ -110,12 +116,6 @@ export default function Home() {
               <h3><Scissors size={36} strokeWidth={1.5} aria-hidden="true" /> Slice <span aria-hidden="true">{"//"}</span></h3>
               <p>A browser-based pan and zoom video editor. Add keyframed motion and music to your footage.</p>
               <span className={styles.toolCta}>Open Slice <ArrowUpRight size={18} aria-hidden="true" /></span>
-            </a>
-            <a href="https://x-rewards.proximalcoast.com/" className={styles.rewardsProject}>
-              <span className={styles.toolCategory}>Creator payout research</span>
-              <h3><ChartNoAxesColumnIncreasing size={32} strokeWidth={1.6} aria-hidden="true" /> X Creator Rewards</h3>
-              <p>Explore reported X payouts and estimate what verified impressions may be worth.</p>
-              <span className={styles.toolCta}>Open X Creator Rewards <ArrowUpRight size={18} aria-hidden="true" /></span>
             </a>
           </div>
         </section>

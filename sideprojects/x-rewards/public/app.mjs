@@ -18,12 +18,13 @@ function creatorLink(handle){
   if(!/^[a-z0-9_]{1,15}$/i.test(handle)||/^(?:unknown|redacted|anonymous|removed|deleted)$/i.test(handle))return tag('span',handle||'Unknown');
   const profile=link('@'+handle,'https://x.com/'+handle);profile.className='creator-profile';return profile;
 }
-const periods={rolling14:'Prior 14 days, exact dates unstated',reported_cycle:'Creator’s period; exact dates unstated',approximate:'Approximate; exact dates unstated'};
+const periods={rolling14:'Prior 14 days, exact dates unstated',reported_cycle:'Creator-reported; exact window not verified',approximate:'Approximate; exact dates unstated'};
 const labels={verified:'Verified',total:'Total',premium:'Premium (creator wording)'};
 function compareRows(data,strict){
   const frag=document.createDocumentFragment();
   const map=new Map();
   const joined=new Map((data.proofs?.rows||[]).map(r=>[r.creator.toLowerCase()+':'+r.cycle,r]));
+  const payouts=new Map(data.payouts.map(r=>[r.creator_handle.toLowerCase()+':'+r.payout_cycle,r]));
   const benchmarkKeys=new Set(data.benchmark.map(o=>o.creator.toLowerCase()+':'+o.cycle+':'+o.metric));
   for(const row of data.observations.filter(o=>benchmarkKeys.has(o.creator.toLowerCase()+':'+o.cycle+':'+o.metric)===strict)){
     const k=row.creator.toLowerCase()+':'+row.cycle;
@@ -35,7 +36,7 @@ function compareRows(data,strict){
   if(!strict){
     for(const h of data.historical) map.set(h.creator+':earlier',{...h,views:{[h.metric]:h},links:{[h.metric]:h.source}});
     const denche=data.payouts.find(x=>x.creator_handle.toLowerCase()==='denche2005'&&x.payout_cycle==='2026-11-20');
-    if(denche)map.set('denche:second',{creator:denche.creator_handle,cycle:denche.payout_cycle,payoutUsd:Number(denche.payout_usd),kind:'no_count',views:{},links:{none:denche.source_post_url}});
+    if(denche&&!map.has('denche2005:2026-11-20'))map.set('denche:second',{creator:denche.creator_handle,cycle:denche.payout_cycle,payoutUsd:Number(denche.payout_usd),kind:'no_count',views:{},links:{none:denche.source_post_url}});
   }
   for(const d of [...map.values()].sort((a,b)=>(b.cycle??'').localeCompare(a.cycle??'')||a.creator.localeCompare(b.creator))){
     const tr=tag('tr'), who=tag('th');who.scope='row';
@@ -44,7 +45,9 @@ function compareRows(data,strict){
     if(strict&&reviewed){const verified=tag('span',' ✓ Verified');verified.title='Payout and verified impressions screenshots match this cycle';who.append(verified);}
     who.append(tag('span',d.cycle?fmtDate(d.cycle)+' payout':d.label,'sub'));
     const duration=d.kind==='exact'?fmtDate(d.start)+' – '+fmtDate(d.end):periods[d.kind]??(d.kind==='historical'?'Creator retrospective':'No matching analytics disclosed');
-    const amount=tag('td',undefined,'numeric'), payoutSource=reviewed?.payoutProof||(d.kind==='no_count'?d.links.none:null);
+    const amount=tag('td',undefined,'numeric');
+    const archived=payouts.get(d.creator.toLowerCase()+':'+d.cycle);
+    const payoutSource=reviewed?.payoutProof||archived?.receipt_media_url||(d.kind==='no_count'?d.links.none:null);
     amount.append(payoutSource?link(dollars.format(d.payoutUsd),payoutSource):tag('span',dollars.format(d.payoutUsd)));
     tr.append(who,tag('td',duration,'window'),amount);
     for(const metric of ['verified','total',...(strict?[]:['premium'])]){
@@ -89,6 +92,11 @@ function paintPayouts(data){
       if(r.proof)handle.append(badge(r.proof));
       th.append(handle);source.append(link('X post',r.source_post_url));
       source.firstChild.setAttribute('aria-label','X disclosure by @'+r.creator_handle+' · '+fmtDate(r.payout_cycle));
+      for(const [label,url] of [['Payout screenshot',r.receipt_media_url],['Supporting post',r.supporting_source_url]]){
+        if(!url)continue;
+        const evidence=tag('span',undefined,'sub');
+        evidence.append(link(label,url));source.append(evidence);
+      }
       tr.append(th,tag('td',dollars.format(r.payout_usd),'numeric'),tag('td',fmtDate(r.payout_cycle)),source);
       frag.append(tr);
     }

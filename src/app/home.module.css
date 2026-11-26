@@ -711,14 +711,14 @@
 .productStep > span:nth-child(2) { font-size: clamp(1.4rem, 2.3vw, 2rem); font-weight: 900; letter-spacing: -0.04em; text-transform: uppercase; }
 .productStep > span:last-child { margin-left: auto; font-family: var(--font-geist-mono), monospace; font-size: 0.7rem; }
 .toolsGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1rem; }
-.jerkstoreProject, .sliceProject, .rewardsProject { display: flex; flex-direction: column; padding: 2rem; border: 1px solid var(--line-strong); border-radius: 0.65rem; text-decoration: none; transition: border-color 180ms ease; }
+.jerkstoreProject, .sliceProject, .rewardsProject, .meatspaceProject { display: flex; flex-direction: column; padding: 2rem; border: 1px solid var(--line-strong); border-radius: 0.65rem; text-decoration: none; transition: border-color 180ms ease; }
 .jerkstoreProject { background: #efce42; color: #201e16; }
 .sliceProject { background: #0a2029; color: #dbf6f4; }
 .toolCategory { opacity: 0.8; }
 .jerkstoreProject h3, .sliceProject h3, .rewardsProject h3 { display: flex; align-items: center; gap: 0.75rem; margin: 1.75rem 0 1.25rem; font-size: 2.5rem; font-weight: 700; letter-spacing: -0.05em; }
 .jerkstoreProject h3 svg { max-height: 3.5rem; }
 .sliceProject h3 > span { color: #69d7df; }
-.jerkstoreProject p, .sliceProject p, .rewardsProject p { max-width: 28rem; margin: 0; font-size: 0.9rem; line-height: 1.7; }
+.jerkstoreProject p, .sliceProject p, .rewardsProject p, .meatspaceProject p { max-width: 28rem; margin: 0; font-size: 0.9rem; line-height: 1.7; }
 .sliceProject p { color: #a2c4cc; }
 .jerkstoreProject .toolCta, .sliceProject .toolCta, .rewardsProject .toolCta { padding-top: 1.5rem; margin-top: auto; }
 .jerkstoreProject:hover { border-color: #f9e289; }
@@ -728,6 +728,12 @@
 .rewardsProject h3 svg { flex-shrink: 0; }
 .rewardsProject p { color: #aebdd0; }
 .rewardsProject:hover { border-color: #61b9ff; }
+.meatspaceProject { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 260px); gap: 1.5rem 2rem; align-items: center; background: #f4f1e8; color: #252820; }
+.meatspaceProject:hover { border-color: #dc4b25; }
+.meatspaceProject:focus-visible { outline: 2px solid #dc4b25; outline-offset: 4px; }
+.meatspaceCopy h3 { margin: 1.25rem 0 1rem; }
+.meatspaceWordmark { display: block; width: min(100%, 280px); height: auto; }
+.meatspaceArtwork { display: block; width: 100%; height: auto; max-width: 260px; justify-self: center; }
 .gamesSection { padding: 5rem 0; scroll-margin-top: 1rem; }
 .sectionIntro { max-width: 40rem; color: var(--muted); font-size: 0.95rem; line-height: 1.7; margin: -0.4rem 0 1.75rem; }
 .gameGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -770,14 +776,16 @@
   .productTagline { font-size: clamp(2rem, 9vw, 3.5rem); }
   .productDestination { align-items: flex-start; flex-direction: column; }
   .toolsGrid { grid-template-columns: 1fr; }
-  .jerkstoreProject, .sliceProject, .rewardsProject { padding: 1.5rem; }
+  .jerkstoreProject, .sliceProject, .rewardsProject, .meatspaceProject { padding: 1.5rem; }
+  .meatspaceProject { grid-template-columns: minmax(0, 1fr); }
+  .meatspaceArtwork { max-width: 210px; }
   .gamesSection { padding: 3.5rem 0; }
   .footer { flex-wrap: wrap; gap: 1rem; padding: 1rem 0; }
   .footerNav { gap: 1rem; }
   .footerYear { width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .proximaticCard, .jerkstoreProject, .sliceProject, .rewardsProject { transition: none; }
+  .proximaticCard, .jerkstoreProject, .sliceProject, .rewardsProject, .meatspaceProject { transition: none; }
   .gameCard:hover, .brand:hover .brandLogo { transform: none; }
 }
 

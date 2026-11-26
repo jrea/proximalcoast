@@ -6,8 +6,8 @@ import {rangeFor,estimate,benchmarkObservations,dollarsPerThousand} from '../pub
 const snapshot=await loadSnapshot();
 const approx=(actual,expected)=>assert.ok(Math.abs(actual-expected)<.000001,[actual,expected].join(' ≠ '));
 test('canonical archive remains independently reproducible',()=>{
- assert.equal(snapshot.payouts.length,465);
- assert.equal(new Set(snapshot.payouts.map(x=>x.creator_handle.toLowerCase()+':'+x.payout_cycle)).size,465);
+ assert.equal(snapshot.payouts.length,466);
+ assert.equal(new Set(snapshot.payouts.map(x=>x.creator_handle.toLowerCase()+':'+x.payout_cycle)).size,466);
  assert.equal(snapshot.observations.length,20);
  assert.equal(csvText(snapshot.payouts).trimEnd().split('\r\n').length,snapshot.payouts.length+1);
 });
@@ -49,4 +49,12 @@ test('Denche November 20 links payout screenshot without using the reported coun
  assert.ok(!cohort.includes(observation));
  assert.ok(!rows.some(r=>r.creator==='Denche2005'&&r.cycle==='2026-11-20'));
  assert.equal(snapshot.historical.find(r=>r.creator==='Denche2005').payoutUsd,2639.84);
+});
+
+test('Manxlab November 6 is payout-only; unfiltered 2.3M chart is not a verified denominator', async ()=>{
+ const payout=snapshot.payouts.find(r=>r.creator_handle==='manxlab'&&r.payout_cycle==='2026-11-06');
+ assert.equal(payout.payout_usd,'1187.91');
+ assert.equal(payout.receipt_media_url,'https://x.com/manxlab/status/2125598630006477123/photo/4');
+ assert.ok(!snapshot.observations.some(r=>r.creator.toLowerCase()==='manxlab'));
+ assert.ok(!(await allPublicProofs(snapshot)).rows.some(r=>r.creator==='manxlab'));
 });

@@ -13,5 +13,15 @@
     ],
     "payoutProof": "https://x.com/ashleyschendel/status/2124949578537669025/photo/1",
     "creatorContext": "https://x.com/ashleyschendel/status/2124949578537669025"
+  },
+  {
+    "creator": "manxlab",
+    "cycle": "2026-11-06",
+    "reviewedOcrLine": true,
+    "currency": "USD",
+    "scope": "ocr-only",
+    "amountCents": 118791,
+    "payoutProof": "https://x.com/manxlab/status/2125598630006477123/photo/4",
+    "creatorContext": "https://x.com/manxlab/status/2125598630006477123"
   }
 ]

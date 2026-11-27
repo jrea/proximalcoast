@@ -1,3 +1,11 @@
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver
+
+# Stay on each parent's supported major; remove these once the lockfile
+# naturally resolves to the patched versions.
+overrides:
+  'vitest>vite': '7.3.7'
+  'jsdom>undici': '8.12.2'
+  'discord.js>undici': '6.29.1'
+  '@prisma/config>effect': '3.22.1'

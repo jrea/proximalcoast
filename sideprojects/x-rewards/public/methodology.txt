@@ -1,0 +1,27 @@
+X Original Content Rewards: dataset notes
+November 23, 2026
+
+The CSV contains the 464 payouts used in “The Reality of Content Rewards,” reported publicly by 215 creators across 251 X posts. Each row is one creator and payout cycle, in USD. A single post may show several payouts in its payment history, so the same source link can appear on multiple rows.
+
+Payout cycles and counts
+September 25: 82
+October 9: 91
+October 23: 128
+November 6: 74
+November 20: 89
+
+Included: exact positive amounts publicly reported by the creator and linked to X Original Content Rewards. Evidence includes labeled payout records, first-person disclosures and supporting public sources. Excluded: duplicates for the same creator and cycle, cumulative totals, predictions, obvious satire, separate bonuses, legacy revenue sharing and amounts we could not confidently attribute to this program.
+
+How to read the data
+- Payout cycle is the payment period label, not the posting date. Later posts sometimes show older payments.
+- The views column is a snapshot of public views on the payout disclosure, not views or verified impressions for the content that earned the payout. Blank means missing or not attributable, not zero.
+- Follower counts are public snapshots, not follower counts at the time of payment. Observation dates are shown when recorded. Blank means missing.
+- Source links point to the original public disclosures. Supporting links are included when relevant. Links may change or disappear.
+
+Reproducing the graphic
+- Total: $272,067.86. Average: $586.35. Median: $227.845 (shown as $228). Exactly 232 of 464 payouts were below $228.
+- 109 under $100; 218 from $100 to under $500; 70 from $500 to under $1,000; 67 at $1,000 or more.
+- Sort payout amounts highest to lowest. The top 47 rows account for 51.16% of all dollars in the sample; the top 93 account for 67.71%.
+- 54 of 242 disclosure posts with recorded view counts had more than 10,000 public views.
+
+This is a sample of people who chose to share a positive payout publicly. It excludes zero payouts and people who did not disclose. It cannot tell you what a typical X creator earns or what any creator should expect.

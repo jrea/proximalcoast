@@ -1,0 +1,22 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {assertOcrReceipt} from '../lib/ocr-receipt.mjs';
+import {loadSnapshot} from '../lib/data.mjs';
+test('mixed rewards reconcile to the dated OCR line; totals and ambiguous splits fail closed',async()=>{
+ const [a]=JSON.parse(await readFile(new URL('../data/receipt-breakdowns.json',import.meta.url),'utf8'));
+ assert.equal(assertOcrReceipt(a,'2026-11-20',12375),true);
+ assert.throws(()=>assertOcrReceipt(a,'2026-11-20',72375));
+ assert.throws(()=>assertOcrReceipt({...a,scope:'ocr-only'},'2026-11-20',12375));
+ assert.throws(()=>assertOcrReceipt({...a,amountCents:72375},'2026-11-20',72375));
+ assert.throws(()=>assertOcrReceipt({...a,excluded:[]},'2026-11-20',12375));
+ assert.throws(()=>assertOcrReceipt({...a,excluded:a.excluded.slice(1)},'2026-11-20',12375));
+ assert.throws(()=>assertOcrReceipt({...a,excluded:a.excluded.map(x=>({...x,program:'OCR'}))},'2026-11-20',12375));
+ assert.throws(()=>assertOcrReceipt({...a,reviewedOcrLine:false},'2026-11-20',12375));
+ assert.throws(()=>assertOcrReceipt(a,'2026-11-23',12375));
+ const {payouts,observations}=await loadSnapshot();
+ const r=payouts.find(r=>r.creator_handle===a.creator);
+ assert.equal(r.payout_usd,'123.75');
+ assert.equal(r.receipt_media_url,a.payoutProof);
+ assert.ok(!observations.some(o=>o.creator.toLowerCase()===a.creator));
+});

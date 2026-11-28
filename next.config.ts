@@ -27,10 +27,18 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: [
     "bkd.lvh.me",
     "jerkstore.lvh.me",
+    "x-rewards.lvh.me",
     "bkd.localhost",
     "jerkstore.localhost",
+    "x-rewards.localhost",
     "localhost",
   ],
+  outputFileTracingIncludes: {
+    "/sites/x-rewards/**": [
+      "./sideprojects/x-rewards/data/**",
+      "./sideprojects/x-rewards/public/**",
+    ],
+  },
   async headers() {
     return [
       {

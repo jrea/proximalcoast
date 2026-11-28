@@ -6,6 +6,7 @@ const ACTIVE_SUBSITES = new Set([
   "jerkstore",
   "overmake",
   "slice",
+  "x-rewards",
 ]);
 
 export const config = {
@@ -77,11 +78,14 @@ export default async function proxy(req: NextRequest) {
   }
 
   // Preserve the previous matcher exclusions for every active site, while
-  // still letting their sitemap and robots handlers use subdomain routing.
+  // still letting their sitemap/robots handlers and x-rewards' static assets
+  // (.mjs, .css, .csv, .png, .svg, .txt) use subdomain routing.
   if (
     url.pathname !== "/sitemap.xml" &&
     url.pathname !== "/robots.txt" &&
-    /^\/(?:_next\/|_static\/|[\w-]+\.\w+)/.test(url.pathname)
+    (currentHost === "x-rewards"
+      ? /^\/(?:_next\/|_static\/)/.test(url.pathname)
+      : /^\/(?:_next\/|_static\/|[\w-]+\.\w+)/.test(url.pathname))
   ) {
     return NextResponse.next();
   }

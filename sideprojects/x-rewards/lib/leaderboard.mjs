@@ -1,5 +1,4 @@
-import {readFile} from 'node:fs/promises';
-import {loadData} from './data.mjs';
+import {loadData,readXRewardsDataFile} from './data.mjs';
 
 const key=(creator,cycle)=>creator.toLowerCase()+':'+cycle;
 const media=(url,creator)=>{
@@ -29,7 +28,7 @@ export function buildLeaderboard(approvals,observations,cycle=''){
 let manifest;
 async function proofInputs(data){
   if(data.approvals)return data.approvals;
-  manifest??=readFile(new URL('../data/leaderboard.json',import.meta.url),'utf8').then(JSON.parse);
+  manifest??=readXRewardsDataFile('leaderboard.json').then(JSON.parse);
   return manifest;
 }
 export async function leaderboard(cycle,snapshot){

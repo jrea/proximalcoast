@@ -1,7 +1,16 @@
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import pg from 'pg';
 import {dedicatedTarget} from './dedicated-database.mjs';
 import { parse } from 'csv-parse/sync';
+
+export async function readXRewardsDataFile(filename){
+  try {
+    return await fs.readFile(new URL('../data/'+filename,import.meta.url),'utf8');
+  } catch {
+    return await fs.readFile(path.join(process.cwd(),'sideprojects','x-rewards','data',filename),'utf8');
+  }
+}
 
 export const columns=['creator_handle','payout_cycle','payout_usd','source_post_url','source_post_utc','source_post_views','creator_follower_snapshot','followers_observed_date','receipt_media_url','supporting_source_url','evidence_type'];
 const day=/^\d{4}-\d{2}-\d{2}$/;
@@ -35,7 +44,7 @@ export function validateObservations(observations,payouts){
   return observations;
 }
 export async function loadSnapshot(){
-  const [csv,raw,hist]=await Promise.all(['payouts.csv','observations.json','historical.json'].map(x=>fs.readFile(new URL('../data/'+x,import.meta.url),'utf8')));
+  const [csv,raw,hist]=await Promise.all(['payouts.csv','observations.json','historical.json'].map(x=>readXRewardsDataFile(x)));
   const payouts=decodePayouts(csv);
   const observations=validateObservations(JSON.parse(raw),payouts);
   return {payouts,observations,historical:JSON.parse(hist),dataSource:'snapshot'};

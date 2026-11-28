@@ -38,4 +38,21 @@ describe("server-confirmed purchase conversion", () => {
     capturePurchaseConversion(paid, 1700000001);
     await expect(callbacks[0]()).resolves.toBeUndefined();
   });
+  it("dispatches a GA4 Measurement Protocol purchase event when configured", async () => {
+    vi.stubEnv("NEXT_PUBLIC_GA_ID", "G-TEST12345");
+    vi.stubEnv("GA_MEASUREMENT_PROTOCOL_API_SECRET", "mp_secret");
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response(null, { status: 204 }));
+    capturePurchaseConversion(paid, 1700000001);
+    await callbacks[0]();
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    const [url, init] = fetchSpy.mock.calls[0];
+    expect(String(url)).toContain("measurement_id=G-TEST12345");
+    expect(String(url)).toContain("api_secret=mp_secret");
+    const body = JSON.parse(String(init?.body));
+    expect(body.events[0]).toMatchObject({
+      name: "purchase",
+      params: { transaction_id: "pi_paid", value: 5, currency: "USD", site: "jerkstore" },
+    });
+    fetchSpy.mockRestore();
+  });
 });

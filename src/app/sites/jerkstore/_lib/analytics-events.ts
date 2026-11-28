@@ -43,7 +43,7 @@ export function googleAnalyticsEvent(event: string, properties: Record<string, u
     if (!pack || (name === "purchase" && !String(safe.transactionId ?? "").startsWith("pi_"))) return null;
     params.value = pack.amount / 100;
     params.currency = "USD";
-    params.items = [{ item_id: pack.id, item_name: "Jerkstore credits", price: pack.amount / 100, quantity: 1 }];
+    params.items = [{ item_id: pack.id, item_name: pack.name, price: pack.amount / 100, quantity: 1 }];
     if (name === "purchase") params.transaction_id = safe.transactionId;
     delete params.transactionId;
   }

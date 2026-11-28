@@ -223,4 +223,15 @@ describe("unknown host isolation", () => {
       await expectNotFound("unknown.proximalcoast.com", path);
     }
   });
+
+  it.each(["proximalcoast.com", "www.proximalcoast.com", "jerkstore.proximalcoast.com"])(
+    "blocks direct access to internal /sites/* paths on %s",
+    async (host) => {
+      for (const path of ["/sites", "/sites/jerkstore", "/sites/bkd/api/checkout", "/SITES/overmake"]) {
+        const response = await proxy(requestFor(host, path));
+        expect(response.status).toBe(404);
+        expect(response.headers.get("x-robots-tag")).toContain("noindex");
+      }
+    },
+  );
 });

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { getPlanPriceId } from "../../config";
-import { createCheckoutSession } from "@/lib/billing/checkout";
+import { buildSiteBillingUrl, createCheckoutSession } from "@/lib/billing/checkout";
 
 export async function POST(req: Request) {
   const sessionUser = await auth.api.getSession({
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       },
       siteSlug: "overmake",
       priceId: priceId,
-      returnUrl: `${req.headers.get("origin")}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      returnUrl: buildSiteBillingUrl(req, "overmake", "success=true&session_id={CHECKOUT_SESSION_ID}"),
       metadata: {
         planId: planId
       }

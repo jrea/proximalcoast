@@ -291,28 +291,57 @@ export async function POST(req: Request) {
 
           const price = subscription.items.data[0].price;
 
-          await prisma.user_subscription.upsert({
-            where: { stripeSubscriptionId: subscriptionId },
-            update: {
-              status: subscription.status,
-              plan: plan,
-              cancelAtPeriodEnd: subscription.cancel_at_period_end,
-              expiresAt,
-              priceAmount: price.unit_amount,
-              priceCurrency: price.currency,
-            },
-            create: {
-              userId,
-              siteSlug,
-              stripeSubscriptionId: subscriptionId,
-              status: subscription.status,
-              plan: plan,
-              cancelAtPeriodEnd: subscription.cancel_at_period_end,
-              expiresAt,
-              priceAmount: price.unit_amount,
-              priceCurrency: price.currency,
+          const existingByComposite = await prisma.user_subscription.findUnique({
+            where: {
+              userId_siteSlug: {
+                userId,
+                siteSlug,
+              },
             },
           });
+
+          if (existingByComposite) {
+            await prisma.user_subscription.update({
+              where: {
+                userId_siteSlug: {
+                  userId,
+                  siteSlug,
+                },
+              },
+              data: {
+                stripeSubscriptionId: subscriptionId,
+                status: subscription.status,
+                plan: plan,
+                cancelAtPeriodEnd: subscription.cancel_at_period_end,
+                expiresAt,
+                priceAmount: price.unit_amount,
+                priceCurrency: price.currency,
+              },
+            });
+          } else {
+            await prisma.user_subscription.upsert({
+              where: { stripeSubscriptionId: subscriptionId },
+              update: {
+                status: subscription.status,
+                plan: plan,
+                cancelAtPeriodEnd: subscription.cancel_at_period_end,
+                expiresAt,
+                priceAmount: price.unit_amount,
+                priceCurrency: price.currency,
+              },
+              create: {
+                userId,
+                siteSlug,
+                stripeSubscriptionId: subscriptionId,
+                status: subscription.status,
+                plan: plan,
+                cancelAtPeriodEnd: subscription.cancel_at_period_end,
+                expiresAt,
+                priceAmount: price.unit_amount,
+                priceCurrency: price.currency,
+              },
+            });
+          }
         }
       }
       break;

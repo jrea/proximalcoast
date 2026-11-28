@@ -164,6 +164,42 @@ export function BillingContent({ creditBalance, initialPaymentMethod }: BillingC
 
   const selectedPackage = CREDIT_PACKAGES.find(p => p.id === selectedPackageId) || CREDIT_PACKAGES[1];
   const purchaseAttempt = useRef<{ packageId: string; id: string } | null>(null);
+  const handledRedirectIntent = useRef<string | null>(null);
+
+  // Handle Stripe redirect returns (e.g., 3DS / Link) so payment method status
+  // and GA4 purchase tracking still run when confirmPayment leaves the page.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const redirectIntentId = params.get("payment_intent");
+    const redirectStatus = params.get("redirect_status");
+    if (!redirectIntentId || redirectStatus !== "succeeded" || handledRedirectIntent.current === redirectIntentId) {
+      return;
+    }
+    handledRedirectIntent.current = redirectIntentId;
+    const isLive = Boolean(stripeKey && stripeKey.startsWith("pk_live_"));
+    if (isLive) {
+      analytics.capture("checkout_payment_completed", {
+        packageId: selectedPackageId,
+        transactionId: redirectIntentId,
+      });
+    }
+    toast.success("PAYMENT RECEIVED. TANK REFILLED.");
+
+    fetch("/api/checkout/credits/payment-method", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentIntentId: redirectIntentId }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.paymentMethod) setPaymentMethod(data.paymentMethod);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        router.replace(window.location.pathname, { scroll: false });
+        router.refresh();
+      });
+  }, [analytics, router, selectedPackageId]);
 
   const handlePurchase = async () => {
     if (checkoutLoading) return;

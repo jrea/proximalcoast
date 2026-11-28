@@ -2,6 +2,41 @@ import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/db";
 import Stripe from "stripe";
 
+const ACTIVE_BILLING_SITES = new Set(["backlinks", "bkd", "jerkstore", "overmake", "slice"]);
+
+/**
+ * Builds a validated billing return URL for a site. Never interpolates an
+ * untrusted Origin header in production; in local development, accepts only
+ * localhost / *.lvh.me origins so dev checkouts return to the local server.
+ */
+export function buildSiteBillingUrl(req: Request, siteSlug: string, query?: string): string {
+  if (!ACTIVE_BILLING_SITES.has(siteSlug)) {
+    throw new Error(`Invalid billing site: ${siteSlug}`);
+  }
+  const rootDomain = (process.env.ROOT_DOMAIN || "proximalcoast.com").split(":")[0];
+  let baseUrl = `https://${siteSlug}.${rootDomain}`;
+
+  if (process.env.NODE_ENV !== "production") {
+    const origin = req.headers.get("origin");
+    if (origin) {
+      try {
+        const originHost = new URL(origin).hostname.toLowerCase();
+        if (
+          originHost === "localhost" ||
+          originHost === "lvh.me" ||
+          originHost.endsWith(".lvh.me")
+        ) {
+          baseUrl = origin;
+        }
+      } catch {
+        // Ignore unparseable Origin and keep canonical baseUrl.
+      }
+    }
+  }
+
+  return `${baseUrl}/billing${query ? `?${query}` : ""}`;
+}
+
 export type CheckoutSessionParams = {
   user?: {
     id: string;
@@ -116,8 +151,8 @@ export async function createCheckoutSession({
     return_url: returnUrl,
   };
 
-  // Add Metered Price if configured
-  if (process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_METERED) {
+  // Add Metered Price only for Jerkstore subscriptions
+  if (siteSlug === "jerkstore" && process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_METERED) {
     checkoutOptions.line_items?.push({
       price: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_METERED,
     });

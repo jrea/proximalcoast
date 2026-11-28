@@ -6,7 +6,7 @@ import { prisma } from "./db";
 const organizationPlugin = organization();
 
 const IS_PROD = process.env.NODE_ENV === "production";
-const SUBSITES = ["jerkstore", "dnbk", "bkd", "hanko"];
+const SUBSITES = ["backlinks", "bkd", "jerkstore", "overmake", "slice"];
 
 /**
  * ROOT_DOMAIN drives both the cross-subdomain cookie domain and the

@@ -43,12 +43,21 @@ describe("active subsite proxy", () => {
     expect(response.status).toBe(404);
   });
 
-  it.each(["backlinks", "bkd", "jerkstore", "overmake", "slice"])(
+  it.each(["backlinks", "bkd", "jerkstore", "overmake", "slice", "x-rewards"])(
     "serves the existing %s site root without a trailing-slash redirect",
     async (site) => {
       const host = `${site}.proximalcoast.com`;
       const response = await proxy(requestFor(host, "/"));
       expect(getRewrittenUrl(response)).toBe(`https://${host}/sites/${site}`);
+    },
+  );
+
+  it.each(["/app.mjs", "/submit.css", "/payouts.csv", "/leaderboard.csv", "/og.png", "/methodology.txt", "/favicon.svg"])(
+    "routes x-rewards asset %s to /sites/x-rewards",
+    async (path) => {
+      const host = "x-rewards.proximalcoast.com";
+      const response = await proxy(requestFor(host, path));
+      expect(getRewrittenUrl(response)).toBe(`https://${host}/sites/x-rewards${path}`);
     },
   );
 

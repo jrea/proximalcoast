@@ -1,0 +1,22 @@
+[
+  {"creator":"yoppy_cyber","cycle":"2026-09-25","payoutUsd":322.88,"metric":"verified","count":482061,"start":"2026-09-09","end":"2026-09-22","kind":"exact","source":"https://note.com/yoppy_cyber/n/nc969b41cdea7?hl=en"},
+  {"creator":"yoppy_cyber","cycle":"2026-10-09","payoutUsd":212.71,"metric":"verified","count":276808,"start":"2026-09-23","end":"2026-10-06","kind":"exact","source":"https://note.com/yoppy_cyber/n/nc969b41cdea7?hl=en"},
+  {"creator":"yoppy_cyber","cycle":"2026-10-23","payoutUsd":214.61,"metric":"verified","count":271635,"start":"2026-10-07","end":"2026-10-20","kind":"exact","source":"https://note.com/yoppy_cyber/n/nc969b41cdea7?hl=en"},
+  {"creator":"yoppy_cyber","cycle":"2026-11-06","payoutUsd":138.72,"metric":"verified","count":174203,"start":"2026-10-21","end":"2026-11-03","kind":"exact","source":"https://note.com/yoppy_cyber/n/nc969b41cdea7?hl=en"},
+  {"creator":"yoppy_cyber","cycle":"2026-11-20","payoutUsd":136.29,"metric":"verified","count":316312,"start":"2026-11-04","end":"2026-11-17","kind":"exact","source":"https://note.com/yoppy_cyber/n/nc969b41cdea7?hl=en"},
+  {"creator":"ofBleuMoon","cycle":"2026-09-25","payoutUsd":64.20,"metric":"verified","count":123074,"start":"2026-09-09","end":"2026-09-22","kind":"exact","source":"https://x.com/ofBleuMoon/status/2103555413698613582/photo/1"},
+  {"creator":"KxeSHkstW453827","cycle":"2026-10-23","payoutUsd":576.49,"metric":"verified","count":1294196,"start":"2026-10-07","end":"2026-10-20","kind":"exact","source":"https://x.com/KxeSHkstW453827/status/2113679166361284721/photo/2"},
+  {"creator":"KxeSHkstW453827","cycle":"2026-10-23","payoutUsd":576.49,"metric":"total","count":68930613,"start":"2026-10-07","end":"2026-10-20","kind":"exact","source":"https://x.com/KxeSHkstW453827/status/2113679166361284721/photo/2"},
+  {"creator":"jin_ai10","cycle":"2026-11-20","payoutUsd":33.48,"metric":"total","count":122142,"start":"2026-11-04","end":"2026-11-17","kind":"exact","source":"https://x.com/jin_ai10/status/2124105219860758745"},
+  {"creator":"RyDawg42","cycle":"2026-11-20","payoutUsd":120.30,"metric":"verified","count":189490,"start":"2026-11-04","end":"2026-11-17","kind":"exact","source":"https://x.com/RyDawg42/status/2123873927130919281"},
+  {"creator":"TTrimoreau","cycle":"2026-11-20","payoutUsd":696.31,"metric":"verified","count":504800,"kind":"rolling14","source":"https://x.com/TTrimoreau/status/2123924349786677375"},
+  {"creator":"TTrimoreau","cycle":"2026-11-20","payoutUsd":696.31,"metric":"total","count":979400,"kind":"rolling14","source":"https://x.com/TTrimoreau/status/2123924349786677375"},
+  {"creator":"Denche2005","cycle":"2026-11-20","payoutUsd":2698.47,"metric":"verified","count":1563150,"kind":"reported_cycle","source":"https://x.com/Denche2005/status/2124862280739274964"},
+  {"creator":"dramaricic","cycle":"2026-11-20","payoutUsd":149.85,"metric":"verified","count":116262,"kind":"reported_cycle","source":"https://x.com/dramaricic/status/2123870790072582356"},
+  {"creator":"b1rkh0ff","cycle":"2026-11-20","payoutUsd":507.83,"metric":"verified","count":288000,"kind":"reported_cycle","source":"https://x.com/b1rkh0ff/status/2123866150169715022"},
+  {"creator":"1okushakkin","cycle":"2026-11-20","payoutUsd":59.86,"metric":"verified","count":134307,"kind":"reported_cycle","source":"https://x.com/1okushakkin/status/2123927604466229726"},
+  {"creator":"OInvests","cycle":"2026-10-23","payoutUsd":101.08,"metric":"verified","count":262000,"kind":"reported_cycle","source":"https://x.com/OInvests/status/2113672324369244439"},
+  {"creator":"kevinace","cycle":"2026-11-06","payoutUsd":127.55,"metric":"total","count":3200000,"kind":"reported_cycle","source":"https://x.com/kevinace/status/2118886159870734645"},
+  {"creator":"beniduboss","cycle":"2026-11-20","payoutUsd":2969.51,"metric":"premium","count":15000000,"kind":"approximate","source":"https://x.com/beniduboss/status/2123868681218424887"},
+  {"creator":"beniduboss","cycle":"2026-11-20","payoutUsd":2969.51,"metric":"total","count":35000000,"kind":"approximate","source":"https://x.com/beniduboss/status/2123868681218424887"}
+]

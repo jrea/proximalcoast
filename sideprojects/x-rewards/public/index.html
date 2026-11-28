@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>X Creator Rewards Observatory • Proximal Coast</title><meta name="description" content="Compare public X Original Content Rewards disclosures and estimate a payout range from dated, creator-reported impressions.">
+<link rel="canonical" href="https://x-rewards.proximalcoast.com/">
+<style>
+:root{color-scheme:dark;--ink:#f1f5f9;--dim:#b6c3ce;--lime:#56baff;--bg:#030608;--panel:#10161d;--edge:#354553;font:16px system-ui,sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink)}[hidden]{display:none!important}.wrap{width:min(1100px,calc(100% - 38px));margin:auto}a{color:var(--lime);text-underline-offset:.2em}a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #91d3ff;outline-offset:3px}header{border-bottom:1px solid var(--edge);padding:18px 0}header .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.mark,.eyebrow{font:700 .8rem ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase}.mark{text-decoration:none}.hero{padding:65px 0 44px}.eyebrow{color:var(--lime)}h1,h2,p{margin-top:0}h1{font-size:clamp(3rem,9vw,7rem);line-height:.89;letter-spacing:-.085em;margin:15px 0 26px;max-width:9ch}h2{font-size:clamp(1.7rem,4vw,2.8rem);letter-spacing:-.05em;margin-bottom:12px}.lead{max-width:63ch;color:var(--dim);font-size:1.15rem;line-height:1.5}.actions{display:flex;gap:12px;flex-wrap:wrap}.btn,button{background:var(--lime);color:#071623;text-decoration:none;border:1px solid transparent;border-radius:5px;padding:10px 14px;font-size:.95rem;font-weight:bold;cursor:pointer}.btn.secondary,button.secondary{color:var(--ink);background:transparent;border-color:var(--edge)}button:disabled{opacity:.42;cursor:default}.panel{border:1px solid var(--edge);background:var(--panel);border-radius:10px;padding:clamp(16px,3vw,32px);margin-bottom:26px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,185px),1fr));gap:12px}.tile{border:1px solid var(--edge);padding:14px;background:var(--bg);border-radius:5px}.tile span,.result-line,.sub,.note{display:block;color:var(--dim);line-height:1.5}.tile strong{display:block;font-size:clamp(1.5rem,4vw,2.4rem);letter-spacing:-.05em}.tile:first-child strong{color:var(--lime)}form{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));align-items:end}label{display:grid;gap:6px;color:var(--dim);font-size:.92rem}input,select{max-width:100%;width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--edge);border-radius:5px;padding:9px}#estimate-output{background:var(--bg);border-left:4px solid var(--lime);padding:15px 18px;margin-top:17px}.estimate-number{font-size:clamp(1.6rem,5vw,3.1rem);display:block;color:var(--lime);line-height:1.11;margin-bottom:12px;letter-spacing:-.06em}.table-scroll{overflow:auto}table{border-collapse:collapse;width:100%;font-size:.88rem}th,td{padding:.8rem;text-align:left;border-top:1px solid var(--edge);vertical-align:top}thead th{color:var(--dim);border-top:0;white-space:nowrap}.numeric{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.window{min-width:160px}.missing{color:var(--dim)}summary{cursor:pointer;color:var(--lime);padding:12px 0;font-weight:700}footer{color:var(--dim);padding:0 0 32px}#data-mode{font-size:.84rem;color:var(--dim)}.foot{margin-top:16px}
+
+.hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(20px,5vw,68px);align-items:start;padding-block:clamp(32px,6vw,68px)}
+.hero h1{font-size:clamp(3rem,6vw,5.2rem);line-height:.98;letter-spacing:-.049em;max-width:12ch;margin:12px 0 24px}
+.hero-brand{display:flex;align-items:center;gap:10px}.hero-brand svg{color:var(--ink);flex-shrink:0}.rate-block{max-width:37ch}.hero-rate{display:block;color:var(--lime);font-size:clamp(3.4rem,8vw,6.4rem);letter-spacing:-.07em;line-height:.98;font-weight:850;font-variant-numeric:tabular-nums}.rate-unit{display:block;font-weight:720;margin:7px 0 8px}.hero-story .actions{font-size:.88rem;gap:10px 17px;margin-top:20px}
+.hero-calculator{border:1px solid #365a75;border-radius:12px;padding:clamp(15px,3vw,28px);min-width:0;background:linear-gradient(145deg,#15283b,var(--panel) 72%)}.hero-calculator h2{font-size:clamp(1.3rem,2.7vw,2rem);letter-spacing:-.024em;line-height:1.12;margin-bottom:10px}.hero-calculator .eyebrow{margin-bottom:10px}
+.hero-calculator #estimate-output{border-inline-start:0;background:transparent;padding:0;margin:0 0 16px}.hero-calculator .estimate-number{font-size:clamp(2.3rem,5vw,4.35rem);margin:0 0 5px}.hero-calculator .result-line{font-size:.89rem}.hero-calculator form{grid-template-columns:minmax(0,1fr) auto;gap:8px}.calc-options{grid-column:1/-1}.calc-options summary{font-size:.86rem;padding:6px 0}.calc-fields{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr));padding:5px 0 8px}.calc-foot{font-size:.83rem;margin:7px 0 0}.estimate-invalid{margin:0}.hero-calculator .cohort-note{margin-top:4px}
+@media(max-width:700px){.hero{grid-template-columns:1fr;gap:20px;padding-block:26px}.hero h1{font-size:clamp(2.55rem,8.7vw,4rem);max-width:17ch;margin:7px 0 14px}.hero-rate{font-size:clamp(3rem,13vw,5.2rem)}.hero-story .actions{margin-top:10px}.hero-story>.eyebrow,.rate-block .note{margin-bottom:0}.hero-calculator .estimate-number{font-size:clamp(2.1rem,8.5vw,3.25rem)}}
+.board{margin-top:24px}.board-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}.board-heading h1{font-size:clamp(2.15rem,6vw,3.8rem);letter-spacing:-.038em;line-height:1.05;margin:6px 0 0;max-width:none}.board-heading .eyebrow{margin:0}.icon-submit{width:44px;height:44px;flex:0 0 44px;display:grid;place-items:center;padding:0;border-radius:50%;background:var(--lime);color:#071623}.board-controls{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin:17px 0 9px}.board-controls label:not(.proof-filter){flex:1;min-width:116px}.proof-filter{display:flex;align-items:center;gap:5px;min-height:42px}.proof-filter input{width:1em;padding:0}.board-table .numeric{color:var(--lime);font-weight:720}.board-table th[scope=row]{font-weight:650}.board-table td,.board-table th{padding-inline:8px}.board-table td:last-child{white-space:nowrap}.who{display:flex;align-items:center;flex-wrap:wrap;gap:7px}.proof-badge{font-size:.81rem;color:var(--lime);min-height:27px}.proof-badge summary{display:inline-flex;align-items:center;padding:2px;border:1px solid #3b6e91;border-radius:5px;list-style:none}.proof-badge summary::-webkit-details-marker{display:none}.proof-badge .proof-links{display:grid;gap:4px;padding:5px 0;min-width:132px}.board-caption{display:flex;gap:8px 12px;flex-wrap:wrap;font-size:.82rem;align-items:center}.detail-links{display:flex;gap:10px;flex-wrap:wrap}.hero{padding-block:14px 24px;gap:20px}.hero h2.hero-question{font-size:clamp(1.55rem,4vw,2.35rem);letter-spacing:-.035em}.hero-rate{font-size:clamp(2.45rem,7vw,4rem)}.hero-calculator .estimate-number{font-size:clamp(2.1rem,5vw,3.45rem)}@media(max-width:620px){.board-controls{display:grid;grid-template-columns:1fr 1fr}.board-controls label:first-child{grid-column:1/-1}.board-table table{font-size:.76rem}.board-table th,.board-table td{padding:8px 4px}.board-table thead th{white-space:normal}.board-table .who{gap:3px}.board-table th:first-child{overflow-wrap:anywhere}.board-caption{font-size:.76rem}}.payout-estimator{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,430px);
+  align-items:center;gap:8px 22px;padding:clamp(13px,2vw,20px) clamp(14px,2.5vw,26px);
+  margin-top:16px;border:1px solid #2f3336;border-radius:16px;
+  background:radial-gradient(ellipse at 0% 0%,#102536 0%,#080c10 68%);
+}
+.payout-estimator h2{
+  width:fit-content;font-size:clamp(1.23rem,2.6vw,1.76rem);font-weight:800;line-height:1.1;
+  letter-spacing:-.033em;margin:0;color:#f2f5f7;
+}
+.payout-estimator #calc{display:block;margin:0;min-width:0}
+.payout-estimator label{font-size:.78rem;font-weight:650;color:#b6c0c8;margin-bottom:5px}
+.estimator-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.estimator-controls input,.estimator-controls button{min-height:44px;margin:0;line-height:1.1}
+.estimator-controls input{
+  width:100%;min-width:0;padding:8px 12px;border:1px solid #536471;border-radius:9px;
+  background:#050a0f;color:#f2f5f7;font-weight:700;font-size:1rem;font-variant-numeric:tabular-nums;
+}
+.estimator-controls input:focus-visible{outline:2px solid #1d9bf0;outline-offset:1px;border-color:#1d9bf0}
+.estimator-controls button{
+  border:1px solid transparent;border-radius:999px;background:#1d9bf0;color:#05131e;
+  padding:8px 16px;font-size:.88rem;font-weight:800;white-space:nowrap;
+}
+.estimator-controls button:hover{background:#56baff}
+.estimator-controls button:active{background:#8ad2ff}
+.estimator-controls button:focus-visible{outline:2px solid #e2f3ff;outline-offset:3px}
+.estimator-note{grid-column:1/-1;font-size:.75rem;line-height:1.5;margin:1px 0 0;color:#aab8c4}
+.payout-estimator #estimate-output{
+  grid-column:1/-1;margin:3px 0 0;padding:10px 13px;
+  background:#071521;border:1px solid #234967;border-radius:10px;
+}
+.payout-estimator .estimate-number{
+  display:block;font-size:clamp(1.72rem,4vw,2.6rem);font-weight:850;line-height:1.1;
+  letter-spacing:-.04em;color:#63c0ff;margin:3px 0;
+}
+.payout-estimator .result-line,.payout-estimator .estimate-invalid{font-size:.85rem;line-height:1.4;margin:0}
+@media(max-width:620px){
+  .payout-estimator{grid-template-columns:minmax(0,1fr);gap:9px;padding:13px 14px}
+  .estimator-controls button{padding-inline:13px}
+}
+.board{margin-top:14px}
+.payout-banner{display:flex;justify-content:space-between;align-items:center;gap:8px 20px;flex-wrap:wrap;background:#102940;border:1px solid #32638b;border-radius:10px;padding:9px 14px;margin-top:15px}.payout-banner h2{font-size:clamp(1.05rem,3vw,1.6rem);letter-spacing:-.02em;margin:0}.payout-banner strong{font-size:clamp(1.1rem,3vw,1.65rem);color:var(--lime)}.payout-banner span{color:var(--dim);font-size:.77rem;margin-left:4px}.credit,.credit a{display:flex;align-items:center;gap:8px}.credit img{background:#13212b;border-radius:4px;padding:2px}.creator-profile{color:var(--ink);font-weight:750;text-decoration:none}.creator-profile:hover{color:var(--lime)}</style><link rel="stylesheet" href="/submit.css"><link rel="icon" href="/proximal-coast-icon-v3.svg" type="image/svg+xml" sizes="any">
+<meta property="og:type" content="website"><meta property="og:title" content="X actually pays."><meta property="og:description" content="See the observed payout range per 1,000 verified impressions."><meta property="og:url" content="https://x-rewards.proximalcoast.com/"><meta property="og:image" content="https://x-rewards.proximalcoast.com/og.png?v=5"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="X actually pays: the observed payout range per 1,000 verified impressions.">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="X actually pays."><meta name="twitter:description" content="See the observed payout range per 1,000 verified impressions."><meta name="twitter:image" content="https://x-rewards.proximalcoast.com/og.png?v=5">
+</head><body>
+<header><div class="wrap"><a href="https://proximalcoast.com" class="mark">Proximal Coast</a><span id="data-mode" role="status">Loading disclosures…</span></div></header>
+<main class="wrap">
+  <section class="payout-banner" aria-labelledby="payout-banner-title"><h2 id="payout-banner-title">X actually pays.</h2><div hidden><strong id="payout-range-value"></strong><span> per 1,000 verified impressions</span></div></section>
+  <section id="calculator" class="payout-estimator" aria-labelledby="calc-title">
+    <h2 id="calc-title">Estimate your X payout</h2>
+    <form id="calc">
+      <label for="calc-value">Verified impressions in one payout period</label>
+      <div class="estimator-controls">
+        <input id="calc-value" type="text" value="1,000,000" inputmode="numeric" autocomplete="off" maxlength="20" required>
+        <button type="submit">Calculate</button>
+      </div>
+    </form>
+    <p class="estimator-note note"><span id="hero-evidence">7 payout windows · 4 creators · X Analytics verified impressions.</span> Not a guaranteed rate. <a href="/receipts">See the data</a></p>
+    <div id="estimate-output" aria-live="polite" hidden></div>
+  </section>
+  <div id="dashboard">
+  <section id="archive" class="panel board" aria-labelledby="leaderboard">
+    <div class="board-heading"><div><p class="eyebrow hero-brand"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.64 7.584H.47l8.6-9.835L0 1.153h7.594l5.243 6.932 6.064-6.932Zm-1.29 19.49h2.039L6.488 3.24H4.3l13.31 17.403Z"/></svg>Original Content Rewards</p><h1 id="leaderboard">Payout leaderboard</h1></div>
+      <button id="submit" type="button" data-open-submit aria-label="Submit your payout" title="Submit your payout" class="icon-submit"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path stroke-linejoin="round" d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></button>
+    </div>
+    <div class="board-controls"><label>Search creator<input type="search" id="payout-search" placeholder="@handle"></label>
+    <label>Payout cycle<select id="payout-cycle"><option value="">All payout cycles</option></select></label>
+    <label>Sort<select id="payout-sort"><option value="high">Payout: highest first</option><option value="low">Payout: lowest first</option><option value="recent">Newest cycle</option></select></label>
+    <label class="proof-filter"><input type="checkbox" id="payout-verified"> Verified</label></div>
+    <p class="note board-caption"><span>✓ Verified means both screenshots match that payout cycle.</span><span id="review-status"></span><span id="queue-status"></span></p>
+    <div id="payout-wrap" class="table-scroll board-table" hidden><table><thead><tr><th scope="col">Creator</th><th scope="col" class="numeric">Payout</th><th scope="col">Cycle</th><th scope="col">Source</th></tr></thead><tbody id="payout-rows"></tbody></table></div>
+    <div class="board-caption foot"><p id="payout-status" class="note" role="status" style="margin:0">Loading payouts…</p><button id="payout-prev" class="secondary" disabled>Previous</button><button id="payout-next" class="secondary" disabled>Next</button><a href="/payouts.csv">CSV</a><a href="/receipts">Data &amp; sources</a></div>
+  </section>
+  </div>
+  <noscript><p>The calculator requires JavaScript. The payout CSV and methodology are available without it.</p></noscript>
+</main>
+<footer class="wrap"><a href="/methodology.txt">Methodology</a> · <a href="/payouts.csv">Download CSV</a> · <a href="https://help.x.com/en/using-x/original-content-rewards">X’s program rules</a><p class="note foot credit">Research from <a href="https://proximalcoast.com/"><img src="/proximal-coast-mark.svg" alt="" width="26" height="26">Proximal Coast</a></p></footer>
+<script type="module" src="/app.mjs"></script><dialog id="submit-payout-dialog" aria-labelledby="submit-payout-title">
+  <h2 id="submit-payout-title">Submit your payout</h2>
+  <p>Link the public X posts that show the payout and matching verified impressions. Use the same link twice if both screenshots are in one post.</p>
+  <form id="submit-links">
+    <label>Payout post URL<input type="url" name="payoutUrl" placeholder="https://x.com/yourhandle/status/…" required maxlength="300"></label>
+    <label>Verified impressions post URL<input type="url" name="impressionsUrl" placeholder="https://x.com/yourhandle/status/…" required maxlength="300"></label>
+    <label class="submit-consent"><input type="checkbox" name="optIn" required> If approved, list my X handle, payout, verified impressions and proof links on the public leaderboard.</label>
+    <p id="submit-message" role="status" class="note">Submissions aren’t open yet. No links entered here are saved.</p>
+    <div class="actions"><button type="submit" id="submit-button" disabled>Submit for review</button><button type="button" data-close-submit>Close</button></div>
+  </form>
+</dialog>
+<script type="module" src="/submit.mjs"></script></body></html>

@@ -2,7 +2,7 @@ export type AnalyticsConsentState = "granted" | "denied";
 
 export const CONSENT_STORAGE_KEY = "jerkstore-cookie-consent";
 
-const KNOWN_SUBSITES = new Set(["backlinks", "bkd", "jerkstore", "overmake", "slice"]);
+const KNOWN_SUBSITES = new Set(["backlinks", "bkd", "jerkstore", "overmake", "slice", "x-rewards"]);
 
 export function getSiteFromHostname(hostname: string): string {
   const normalized = hostname.toLowerCase().replace(/^www\./, "");

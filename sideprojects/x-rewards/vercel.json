@@ -1,0 +1,42 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm ci --omit=dev",
+  "outputDirectory": "public",
+  "functions": {
+    "api/data.mjs": {
+      "includeFiles": "data/**"
+    },
+    "api/payouts.mjs": {
+      "includeFiles": "data/**"
+    },
+    "api/leaderboard.mjs": {
+      "includeFiles": "data/**"
+    },
+    "api/og.mjs": {
+      "includeFiles": "data/**"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/payouts.csv",
+      "destination": "/api/payouts"
+    },
+    {
+      "source": "/leaderboard",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/leaderboard.csv",
+      "destination": "/api/leaderboard?format=csv"
+    },
+    {
+      "source": "/receipts",
+      "destination": "/receipts.html"
+    },
+    {
+      "source": "/og.png",
+      "destination": "/api/og"
+    }
+  ]
+}

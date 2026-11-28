@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { usePostHog } from "posthog-js/react";
 import type { CaptureOptions } from "posthog-js";
-import { sendGAEvent } from "@next/third-parties/google";
+import { callGtag } from "@/lib/analytics-consent";
 import { analyticsUrl, googleAnalyticsEvent, safeAnalyticsProperties } from "./analytics-events";
 
 export function useJerkstoreAnalytics() {
@@ -19,9 +19,7 @@ export function useJerkstoreAnalytics() {
       const googleEvent = googleAnalyticsEvent(event, safe);
       if (process.env.NEXT_PUBLIC_GA_ID && googleEvent) {
         try {
-          const gaWindow = window as Window & { dataLayer?: unknown[] };
-          gaWindow.dataLayer ??= [];
-          sendGAEvent("event", googleEvent.name, { ...googleEvent.params, page_location: analyticsUrl(window.location.href) });
+          callGtag("event", googleEvent.name, { ...googleEvent.params, page_location: analyticsUrl(window.location.href) });
         } catch { /* optional tracker */ }
       }
     },

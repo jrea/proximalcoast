@@ -51,6 +51,22 @@ export default async function proxy(req: NextRequest) {
     });
   }
 
+  // Block direct access to internal /sites/* rewrite targets on all non-preview
+  // hosts so tenants cannot be reached via the root origin or cross-subdomain.
+  if (!isPreviewHost && /^\/sites(?:\/|$)/i.test(url.pathname)) {
+    return new NextResponse(req.method === "HEAD" ? null : "Not Found\n", {
+      status: 404,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "private, no-store, max-age=0",
+        "X-Robots-Tag": "noindex, nofollow",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+        "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+      },
+    });
+  }
+
   // Keep the public shortcut behind host validation, rather than in the
   // earlier next.config redirect layer where unknown hosts could reach it.
   if (/^\/jerkstore(?:\/|$)/i.test(url.pathname)) {

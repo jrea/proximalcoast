@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Bebas_Neue } from "next/font/google";
-import { GoogleAnalytics } from "@next/third-parties/google";
+import { GoogleAnalytics } from "./google-analytics";
 import "./globals.css";
 import { PostHogProvider } from "./providers";
 import PostHogPageView from "./posthog-pageview";

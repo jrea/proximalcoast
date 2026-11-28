@@ -55,13 +55,25 @@ export async function POST(req: Request) {
     // every retry then 409'd on the consumed claim.
     let subscriptionExpiresAt: Date | null = null;
     let subscriptionStatus: string | null = null;
+    let subscriptionMatchesBkd = sessionSite === "bkd";
     if (subscriptionId) {
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      const bkdPriceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_BKD;
+      if (
+        subscription.metadata?.siteSlug === "bkd" ||
+        (bkdPriceId && subscription.items.data.some((item) => item.price.id === bkdPriceId))
+      ) {
+        subscriptionMatchesBkd = true;
+      }
       const periodEnd = subscription.items.data[0]?.current_period_end;
       subscriptionExpiresAt = periodEnd
         ? new Date(periodEnd * 1000)
         : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
       subscriptionStatus = subscription.status;
+    }
+
+    if (!subscriptionMatchesBkd) {
+      return NextResponse.json({ error: "Session does not belong to this site" }, { status: 400 });
     }
 
     // 3. Find or create the user using better-auth API to avoid missing field errors

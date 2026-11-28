@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     return new NextResponse('Bad Request Signature', { status: 401 });
   }
 
-  const isValidRequest = verifyKey(body, signature, timestamp, process.env.DISCORD_PUBLIC_KEY);
+  const isValidRequest = await verifyKey(body, signature, timestamp, process.env.DISCORD_PUBLIC_KEY);
   if (!isValidRequest) {
     return new NextResponse('Bad Request Signature', { status: 401 });
   }
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       if (!apiKey || typeof apiKey !== "string") {
         return jsonResponseHelper({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: { content: "Please provide your API Key." }
+          data: { content: "Please provide your API Key.", flags: 64 }
         });
       }
 
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       if (!keyRecord || !keyUser) {
         return jsonResponseHelper({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: { content: "Invalid API Key." }
+          data: { content: "Invalid API Key.", flags: 64 }
         });
       }
 
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
 
       return jsonResponseHelper({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: { content: `Successfully linked to **${keyUser.username ?? 'User'}**! You can now use \`/roast\`.` }
+        data: { content: `Successfully linked to **${keyUser.username ?? 'User'}**! You can now use \`/roast\`.`, flags: 64 }
       });
     }
 
@@ -125,7 +125,21 @@ export async function POST(req: NextRequest) {
       const target = options?.find((o: DiscordOption) => o.name === 'target')?.value;
       let style = options?.find((o: DiscordOption) => o.name === 'style')?.value;
 
-      if (!target || typeof target !== "string") return jsonResponseHelper({ type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, data: { content: "Roast who? Your imaginary friend?" } });
+      if (!target || typeof target !== "string" || !target.trim()) return jsonResponseHelper({ type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, data: { content: "Roast who? Your imaginary friend?" } });
+      if (target.length > 500) {
+        return jsonResponseHelper({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: { content: "Keep the roast target under 500 characters.", flags: 64 }
+        });
+      }
+
+      const { moderateText } = await import('@/app/sites/jerkstore/_lib/openai');
+      if (await moderateText(target)) {
+        return jsonResponseHelper({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: { content: "That topic crosses the line. Try a different roast target.", flags: 64 }
+        });
+      }
 
       // 1. Authenticate via Link
       const account = await prisma.account.findUnique({
